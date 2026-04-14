@@ -3,7 +3,7 @@
 Rialo Race is the redesigned React/Vite frontend for the Rialo Race live market, replay, rankings, rewards, history, profile, and chat pages.
 
 Live site: https://rialoracev1.vercel.app  
-Repository: https://github.com/tenoli750/rialorace-8002
+Repository: https://github.com/tenoli750/rialorace
 
 ## What Is Included
 
