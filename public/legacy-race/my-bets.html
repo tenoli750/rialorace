@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>My Bets</title>
+    <link rel="icon" href="./assets/coin-logos/btc.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./my-bets-main.js?v=3"></script>
+  </head>
+  <body>
+    <main class="app-shell page-hub-shell">
+      <a class="site-title" href="./main-menu.html" aria-label="Rialo Race"><img src="./assets/create_a_logo_in_this_exact_layout_style_use_the_u_019d8db9-c7d9-75dc-ad2e-f5463423c3be-removebg-preview.png" alt="Rialo Race" /></a>
+      <nav class="page-nav panel">
+        <a class="page-nav-link" href="./main-menu.html">Live Markets</a>
+        <a class="page-nav-link" href="./replay-menu.html">Replay</a>
+        <a class="page-nav-link" href="./community.html">Rankings</a>
+        <a class="page-nav-link" href="./rewards.html">Rewards</a>
+        <a class="page-nav-link is-active" href="./my-bets.html">History</a>
+        <span class="page-nav-spacer"></span>
+        <span class="page-nav-points" id="headerPoints">Points --</span>
+        <a class="page-nav-link page-nav-account" id="accountLink" href="./login.html">Login</a>
+      </nav>
+
+      <section class="panel auth-panel hub-wide-panel">
+        <div>
+          <span class="eyebrow">Bet History</span>
+          <h1>My Bets</h1>
+          <p class="auth-copy">All placed bets, match targets, results, and payout records.</p>
+        </div>
+
+        <div class="profile-grid">
+          <article class="profile-card">
+            <span class="coin-label">Total Bets</span>
+            <span class="profile-value" id="betsCount">0</span>
+          </article>
+          <article class="profile-card">
+            <span class="coin-label">Won</span>
+            <span class="profile-value" id="betsWon">0</span>
+          </article>
+          <article class="profile-card">
+            <span class="coin-label">Lost</span>
+            <span class="profile-value" id="betsLost">0</span>
+          </article>
+          <article class="profile-card">
+            <span class="coin-label">PnL</span>
+            <span class="profile-value" id="betsPayout">0 pts</span>
+          </article>
+        </div>
+
+        <div class="panel auth-panel hub-wide-panel" id="betsList">
+          <div class="sample-empty">Loading bets...</div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

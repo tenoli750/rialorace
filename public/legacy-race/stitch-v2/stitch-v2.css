@@ -1,0 +1,195 @@
+@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap");
+
+:root {
+  --bg-top: #fffcf5;
+  --bg-bottom: #e4ead8;
+  --panel: rgba(255, 252, 245, 0.84);
+  --panel-border: rgba(86, 105, 91, 0.12);
+  --text-main: #383830;
+  --text-soft: #65655c;
+  --shadow: 0 24px 80px rgba(56, 56, 48, 0.08);
+}
+
+body {
+  font-family: "Be Vietnam Pro", "Avenir Next", sans-serif;
+  background:
+    radial-gradient(circle at 18% 10%, rgba(211, 232, 214, 0.72), transparent 34%),
+    radial-gradient(circle at 82% 4%, rgba(236, 254, 192, 0.42), transparent 30%),
+    linear-gradient(155deg, #fffcf5 0%, #f6f4ea 48%, #dce6cf 100%);
+}
+
+h1,
+h2,
+h3,
+.stat-value,
+.main-menu-label,
+.page-nav-link,
+.page-nav-points {
+  font-family: "Plus Jakarta Sans", "Avenir Next", sans-serif;
+  letter-spacing: -0.04em;
+}
+
+.app-shell,
+.page-hub-shell,
+.public-market-live {
+  width: min(1540px, calc(100vw - 32px));
+}
+
+.panel {
+  background: var(--panel);
+  border-color: var(--panel-border);
+  border-radius: 32px;
+  box-shadow: var(--shadow);
+}
+
+.page-nav {
+  position: sticky;
+  top: 12px;
+  z-index: 80;
+  border-radius: 999px;
+  padding: 8px;
+  background: rgba(255, 252, 245, 0.86);
+  backdrop-filter: blur(22px);
+}
+
+.page-nav-link,
+.page-nav-points {
+  width: 140px;
+  flex-basis: 140px;
+  border-radius: 999px;
+  color: #56695b;
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.page-nav-link:hover {
+  background: rgba(211, 232, 214, 0.58);
+  transform: translateY(-1px);
+}
+
+.page-nav-link.is-active,
+.page-nav-account,
+.page-nav-points {
+  background: #f0eee4;
+  color: #383830;
+}
+
+.hero-panel {
+  overflow: hidden;
+  min-height: 320px;
+  background:
+    radial-gradient(circle at 86% 18%, rgba(211, 232, 214, 0.86), transparent 24%),
+    linear-gradient(135deg, rgba(255, 252, 245, 0.96), rgba(246, 244, 234, 0.78));
+}
+
+.hero-panel h1,
+.auth-panel h1 {
+  font-size: clamp(3rem, 6vw, 5.8rem);
+  line-height: 0.88;
+}
+
+.eyebrow,
+.stat-label,
+.coin-label,
+.rule-kicker {
+  color: #56695b;
+}
+
+.pill,
+.mini-pill,
+.ghost-button,
+.legend-chip,
+.main-menu-item,
+.profile-card,
+.bet-place-card,
+.bet-history-card {
+  border-radius: 28px;
+}
+
+.main-menu-item,
+.profile-card,
+.bet-history-card,
+.stat-card,
+.rule-card {
+  background: rgba(255, 255, 255, 0.62);
+  border: 0;
+  box-shadow: none;
+}
+
+.main-menu-item:hover,
+.legend-chip:hover,
+.ghost-button:hover {
+  transform: translateY(-2px);
+}
+
+.viewport-panel {
+  background: #fcf9f1;
+  padding: 12px;
+}
+
+.viewport-shell {
+  border-radius: 28px;
+  overflow: hidden;
+}
+
+.public-market-live .main-grid {
+  grid-template-columns: 1fr;
+}
+
+.public-market-live .viewport-panel {
+  min-height: min(72vh, 760px);
+}
+
+.public-market-live .bet-slip-panel {
+  margin-top: -4px;
+}
+
+.bet-slip-panel {
+  background:
+    radial-gradient(circle at 92% 0%, rgba(236, 254, 192, 0.42), transparent 26%),
+    rgba(255, 252, 245, 0.9);
+}
+
+.bet-place-card,
+.bet-slip-preview,
+.editor-input {
+  background: #f6f4ea;
+  border: 0;
+}
+
+.ghost-button {
+  background: linear-gradient(135deg, #56695b, #4b5d4f);
+  color: #fff;
+  border: 0;
+}
+
+.ghost-button.secondary {
+  background: #f0eee4;
+  color: #383830;
+}
+
+.auth-panel {
+  max-width: 980px;
+}
+
+.sample-list,
+.notes-list {
+  gap: 14px;
+}
+
+.note-row,
+.sample-row {
+  background: rgba(255, 255, 255, 0.58);
+  border-radius: 22px;
+  border: 0;
+}
+
+@media (max-width: 960px) {
+  .page-nav-link,
+  .page-nav-points {
+    width: auto;
+    flex: 1 1 130px;
+  }
+}

@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Market 03 Live Stitch</title>
+    <link rel="icon" href="./assets/coin-logos/sol.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script>
+      (function ensureMarketParam() {
+        const url = new URL(window.location.href);
+        if (!url.searchParams.get("id")) {
+          url.searchParams.set("id", "market-03");
+          window.history.replaceState({}, "", url.toString());
+        }
+      })();
+    </script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.174.0/build/three.module.js"
+        }
+      }
+    </script>
+    <style>
+      :root {
+        color-scheme: dark;
+        --stitch-bg: #111316;
+        --stitch-surface: #1a1c1f;
+        --stitch-surface-2: #1e2023;
+        --stitch-surface-3: #282a2d;
+        --stitch-line: rgba(59, 73, 76, 0.7);
+        --stitch-text: #e2e2e6;
+        --stitch-muted: #bac9cc;
+        --stitch-cyan: #00daf3;
+        --stitch-green: #40e56c;
+      }
+
+      body {
+        margin: 0;
+        background: var(--stitch-bg);
+        color: var(--stitch-text);
+        overflow-x: hidden;
+      }
+
+      .stitch-live-shell {
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at top, rgba(0, 218, 243, 0.08), transparent 28%),
+          linear-gradient(180deg, #111316 0%, #0c0e11 100%);
+      }
+
+      .stitch-topbar {
+        position: fixed;
+        inset: 92px 0 auto 0;
+        z-index: 90;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        height: 64px;
+        padding: 0 24px;
+        background: rgba(17, 19, 22, 0.82);
+        backdrop-filter: blur(18px);
+        border-bottom: 2px solid rgba(0, 218, 243, 0.14);
+        box-shadow: 0 0 20px rgba(0, 229, 255, 0.08);
+      }
+
+      .stitch-brand {
+        display: flex;
+        align-items: center;
+        gap: 28px;
+      }
+
+      .stitch-brand-mark {
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 28px;
+        font-style: italic;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        color: #d8fbff;
+      }
+
+      .stitch-nav-links {
+        display: flex;
+        gap: 18px;
+        text-transform: uppercase;
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+
+      .stitch-nav-links a {
+        width: 140px;
+        flex: 0 0 140px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        box-sizing: border-box;
+        color: #7d8b93;
+        text-decoration: none;
+      }
+
+      .stitch-nav-links a.is-active {
+        color: var(--stitch-cyan);
+      }
+
+      .stitch-account {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .stitch-account-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 96px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        background: #333538;
+        color: #fff;
+        text-decoration: none;
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+
+      .stitch-account-link.is-primary {
+        background: #00e5ff;
+        color: #00626e;
+      }
+
+      .stitch-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 320px;
+        gap: 24px;
+        padding: 180px 24px 32px;
+      }
+
+      .stitch-site-title {
+        position: fixed;
+        top: 18px;
+        left: 24px;
+        z-index: 95;
+        color: #d8fbff;
+      }
+
+      .stitch-main {
+        min-width: 0;
+      }
+
+      .stitch-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+
+      .stitch-kicker {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--stitch-green);
+      }
+
+      .stitch-header h1 {
+        margin: 6px 0 0;
+        font-family: "Space Grotesk", sans-serif;
+        font-size: clamp(36px, 5vw, 64px);
+        line-height: 0.94;
+        font-weight: 900;
+        letter-spacing: -0.05em;
+        text-transform: uppercase;
+      }
+
+      .stitch-countdown-box {
+        padding: 14px 20px;
+        background: rgba(51, 53, 56, 0.72);
+        border-left: 4px solid var(--stitch-green);
+        backdrop-filter: blur(18px);
+      }
+
+      .stitch-countdown-box .count-label {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--stitch-green);
+      }
+
+      .stitch-countdown-box .count-value {
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 28px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+
+      .stitch-stage {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(59, 73, 76, 0.45);
+        border-radius: 18px;
+        background: linear-gradient(180deg, rgba(26, 28, 31, 0.92), rgba(12, 14, 17, 0.98));
+        min-height: 610px;
+      }
+
+      .stitch-stage::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at 50% 10%, rgba(0, 218, 243, 0.08), transparent 24%),
+          linear-gradient(180deg, rgba(17, 19, 22, 0.1), rgba(17, 19, 22, 0.82));
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .stitch-stage .viewport-panel {
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        padding: 0;
+      }
+
+      .stitch-stage .viewport-shell {
+        min-height: 610px;
+        background: transparent;
+      }
+
+      .stitch-stage #coinGrid {
+        position: absolute;
+        inset: 18px 18px auto 18px;
+        z-index: 6;
+        margin: 0;
+      }
+
+      .stitch-stage .post-race-overlay {
+        z-index: 4;
+      }
+
+      .stitch-stage .viewport-standings-compact {
+        z-index: 7;
+      }
+
+      .stitch-stage .logo-toggle-button,
+      .stitch-stage .camera-focus-button {
+        z-index: 8;
+      }
+
+      .stitch-meta-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 20px;
+        margin-top: 24px;
+      }
+
+      .stitch-panel {
+        border-radius: 18px;
+        border: 1px solid rgba(59, 73, 76, 0.34);
+        background: rgba(26, 28, 31, 0.85);
+        padding: 22px;
+      }
+
+      .stitch-panel .panel-heading {
+        margin-bottom: 14px;
+      }
+
+      .stitch-side-slip {
+        position: sticky;
+        top: 84px;
+        align-self: start;
+        min-height: calc(100vh - 116px);
+        padding: 22px 20px;
+        border-left: 1px solid rgba(0, 218, 243, 0.18);
+        background: rgba(26, 28, 31, 0.94);
+        backdrop-filter: blur(20px);
+        border-radius: 18px;
+      }
+
+      .stitch-side-slip .bet-slip-panel {
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        padding: 0;
+      }
+
+      .stitch-side-slip .betting-mini-status {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .stitch-side-slip .bet-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .stitch-side-slip #startButton,
+      .stitch-side-slip #restartButton {
+        display: none !important;
+      }
+
+      .stitch-hidden {
+        display: none !important;
+      }
+
+      @media (max-width: 1180px) {
+        .stitch-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .stitch-side-slip {
+          position: static;
+          min-height: auto;
+        }
+
+        .stitch-meta-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 840px) {
+        .stitch-topbar {
+          padding: 0 14px;
+        }
+
+        .stitch-nav-links {
+          display: none;
+        }
+
+        .stitch-layout {
+          padding: 172px 12px 20px;
+        }
+
+        .stitch-header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+    </style>
+    <script type="module" src="./market-main.js?v=74"></script>
+  </head>
+  <body>
+    <main class="stitch-live-shell">
+      <a class="site-title stitch-site-title" href="./main-menu.html" aria-label="Rialo Race"><img src="./assets/create_a_logo_in_this_exact_layout_style_use_the_u_019d8db9-c7d9-75dc-ad2e-f5463423c3be-removebg-preview.png" alt="Rialo Race" /></a>
+      <header class="stitch-topbar">
+        <div class="stitch-brand">
+          <nav class="stitch-nav-links">
+            <a class="is-active" href="./main-menu.html">Live Markets</a>
+            <a href="./replay-menu.html">Replay</a>
+            <a href="./community.html">Rankings</a>
+            <a href="./rewards.html">Rewards</a>
+            <a href="./my-bets.html">History</a>
+          </nav>
+        </div>
+        <div class="stitch-account">
+          <span class="page-nav-points" id="headerPoints">Points --</span>
+          <a class="stitch-account-link" id="accountLink" href="./login.html">Login</a>
+        </div>
+      </header>
+
+      <div class="stitch-layout">
+        <section class="stitch-main">
+          <div class="stitch-header">
+            <div>
+              <div class="stitch-kicker" id="hubLabel">Live Market Broadcast</div>
+              <h1 id="hubTitle">Market 03</h1>
+              <div class="subtitle" id="hubCopy">Live race state powered by backend coin ticks and the current market runtime.</div>
+            </div>
+            <div class="stitch-countdown-box">
+              <span class="count-label">Status</span>
+              <span class="count-value" id="statusValue">Connecting</span>
+            </div>
+          </div>
+
+          <section class="stitch-stage">
+            <section class="panel viewport-panel">
+              <div class="viewport-toolbar stitch-hidden" hidden aria-hidden="true"></div>
+              <div class="viewport-shell">
+                <div class="viewport" id="viewport"></div>
+                <div class="post-race-overlay" id="postRaceOverlay" hidden>Next Race Soon</div>
+                <div class="viewport-standings-compact" id="standings" aria-label="Standings overlay"></div>
+                <button class="logo-toggle-button" id="logoToggleButton" type="button">Logos: On</button>
+                <button class="camera-focus-button" id="cameraFocusButton" type="button">Focus: Auto</button>
+                <div class="countdown-overlay" id="raceCountdown" hidden aria-live="polite">3</div>
+                <section class="coin-grid" id="coinGrid"></section>
+              </div>
+            </section>
+          </section>
+
+          <div class="stitch-meta-grid">
+            <section class="stitch-panel detail-panel">
+              <div class="panel-heading">
+                <div>
+                  <span class="eyebrow">Coin Detail</span>
+                  <h2 id="detailHeading">SOL Race Detail</h2>
+                  <p class="detail-subtitle" id="detailSubtitle">Backend samples and live race telemetry for the selected coin.</p>
+                </div>
+                <span class="mini-pill" id="detailCountBadge">0 samples</span>
+              </div>
+              <div class="detail-stats" id="detailStats"></div>
+              <div class="sample-list" id="detailSampleList"></div>
+            </section>
+
+            <section class="stitch-panel sidebar-panel">
+              <div class="panel-heading">
+                <h2 id="marketHistoryTitle">Bet History</h2>
+                <span class="mini-pill" id="marketBadge">Market 03</span>
+              </div>
+              <div class="notes-list" id="notes"></div>
+              <div class="rule-strip" style="margin-top: 18px;">
+                <div class="rule-card">
+                  <span class="rule-kicker">Finish</span>
+                  <span class="rule-text" id="finishValue">200m</span>
+                </div>
+                <div class="rule-card tooltip-card" id="speedFormulaCard" tabindex="0">
+                  <span class="rule-kicker">Speed</span>
+                  <span class="rule-text">Backend coin ticks</span>
+                  <span class="tooltip-hint">Hover to see the equation</span>
+                </div>
+                <div class="rule-card">
+                  <span class="rule-kicker">Leader</span>
+                  <span class="rule-text" id="leaderValue">Waiting</span>
+                </div>
+                <div class="rule-card">
+                  <span class="rule-kicker">Connection</span>
+                  <span class="pill" id="connectionBadge">Connecting</span>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <aside class="stitch-side-slip">
+          <section class="panel bet-slip-panel">
+            <div class="panel-heading">
+              <div>
+                <span class="eyebrow">Active Slip</span>
+                <h2>Choose first, second, third</h2>
+              </div>
+              <span class="mini-pill" id="selectionBadge">0 picks</span>
+            </div>
+
+            <div class="betting-mini-status">
+              <span class="pill" id="betConnectionBadge">Connecting</span>
+              <span class="mini-pill" id="betStatusValue">Open</span>
+              <span class="mini-pill" id="nextRaceValue">05:00</span>
+              <span class="mini-pill" id="pointsBalance">1,250 pts</span>
+              <button class="ghost-button secondary" id="cameraButton" type="button">Camera: Overview</button>
+            </div>
+
+            <form class="bet-form" id="betForm">
+              <div class="bet-place-list" id="betPlaceList">
+                <section class="bet-place-card" data-place="first">
+                  <div class="bet-place-head">
+                    <span class="bet-place-title">1st Place Finisher</span>
+                    <span class="bet-place-summary" id="firstPlaceSummary">No selection</span>
+                  </div>
+                  <div class="bet-option-grid" id="firstPlaceButtons"></div>
+                </section>
+                <section class="bet-place-card" data-place="second">
+                  <div class="bet-place-head">
+                    <span class="bet-place-title">2nd Place Finisher</span>
+                    <span class="bet-place-summary" id="secondPlaceSummary">No selection</span>
+                  </div>
+                  <div class="bet-option-grid" id="secondPlaceButtons"></div>
+                </section>
+                <section class="bet-place-card" data-place="third">
+                  <div class="bet-place-head">
+                    <span class="bet-place-title">3rd Place Finisher</span>
+                    <span class="bet-place-summary" id="thirdPlaceSummary">No selection</span>
+                  </div>
+                  <div class="bet-option-grid" id="thirdPlaceButtons"></div>
+                </section>
+              </div>
+
+              <label class="bet-field">
+                <span class="coin-label">Stake Points</span>
+                <input class="editor-input" id="betAmountInput" type="number" min="10" step="10" value="100" />
+              </label>
+
+              <div class="bet-slip-preview" id="betPreview">100 points on your selected finish picks.</div>
+
+              <div class="bet-actions">
+                <button class="ghost-button" id="placeBetButton" type="submit">Place Wager</button>
+                <button class="ghost-button secondary stitch-hidden" id="startButton" type="button" hidden aria-hidden="true">Start Race</button>
+                <button class="ghost-button secondary stitch-hidden" id="restartButton" type="button" hidden aria-hidden="true">Reset Race</button>
+              </div>
+            </form>
+          </section>
+        </aside>
+      </div>
+    </main>
+
+    <script>
+      const firstBadge = document.getElementById("connectionBadge");
+      const secondBadge = document.getElementById("betConnectionBadge");
+      if (firstBadge && secondBadge) {
+        const observer = new MutationObserver(() => {
+          secondBadge.textContent = firstBadge.textContent;
+          secondBadge.className = firstBadge.className;
+        });
+        observer.observe(firstBadge, { childList: true, attributes: true, subtree: true });
+        secondBadge.textContent = firstBadge.textContent;
+        secondBadge.className = firstBadge.className;
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Binance Ring Rally Account</title>
+    <link rel="icon" href="../assets/coin-logos/btc.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../styles.css" />
+    <link rel="stylesheet" href="./stitch-v2.css" />
+    <script type="module" src="../login-main.js?v=4"></script>
+  </head>
+  <body>
+    <main class="app-shell page-hub-shell">
+      <a class="site-title" href="./main-menu.html" aria-label="Rialo Race"><img src="./assets/create_a_logo_in_this_exact_layout_style_use_the_u_019d8db9-c7d9-75dc-ad2e-f5463423c3be-removebg-preview.png" alt="Rialo Race" /></a>
+      <nav class="page-nav panel">
+        <a class="page-nav-link" href="./main-menu.html">Live Markets</a>
+        <a class="page-nav-link" href="./replay-menu.html">Replay</a>
+        <a class="page-nav-link" href="./community.html">Rankings</a>
+        <a class="page-nav-link" href="./rewards.html">Rewards</a>
+        <a class="page-nav-link" href="./my-bets.html">History</a>
+        <span class="page-nav-spacer"></span>
+        <span class="page-nav-points" id="headerPoints">Points --</span>
+        <a class="page-nav-link page-nav-account is-active" href="./login.html">Login</a>
+      </nav>
+
+      <section class="panel auth-panel">
+        <div>
+          <span class="eyebrow">Account</span>
+          <h1>Account</h1>
+          <p class="auth-copy">
+            Create an account or sign in with ID and password. If you are already signed in, this page will redirect to your profile.
+          </p>
+        </div>
+
+        <form class="auth-form" id="loginForm">
+          <label class="bet-field">
+            <span class="coin-label">ID</span>
+            <input class="editor-input" id="idInput" type="text" placeholder="your-id" minlength="3" required />
+          </label>
+          <label class="bet-field">
+            <span class="coin-label">Password</span>
+            <input class="editor-input" id="passwordInput" type="password" placeholder="At least 6 characters" minlength="6" required />
+          </label>
+          <div class="bet-actions">
+            <button class="ghost-button" id="signInButton" type="submit">Sign In</button>
+            <button class="ghost-button secondary" id="signUpButton" type="button">Sign Up</button>
+          </div>
+        </form>
+
+        <div class="auth-message" id="authMessage"></div>
+      </section>
+    </main>
+  </body>
+</html>

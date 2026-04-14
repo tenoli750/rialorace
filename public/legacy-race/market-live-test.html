@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Binance Ring Rally Live Test</title>
+    <link rel="icon" href="./assets/coin-logos/btc.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css?v=9" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.174.0/build/three.module.js"
+        }
+      }
+    </script>
+    <script type="module" src="./market-live-test-main.js?v=3"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <a class="site-title" href="./main-menu.html" aria-label="Rialo Race"><img src="./assets/create_a_logo_in_this_exact_layout_style_use_the_u_019d8db9-c7d9-75dc-ad2e-f5463423c3be-removebg-preview.png" alt="Rialo Race" /></a>
+      <nav class="page-nav panel">
+        <a class="page-nav-link is-active" href="./main-menu.html">Live Markets</a>
+        <a class="page-nav-link" href="./replay-menu.html">Replay</a>
+        <a class="page-nav-link" href="./community.html">Rankings</a>
+        <a class="page-nav-link" href="./rewards.html">Rewards</a>
+        <a class="page-nav-link" href="./my-bets.html">History</a>
+        <span class="page-nav-spacer"></span>
+        <span class="page-nav-points" id="headerPoints">Points --</span>
+        <a class="page-nav-link page-nav-account" id="accountLink" href="./login.html">Login</a>
+      </nav>
+
+      <section class="hero-panel panel">
+        <div class="hero-topline">
+          <span class="eyebrow">Three.js Live Market Test</span>
+          <span class="pill" id="connectionBadge">Connecting</span>
+        </div>
+        <div class="hero-copy">
+          <div>
+            <h1>Live Market Test</h1>
+            <p>
+              Test page for the public live market structure. Use <code>?id=market-03</code> or any
+              other market id to check backend coin-tick playback before changing the public runtime.
+            </p>
+          </div>
+          <div class="hero-stats">
+            <div class="stat-card">
+              <span class="stat-label">Status</span>
+              <span class="stat-value" id="statusValue">Racing</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Finish</span>
+              <span class="stat-value" id="finishValue">200m</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Leader</span>
+              <span class="stat-value" id="leaderValue">SOL 0.0m</span>
+            </div>
+          </div>
+        </div>
+        <div class="rule-strip">
+          <div class="rule-card">
+            <span class="rule-kicker">Track</span>
+            <span class="rule-text">50m loop, 200m finish, four live lanes</span>
+          </div>
+          <div class="rule-card tooltip-card" id="speedFormulaCard" tabindex="0">
+            <span class="rule-kicker">Speed</span>
+            <span class="rule-text">Coin-ticks live test</span>
+            <span class="tooltip-hint">Hover to see the equation</span>
+          </div>
+          <div class="rule-card">
+            <span class="rule-kicker">Mode</span>
+            <span class="rule-text">Generic market live structure test</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="main-grid">
+        <section class="panel viewport-panel">
+          <div class="viewport-toolbar">
+            <div class="viewport-status-card">
+              <div class="viewport-status-head">
+                <div>
+                  <span class="hub-label" id="hubLabel">Live Test</span>
+                  <span class="hub-title" id="hubTitle">Market backend live test</span>
+                </div>
+                <button class="ghost-button secondary" id="cameraButton" type="button">Camera: Overview</button>
+              </div>
+              <p class="hub-copy" id="hubCopy">
+                This page tests the live market structure against backend coin ticks.
+              </p>
+            </div>
+            <section class="viewport-editor" aria-label="World editor">
+              <div class="panel-heading viewport-editor-heading">
+                <div>
+                  <span class="eyebrow">World Editor</span>
+                  <h2>Live Market Workspace</h2>
+                </div>
+                <span class="mini-pill" id="editorModeBadge">Move</span>
+              </div>
+              <p class="editor-copy">
+                Use this page to compare the no-delay live backend interval behavior against replay.
+              </p>
+              <div class="editor-toolbar">
+                <button class="ghost-button secondary" id="editorTranslateButton" type="button">Move</button>
+                <button class="ghost-button secondary" id="editorRotateButton" type="button">Rotate</button>
+              </div>
+              <div class="editor-targets" id="editorTargetButtons"></div>
+              <div class="editor-selection" id="editorSelectionSummary">
+                Click an asset in the scene to start editing.
+              </div>
+              <section class="quick-editor" aria-label="Easy controls">
+                <div class="quick-editor-head">
+                  <div>
+                    <span class="eyebrow">Easy Edit</span>
+                    <h3 id="quickEditTitle">1. Select World Track or one racer</h3>
+                  </div>
+                </div>
+                <p class="quick-editor-copy" id="quickEditCopy">
+                  Generic live market test with the same editor controls.
+                </p>
+                <div class="quick-editor-grid" id="quickEditButtons"></div>
+              </section>
+              <div class="editor-wheel-hint">Mouse wheel still works if you want faster stretching or scaling</div>
+            </section>
+          </div>
+          <div class="viewport-shell">
+            <div class="viewport" id="viewport"></div>
+            <div class="post-race-overlay" id="postRaceOverlay" hidden>Next Race Soon</div>
+            <div class="viewport-standings-compact" id="standings" aria-label="Standings overlay"></div>
+            <button class="logo-toggle-button" id="logoToggleButton" type="button">Logos: On</button>
+            <button class="camera-focus-button" id="cameraFocusButton" type="button">Focus: Auto</button>
+            <div class="countdown-overlay" id="raceCountdown" hidden aria-live="polite">3.0</div>
+          </div>
+        </section>
+
+        <aside class="sidebar">
+          <section class="panel sidebar-panel">
+            <div class="panel-heading">
+              <h2>Race Notes</h2>
+              <div class="editor-toolbar">
+                <button class="ghost-button secondary" id="playCameraButton" type="button">Play Camera</button>
+                <button class="ghost-button" id="startButton" type="button">Sync Live</button>
+                <button class="ghost-button secondary" id="restartButton" type="button">Reset Live</button>
+              </div>
+            </div>
+            <div class="notes-list" id="notes"></div>
+          </section>
+        </aside>
+      </section>
+
+      <section class="panel editor-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">World Values</span>
+            <h2>Exact numbers outside the viewport</h2>
+          </div>
+          <span class="mini-pill">Live Test</span>
+        </div>
+        <p class="editor-copy">
+          This page keeps the live market structure and editor controls so you can compare backend reads safely.
+        </p>
+        <div class="editor-grid" id="editorFields"></div>
+        <div class="editor-actions">
+          <button class="ghost-button" id="copyEditorJsonButton" type="button">Copy JSON</button>
+          <button class="ghost-button secondary" id="applyEditorJsonButton" type="button">Apply JSON</button>
+          <button class="ghost-button secondary" id="resetEditorButton" type="button">Reset</button>
+          <span class="editor-status" id="editorStatus">Using default tuning.</span>
+        </div>
+        <textarea class="editor-json" id="editorJson" spellcheck="false"></textarea>
+      </section>
+
+      <section class="coin-grid" id="coinGrid"></section>
+
+      <section class="panel detail-panel">
+        <div class="detail-header">
+          <div>
+            <span class="eyebrow">Coin Detail</span>
+            <h2 id="detailHeading">SOL Race Detail</h2>
+            <p class="detail-subtitle" id="detailSubtitle">
+              Click a coin card or a 3D racer to inspect the current backend interval values.
+            </p>
+          </div>
+          <span class="mini-pill" id="detailCountBadge">0 samples</span>
+        </div>
+        <div class="detail-stats" id="detailStats"></div>
+        <div class="sample-list" id="detailSampleList"></div>
+      </section>
+    </main>
+  </body>
+</html>

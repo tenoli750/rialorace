@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Binance Ring Rally Replay</title>
+    <link rel="icon" href="./assets/coin-logos/btc.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css?v=2" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.174.0/build/three.module.js"
+        }
+      }
+    </script>
+    <script type="module" src="./market-replay-main.js?v=3"></script>
+  </head>
+  <body>
+    <main class="app-shell public-replay-page">
+      <a class="site-title" href="./main-menu.html" aria-label="Rialo Race"><img src="./assets/create_a_logo_in_this_exact_layout_style_use_the_u_019d8db9-c7d9-75dc-ad2e-f5463423c3be-removebg-preview.png" alt="Rialo Race" /></a>
+      <nav class="page-nav panel">
+        <a class="page-nav-link" href="./main-menu.html">Live Markets</a>
+        <a class="page-nav-link is-active" href="./replay-menu.html">Replay</a>
+        <a class="page-nav-link" href="./community.html">Rankings</a>
+        <a class="page-nav-link" href="./rewards.html">Rewards</a>
+        <a class="page-nav-link" href="./my-bets.html">History</a>
+        <span class="page-nav-spacer"></span>
+        <span class="page-nav-points" id="headerPoints">Points --</span>
+        <a class="page-nav-link page-nav-account" id="accountLink" href="./login.html">Login</a>
+      </nav>
+
+      <section class="hero-panel panel">
+        <div class="hero-topline">
+          <span class="eyebrow" id="replayEyebrow">Three.js Replay</span>
+          <span class="pill" id="connectionBadge">Connecting</span>
+        </div>
+        <div class="hero-copy">
+          <div>
+            <h1 id="replayTitle">Market Replay</h1>
+            <p id="replayCopy">Replay backend 5-second prices and simulate movement locally.</p>
+          </div>
+          <div class="hero-stats">
+            <div class="stat-card">
+              <span class="stat-label">Status</span>
+              <span class="stat-value" id="statusValue">Replaying</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Finish</span>
+              <span class="stat-value" id="finishValue">200m</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Leader</span>
+              <span class="stat-value" id="leaderValue">Waiting</span>
+            </div>
+          </div>
+        </div>
+        <div class="rule-strip">
+          <div class="rule-card">
+            <span class="rule-kicker">Track</span>
+            <span class="rule-text">50m loop, 200m finish, four replay lanes</span>
+          </div>
+          <div class="rule-card tooltip-card" id="speedFormulaCard" tabindex="0">
+            <span class="rule-kicker">Speed</span>
+            <span class="rule-text">Backend 5-second prices, local movement</span>
+            <span class="tooltip-hint">Hover to see the equation</span>
+          </div>
+          <div class="rule-card">
+            <span class="rule-kicker">Mode</span>
+            <span class="rule-text" id="hubLabel">Replay</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="main-grid">
+        <section class="panel viewport-panel">
+          <div class="viewport-toolbar" hidden>
+            <div class="viewport-status-card">
+              <div class="viewport-status-head">
+                <div>
+                  <span class="hub-label" id="hubLabelSecondary">Replay</span>
+                  <span class="hub-title" id="hubTitle">Backend price replay</span>
+                </div>
+                <button class="ghost-button secondary" id="cameraButton" type="button">Camera: Overview</button>
+              </div>
+              <p class="hub-copy" id="hubCopy">
+                Replay backend 5-second price history and let the frontend simulate the race locally.
+              </p>
+            </div>
+          </div>
+          <div class="viewport-shell">
+            <div class="viewport" id="viewport"></div>
+            <div class="viewport-standings-compact" id="standings" aria-label="Standings overlay"></div>
+            <button class="logo-toggle-button" id="logoToggleButton" type="button">Logos: On</button>
+            <button class="camera-focus-button" id="cameraFocusButton" type="button">Focus: Auto</button>
+            <div class="countdown-overlay" id="raceCountdown" hidden aria-live="polite">3</div>
+          </div>
+        </section>
+
+        <aside class="sidebar">
+          <section class="panel sidebar-panel">
+            <div class="panel-heading">
+              <h2>Replay History</h2>
+              <div class="editor-toolbar">
+                <button class="ghost-button secondary" id="playCameraButton" type="button">Play Camera</button>
+                <button class="ghost-button" id="startButton" type="button">Replay Selected</button>
+                <button class="ghost-button secondary" id="restartButton" type="button">Replay Latest</button>
+              </div>
+            </div>
+            <div class="notes-list" id="notes" hidden></div>
+            <div class="notes-list" id="replayHistory"></div>
+          </section>
+        </aside>
+      </section>
+
+      <section class="coin-grid" id="coinGrid"></section>
+
+      <section class="panel detail-panel">
+        <div class="detail-header">
+          <div>
+            <span class="eyebrow">Coin Detail</span>
+            <h2 id="detailHeading">Coin Replay Detail</h2>
+            <p class="detail-subtitle" id="detailSubtitle">Click a coin card to inspect backend 5-second price samples.</p>
+          </div>
+          <span class="mini-pill" id="detailCountBadge">0 samples</span>
+        </div>
+        <div class="detail-stats" id="detailStats"></div>
+        <div class="sample-list" id="detailSampleList"></div>
+      </section>
+
+      <section class="panel detail-panel" id="communitySection">
+        <div class="detail-header">
+          <div>
+            <span class="eyebrow">Rankings</span>
+            <h2>Replay Community</h2>
+            <p class="detail-subtitle">Use this area later for public chat, trending picks, and replay discussion.</p>
+          </div>
+          <span class="mini-pill">Social</span>
+        </div>
+        <div class="sample-list">
+          <div class="note-row">
+            <span class="note-stamp">Track Chat</span>
+            <span>Fans compare late surges, discuss form swings, and share best podium reads after each replay.</span>
+          </div>
+          <div class="note-row">
+            <span class="note-stamp">Top Talk</span>
+            <span>SOL and XRP still dominate replay interest this week across the public markets.</span>
+          </div>
+          <div class="note-row">
+            <span class="note-stamp">Pulse</span>
+            <span>Promote community sentiment, featured bettors, and replay reactions here later.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel detail-panel" id="rewardsSection">
+        <div class="detail-header">
+          <div>
+            <span class="eyebrow">Rewards</span>
+            <h2>Replay Rewards</h2>
+            <p class="detail-subtitle">This slot can hold missions, claim buttons, and replay-specific promotions.</p>
+          </div>
+          <span class="mini-pill">Rewards</span>
+        </div>
+        <div class="sample-list">
+          <div class="note-row">
+            <span class="note-stamp">Daily Reward</span>
+            <span>Replay 3 races today to unlock a bonus points drop on your next live bet.</span>
+          </div>
+          <div class="note-row">
+            <span class="note-stamp">Streak Bonus</span>
+            <span>Watch 5 consecutive settled replays to raise your streak tier and boost rewards.</span>
+          </div>
+          <div class="note-row">
+            <span class="note-stamp">Preview</span>
+            <span>Use this panel later for missions, collectible drops, and event reward claims.</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

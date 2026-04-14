@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kinetic Prestige - Market 03</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800;900&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed": "#001f24",
+                    "inverse-primary": "#006875",
+                    "outline": "#849396",
+                    "on-secondary-fixed-variant": "#00531e",
+                    "tertiary-container": "#ffc779",
+                    "primary-fixed-dim": "#00daf3",
+                    "primary": "#c3f5ff",
+                    "tertiary": "#ffead2",
+                    "on-error": "#690005",
+                    "on-tertiary": "#452b00",
+                    "on-secondary": "#003912",
+                    "surface-dim": "#111316",
+                    "secondary-container": "#02c953",
+                    "secondary": "#40e56c",
+                    "tertiary-fixed": "#ffddb3",
+                    "surface-container": "#1e2023",
+                    "on-tertiary-container": "#7b5000",
+                    "surface-container-high": "#282a2d",
+                    "secondary-fixed": "#69ff87",
+                    "primary-fixed": "#9cf0ff",
+                    "tertiary-fixed-dim": "#ffb950",
+                    "on-secondary-fixed": "#002108",
+                    "secondary-fixed-dim": "#3ce36a",
+                    "on-primary-fixed-variant": "#004f58",
+                    "surface": "#111316",
+                    "primary-container": "#00e5ff",
+                    "on-surface-variant": "#bac9cc",
+                    "surface-tint": "#00daf3",
+                    "on-error-container": "#ffdad6",
+                    "on-tertiary-fixed": "#291800",
+                    "on-primary-container": "#00626e",
+                    "outline-variant": "#3b494c",
+                    "surface-container-highest": "#333538",
+                    "surface-bright": "#37393d",
+                    "on-surface": "#e2e2e6",
+                    "surface-container-low": "#1a1c1f",
+                    "surface-container-lowest": "#0c0e11",
+                    "error": "#ffb4ab",
+                    "surface-variant": "#333538",
+                    "on-secondary-container": "#004d1b",
+                    "on-primary": "#00363d",
+                    "error-container": "#93000a",
+                    "background": "#111316",
+                    "on-background": "#e2e2e6",
+                    "inverse-surface": "#e2e2e6",
+                    "on-tertiary-fixed-variant": "#624000",
+                    "inverse-on-surface": "#2f3034"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Space Grotesk"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(40, 42, 45, 0.6);
+            backdrop-filter: blur(24px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body min-h-screen overflow-x-hidden">
+<!-- TopNavBar Shell -->
+<nav class="fixed top-0 left-0 w-full flex justify-between items-center px-6 h-16 bg-surface-dim/80 backdrop-blur-xl border-b-2 border-cyan-500/20 shadow-[0px_0px_20px_rgba(0,229,255,0.1)] z-50">
+<div class="flex items-center gap-8">
+<img class="h-12 w-12 object-contain" src="../assets/create_a_logo_in_this_exact_layout_style_use_the_u_019d8db9-c7d9-75dc-ad2e-f5463423c3be-removebg-preview.png" alt="Rialo Race" />
+<div class="hidden md:flex gap-6">
+<a class="font-headline tracking-tighter uppercase font-bold text-cyan-400 border-b-2 border-cyan-400 pb-1" href="#">LIVE</a>
+<a class="font-headline tracking-tighter uppercase font-bold text-slate-400 hover:text-white transition-colors" href="#">UPCOMING</a>
+<a class="font-headline tracking-tighter uppercase font-bold text-slate-400 hover:text-white transition-colors" href="#">RESULTS</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 bg-surface-container-highest px-3 py-1.5 rounded-lg border border-outline-variant/30">
+<span class="material-symbols-outlined text-primary-fixed-dim" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+<span class="font-headline font-bold text-primary-fixed-dim tracking-tight">14,250 PTS</span>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-white transition-all scale-95 active:scale-90">notifications</button>
+<button class="bg-primary-container text-on-primary-container font-headline font-bold tracking-tighter uppercase px-6 py-1.5 rounded-lg hover:brightness-110 transition-all scale-95 active:scale-90">DEPOSIT</button>
+<div class="w-8 h-8 rounded-full bg-surface-bright border border-outline-variant/50 overflow-hidden">
+<img alt="User Profile Avatar" data-alt="close-up portrait of a professional male gamer with neon lighting highlights on his face in a dark room" src="https://lh3.googleusercontent.com/aida-public/AB6AXuByXmKHoiDPLs_5CyfwFb0HcnG7hAw3tQTFbQRnEBBA4mwiULOSADJWAKXNIHzB8efC1xyNxEcMHSdB8Xw28daJg3D22jm0Mn0CZ65nLv_AzIN5-OTtXrEsF3KIJQMYtzT-eOEXSA6RWDDuhkMqhYdXvfV2hf5zWNJcgXZjb2LmhvyxdKcGFmD8XaQHkTgURTaZRa2KfmSNEFXFivfnTpf3OyUVfs39bByqVwGTg8U5qKdHkr6aHAGjL8cG_lYC8iy3-eSeoaxSd4_V"/>
+</div>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="pt-24 pb-12 pr-80 pl-6 min-h-screen grid grid-cols-12 gap-6">
+<!-- Header & Countdown -->
+<div class="col-span-12 flex justify-between items-end mb-4">
+<div>
+<span class="label-sm text-primary uppercase tracking-widest font-bold">CURRENT EVENT</span>
+<h1 class="text-5xl font-black font-headline tracking-tighter text-on-background">MARKET 03 <span class="text-outline-variant italic">/ ARCADE SPRINTS</span></h1>
+</div>
+<div class="flex flex-col items-end">
+<span class="label-sm text-secondary uppercase tracking-widest font-bold mb-1">STAKES REMAINING</span>
+<div class="bg-surface-container-highest/60 border-l-4 border-secondary px-6 py-3 glass-panel">
+<span class="text-3xl font-black font-headline tracking-tight text-white tabular-nums uppercase">BETTING CLOSES IN 02:45</span>
+</div>
+</div>
+</div>
+<!-- Race Stage (Asymmetric Central Component) -->
+<div class="col-span-12 relative h-[500px] bg-surface-container-low overflow-hidden group">
+<!-- Background Aesthetic -->
+<div class="absolute inset-0 z-0">
+<img alt="Race Track Background" class="w-full h-full object-cover opacity-20" data-alt="abstract cybernetic race track with glowing blue and green lines streaking through a dark void environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDOh3VBQ9K1JQeqR-i4dzNN706qfD4WTAwKKeIAmXtJmP5DR9k2siQ-Uny4n6DSMjh-sEQvBl1VbM1ViKZDS8_mSllVx3M14SK6ssAdwbqDF5vBfxOpmHtGSEi-kKkeLATFEV6DkfNx714KDW8k_Lr1m4Up6adYrdBOTxXb-3_DPWCSmzpa1rQ2QeMwBVEV18ziZVyvxwaFuVVmfHeTk5-e7QIlwmsnXWnL43xjx3tlwrNDnrIJcKh9A0bcFb55w_KiG-5LqRaRpGqI"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"></div>
+</div>
+<!-- Starting Gate HUD -->
+<div class="absolute inset-0 z-10 flex flex-col justify-center gap-4 px-12">
+<!-- Racer 1: SOL -->
+<div class="flex items-center gap-6 group/racer">
+<div class="w-24 h-16 bg-surface-container-highest border-r-4 border-primary-fixed-dim flex items-center justify-center font-headline font-black text-2xl italic tracking-tighter text-primary-fixed-dim">SOL</div>
+<div class="flex-1 h-20 bg-surface-container-low/40 border border-outline-variant/20 rounded-lg flex items-center px-4 relative overflow-hidden">
+<div class="absolute top-0 left-0 h-1 bg-primary-fixed-dim/30 w-full"></div>
+<img alt="SOL Racer" class="w-16 h-16 object-contain grayscale brightness-125" data-alt="futuristic cybernetic leopard with glowing blue power lines standing at a starting line" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD6sXKqdp0W7vpc0xN2MUbeH11ygMv8WA8IP6KEK6EYgEdTwFtYQoE5rWmsDUF30t8cyntr4ZA6KRKP9YwIfQ5xCVf6y6RRS4ekZ5d7mv6d8LUAlApUtQfyVwVXTWJnMZQ6pofwYJX8SHmHOFRmLTlrOJJvu937u71CEdkm0oWGOERmAlUfofLbhUxtnw9cP04wc7VDO5ih6PDk5u9SSI_dzJMckQubHTPWu5Llc2Evtm84o4HBGa2aZ_vrVD0Kl3Qzap-b8L0phIqs"/>
+<div class="ml-6 flex flex-col">
+<span class="text-sm font-bold text-on-surface uppercase tracking-widest">NEON JUMP</span>
+<span class="text-[10px] text-outline uppercase font-medium">SPEED: 98 | STAMINA: 74</span>
+</div>
+<div class="ml-auto text-3xl font-black font-headline italic text-primary-fixed-dim pr-8">2.4x</div>
+</div>
+</div>
+<!-- Racer 2: XRP -->
+<div class="flex items-center gap-6 group/racer">
+<div class="w-24 h-16 bg-surface-container-highest border-r-4 border-slate-400 flex items-center justify-center font-headline font-black text-2xl italic tracking-tighter text-slate-300">XRP</div>
+<div class="flex-1 h-20 bg-surface-container-low/40 border border-outline-variant/20 rounded-lg flex items-center px-4 relative overflow-hidden">
+<img alt="XRP Racer" class="w-16 h-16 object-contain grayscale brightness-110" data-alt="mechanized futuristic wolf with metallic fur and emerald glowing eyes" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAH8Pjo9mvvDEu0sSil9sKxWk0aqYQlua7wJ2KBT2oHKMgeOf4Y55C4Mua0SeFS-kn4IJ85jdLvBKwS-GB3cjUb2jccQXT-mEFVWUovqWvllOvyOkjY3q8OMYOXjsp5zLSZLbKgf22QVkWv9QyZul4WfkOeMTl5BpFXTP7_buS_OIYfYiuuaFoLyxo0RX1ed02FdDTbRHDl5wfVb93tiyznj08E4zFlNnQAenCwT8rZScJKOzpZ3B7DgZoga2Wj4XqjvRCn96ExOIRt"/>
+<div class="ml-6 flex flex-col">
+<span class="text-sm font-bold text-on-surface uppercase tracking-widest">WAVE RIDER</span>
+<span class="text-[10px] text-outline uppercase font-medium">SPEED: 82 | STAMINA: 91</span>
+</div>
+<div class="ml-auto text-3xl font-black font-headline italic text-slate-400 pr-8">4.1x</div>
+</div>
+</div>
+<!-- Racer 3: ADA -->
+<div class="flex items-center gap-6 group/racer">
+<div class="w-24 h-16 bg-surface-container-highest border-r-4 border-secondary flex items-center justify-center font-headline font-black text-2xl italic tracking-tighter text-secondary">ADA</div>
+<div class="flex-1 h-20 bg-surface-container-low/40 border border-outline-variant/20 rounded-lg flex items-center px-4 relative overflow-hidden">
+<img alt="ADA Racer" class="w-16 h-16 object-contain grayscale" data-alt="high-tech robotic stallion with sleek silver plates and green kinetic energy glows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBjVethZEp7FtLcyPAWp8XFH69LrL-IaV3jh8crdBW4NJnlePQXB-2STuIAzz-d9T45PzVctqkEgukHQKg7pUhUDWYeASDkpyd_pX0RXkcEFlSxTs3x2taxBzcf5UdZQKcGuPUcjzXs0LeEIH0aZZS-A08C_H8YxJJrwTQrcUKmyqIug0Eu76GtdP2uoNh9c8n_rhJduAZhMgRfEfKbUNuux53UHttKU7Tl2CY87qm80ZjCPfCewb3kW-3P3mGq7WbER7W4hdOjUuZ_"/>
+<div class="ml-6 flex flex-col">
+<span class="text-sm font-bold text-on-surface uppercase tracking-widest">PRISM DASH</span>
+<span class="text-[10px] text-outline uppercase font-medium">SPEED: 89 | STAMINA: 88</span>
+</div>
+<div class="ml-auto text-3xl font-black font-headline italic text-secondary pr-8">3.8x</div>
+</div>
+</div>
+<!-- Racer 4: SUI -->
+<div class="flex items-center gap-6 group/racer">
+<div class="w-24 h-16 bg-surface-container-highest border-r-4 border-tertiary-fixed-dim flex items-center justify-center font-headline font-black text-2xl italic tracking-tighter text-tertiary-fixed-dim">SUI</div>
+<div class="flex-1 h-20 bg-surface-container-low/40 border border-outline-variant/20 rounded-lg flex items-center px-4 relative overflow-hidden">
+<img alt="SUI Racer" class="w-16 h-16 object-contain grayscale brightness-125" data-alt="cybernetic feline racer with amber lights and a muscular robotic frame" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDrr9_K9f_iyLJDoph9Yor3eh5_YzlLLTpkzECugtikMvxebNwl1lQZKht5keuy_HjaKhVO3-oG5T58iZIX_15x_IgW5u3FFgEtrixGDqX-WEPI3XLEL1unUSe-zAFb8DXPZ2nGWxqZ8FR_kynO2sMVS-IdIIS7vuoS_a9_zXnOytgkeUddFndTplh-aZ0huuid0u5ciaWJuC4ojXz3sl-BBQWBgkmoEDFnJYXGXcgjVAYlwFO5HDm1zkZi09VrJjyp_9GCm2_nWu2R"/>
+<div class="ml-6 flex flex-col">
+<span class="text-sm font-bold text-on-surface uppercase tracking-widest">VOID GLIDE</span>
+<span class="text-[10px] text-outline uppercase font-medium">SPEED: 94 | STAMINA: 68</span>
+</div>
+<div class="ml-auto text-3xl font-black font-headline italic text-tertiary-fixed-dim pr-8">1.9x</div>
+</div>
+</div>
+</div>
+<!-- Overlay Decor -->
+<div class="absolute bottom-4 left-12 z-20 flex gap-4">
+<div class="px-3 py-1 bg-surface-container-highest border border-outline-variant/40 rounded flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="text-[10px] font-bold text-on-surface uppercase tracking-tighter">PRE-RACE TUNING COMPLETE</span>
+</div>
+<div class="px-3 py-1 bg-surface-container-highest border border-outline-variant/40 rounded flex items-center gap-2">
+<span class="material-symbols-outlined text-xs text-primary">sensors</span>
+<span class="text-[10px] font-bold text-on-surface uppercase tracking-tighter">TRACK TEMP: 24°C</span>
+</div>
+</div>
+</div>
+<!-- Betting Stats/History Mini Grid -->
+<div class="col-span-8 grid grid-cols-2 gap-6 mt-6">
+<div class="bg-surface-container-low p-6 border-l-2 border-primary-fixed-dim/20">
+<h3 class="font-headline font-bold text-on-surface tracking-tighter uppercase mb-4">MARKET SENTIMENT</h3>
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<span class="text-xs font-medium text-outline uppercase tracking-wider">SOL SUPPORT</span>
+<div class="w-32 h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[75%]"></div>
+</div>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-xs font-medium text-outline uppercase tracking-wider">SUI VOLUME</span>
+<div class="w-32 h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="bg-tertiary-fixed-dim h-full w-[42%]"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 border-l-2 border-secondary/20">
+<h3 class="font-headline font-bold text-on-surface tracking-tighter uppercase mb-4">RECENT WINNERS</h3>
+<div class="flex gap-2">
+<div class="px-3 py-1.5 bg-surface-container-highest rounded text-xs font-bold text-secondary">ADA <span class="text-[10px] text-outline font-normal">M02</span></div>
+<div class="px-3 py-1.5 bg-surface-container-highest rounded text-xs font-bold text-primary">SOL <span class="text-[10px] text-outline font-normal">M01</span></div>
+<div class="px-3 py-1.5 bg-surface-container-highest rounded text-xs font-bold text-secondary">ADA <span class="text-[10px] text-outline font-normal">M00</span></div>
+</div>
+</div>
+</div>
+</main>
+<!-- SideNavBar (Bet Slip Shell) -->
+<aside class="fixed right-0 top-0 h-full w-80 bg-surface-container-low/95 backdrop-blur-2xl flex flex-col pt-20 pb-6 shadow-[-10px_0px_30px_rgba(0,0,0,0.5)] z-40">
+<div class="bg-gradient-to-b from-cyan-500/30 via-transparent to-transparent w-[2px] h-full absolute left-0"></div>
+<!-- Sidebar Header -->
+<div class="px-6 mb-6">
+<div class="flex items-center gap-3 mb-1">
+<span class="material-symbols-outlined text-cyan-400" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+<h2 class="text-lg font-bold text-cyan-400 font-headline tracking-tighter uppercase">ACTIVE SLIP</h2>
+</div>
+<p class="text-[11px] font-medium font-inter tracking-wide uppercase text-slate-500">High Stakes Arena</p>
+</div>
+<!-- Bet Type Selectors -->
+<div class="px-6 flex gap-2 mb-6">
+<button class="flex-1 py-2 bg-surface-container-highest border border-primary/20 text-primary text-[10px] font-bold tracking-widest uppercase">Single</button>
+<button class="flex-1 py-2 bg-transparent border border-outline-variant/30 text-slate-500 text-[10px] font-bold tracking-widest uppercase hover:bg-white/5">Double</button>
+<button class="flex-1 py-2 bg-transparent border border-outline-variant/30 text-slate-500 text-[10px] font-bold tracking-widest uppercase hover:bg-white/5">Triple</button>
+</div>
+<!-- Selection Panel -->
+<div class="px-6 flex-1 space-y-4">
+<div class="space-y-2">
+<label class="text-[10px] font-bold text-outline uppercase tracking-widest">1st Place Finisher</label>
+<div class="w-full bg-surface-container-highest p-3 flex justify-between items-center border border-primary-fixed-dim/40 rounded group transition-all cursor-pointer">
+<div class="flex items-center gap-3">
+<span class="font-headline font-black text-primary italic">SOL</span>
+<span class="text-xs font-bold text-on-surface uppercase">NEON JUMP</span>
+</div>
+<span class="text-sm font-black text-primary-fixed-dim">2.4x</span>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-[10px] font-bold text-outline uppercase tracking-widest">2nd Place Finisher</label>
+<div class="w-full bg-surface-container-lowest p-3 flex justify-between items-center border border-outline-variant/30 rounded group hover:bg-surface-container hover:border-outline-variant transition-all cursor-pointer">
+<div class="flex items-center gap-3">
+<span class="font-headline font-black text-outline italic">XRP</span>
+<span class="text-xs font-bold text-slate-500 uppercase">WAVE RIDER</span>
+</div>
+<span class="material-symbols-outlined text-sm text-outline-variant">add_circle</span>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-[10px] font-bold text-outline uppercase tracking-widest">3rd Place Finisher</label>
+<div class="w-full bg-surface-container-lowest p-3 flex justify-between items-center border border-outline-variant/30 rounded group hover:bg-surface-container hover:border-outline-variant transition-all cursor-pointer">
+<div class="flex items-center gap-3">
+<span class="font-headline font-black text-outline italic">ADA</span>
+<span class="text-xs font-bold text-slate-500 uppercase">PRISM DASH</span>
+</div>
+<span class="material-symbols-outlined text-sm text-outline-variant">add_circle</span>
+</div>
+</div>
+</div>
+<!-- Wager Section -->
+<div class="px-6 mt-6 pt-6 border-t border-outline-variant/20 bg-surface-container/50">
+<div class="flex justify-between items-center mb-2">
+<label class="text-[10px] font-bold text-outline uppercase tracking-widest">Your Wager</label>
+<span class="text-[10px] font-medium text-slate-400">BAL: 14,250 PTS</span>
+</div>
+<div class="relative mb-4">
+<input class="w-full bg-surface-container-lowest border-none text-on-surface font-headline font-bold text-2xl px-4 py-3 rounded tracking-tighter focus:ring-1 focus:ring-primary/50 transition-all" type="text" value="1,000"/>
+<span class="absolute right-4 top-1/2 -translate-y-1/2 font-headline font-bold text-primary/50">PTS</span>
+</div>
+<div class="flex justify-between items-center mb-6 px-1">
+<span class="text-xs text-outline font-medium">Potential Payout</span>
+<span class="text-lg font-black text-secondary font-headline">2,400 PTS</span>
+</div>
+<button class="w-full bg-primary-container text-on-primary-container font-headline font-black tracking-tighter uppercase py-4 rounded transition-all scale-95 active:scale-90 hover:brightness-110 shadow-[0px_0px_20px_rgba(0,229,255,0.3)]">
+                PLACE WAGER
+            </button>
+</div>
+<!-- Sidebar Footer Nav -->
+<div class="px-6 mt-4 flex justify-between items-center">
+<button class="flex items-center gap-2 text-slate-500 hover:text-cyan-200 transition-all group">
+<span class="material-symbols-outlined text-sm">settings</span>
+<span class="text-[11px] font-medium tracking-wide uppercase">SETTINGS</span>
+</button>
+<button class="flex items-center gap-2 text-slate-500 hover:text-cyan-200 transition-all group">
+<span class="material-symbols-outlined text-sm">help_outline</span>
+<span class="text-[11px] font-medium tracking-wide uppercase">HELP</span>
+</button>
+</div>
+</aside>
+</body></html>

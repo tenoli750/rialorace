@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800;900&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed": "#001f24",
+                    "inverse-primary": "#006875",
+                    "outline": "#849396",
+                    "on-secondary-fixed-variant": "#00531e",
+                    "tertiary-container": "#ffc779",
+                    "primary-fixed-dim": "#00daf3",
+                    "primary": "#c3f5ff",
+                    "tertiary": "#ffead2",
+                    "on-error": "#690005",
+                    "on-tertiary": "#452b00",
+                    "on-secondary": "#003912",
+                    "surface-dim": "#111316",
+                    "secondary-container": "#02c953",
+                    "secondary": "#40e56c",
+                    "tertiary-fixed": "#ffddb3",
+                    "surface-container": "#1e2023",
+                    "on-tertiary-container": "#7b5000",
+                    "surface-container-high": "#282a2d",
+                    "secondary-fixed": "#69ff87",
+                    "primary-fixed": "#9cf0ff",
+                    "tertiary-fixed-dim": "#ffb950",
+                    "on-secondary-fixed": "#002108",
+                    "secondary-fixed-dim": "#3ce36a",
+                    "on-primary-fixed-variant": "#004f58",
+                    "surface": "#111316",
+                    "primary-container": "#00e5ff",
+                    "on-surface-variant": "#bac9cc",
+                    "surface-tint": "#00daf3",
+                    "on-error-container": "#ffdad6",
+                    "on-tertiary-fixed": "#291800",
+                    "on-primary-container": "#00626e",
+                    "outline-variant": "#3b494c",
+                    "surface-container-highest": "#333538",
+                    "surface-bright": "#37393d",
+                    "on-surface": "#e2e2e6",
+                    "surface-container-low": "#1a1c1f",
+                    "surface-container-lowest": "#0c0e11",
+                    "error": "#ffb4ab",
+                    "surface-variant": "#333538",
+                    "on-secondary-container": "#004d1b",
+                    "on-primary": "#00363d",
+                    "error-container": "#93000a",
+                    "background": "#111316",
+                    "on-background": "#e2e2e6",
+                    "inverse-surface": "#e2e2e6",
+                    "on-tertiary-fixed-variant": "#624000",
+                    "inverse-on-surface": "#2f3034"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Space Grotesk"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .glass-panel {
+        background: rgba(40, 42, 45, 0.6);
+        backdrop-filter: blur(24px);
+      }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary/30">
+<!-- Top Navigation Shell -->
+<nav class="fixed top-0 left-0 w-full flex justify-between items-center px-6 h-16 bg-surface-dim/80 backdrop-blur-xl border-b-2 border-cyan-500/20 shadow-[0px_0px_20px_rgba(0,229,255,0.1)] z-50">
+<img class="h-12 w-12 object-contain" src="../assets/create_a_logo_in_this_exact_layout_style_use_the_u_019d8db9-c7d9-75dc-ad2e-f5463423c3be-removebg-preview.png" alt="Rialo Race" />
+<div class="hidden md:flex items-center gap-8 font-headline tracking-tighter uppercase font-bold">
+<a class="text-slate-400 hover:text-white transition-colors" href="#">LIVE</a>
+<a class="text-slate-400 hover:text-white transition-colors" href="#">UPCOMING</a>
+<a class="text-cyan-400 border-b-2 border-cyan-400 pb-1" href="#">RESULTS</a>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-3 mr-4">
+<span class="material-symbols-outlined text-cyan-400" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="material-symbols-outlined text-slate-400" data-icon="notifications">notifications</span>
+</div>
+<button class="px-4 py-1.5 rounded-DEFAULT bg-white/5 border border-outline-variant text-sm font-bold uppercase tracking-wider hover:bg-white/10 transition-all">LOGIN</button>
+<button class="px-4 py-1.5 rounded-DEFAULT bg-primary-container text-on-primary-container text-sm font-bold uppercase tracking-wider hover:brightness-110 transition-all">DEPOSIT</button>
+</div>
+</nav>
+<!-- Side Navigation Shell -->
+<aside class="fixed right-0 top-0 h-full flex flex-col pt-20 pb-6 bg-surface-container-low/95 backdrop-blur-2xl docked right-0 h-screen w-80 shadow-[-10px_0px_30px_rgba(0,0,0,0.5)] z-40">
+<div class="bg-gradient-to-b from-cyan-500/30 via-transparent to-transparent w-[2px] h-full absolute left-0"></div>
+<div class="px-6 mb-8">
+<div class="flex items-center gap-3 mb-2">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center">
+<span class="material-symbols-outlined text-cyan-400" data-icon="receipt_long">receipt_long</span>
+</div>
+<div>
+<h3 class="text-cyan-400 font-headline font-bold text-lg leading-none">ACTIVE SLIP</h3>
+<p class="text-[10px] text-slate-500 uppercase tracking-widest font-medium">High Stakes Arena</p>
+</div>
+</div>
+</div>
+<div class="flex-1 px-4 space-y-2 overflow-y-auto">
+<!-- Empty Bet Slip State -->
+<div class="p-8 text-center border-2 border-dashed border-outline-variant rounded-xl opacity-40">
+<span class="material-symbols-outlined text-4xl mb-2 block" data-icon="layers_clear">layers_clear</span>
+<p class="text-[11px] uppercase tracking-tighter font-medium">Slip Reset for Market 04</p>
+<p class="text-[9px] mt-1 text-slate-500">Add selections to start betting</p>
+</div>
+</div>
+<div class="px-6 mt-6 space-y-4">
+<button class="w-full py-4 bg-surface-container-highest/30 border border-outline-variant/30 text-slate-500 font-headline font-black italic tracking-tighter cursor-not-allowed opacity-50">
+                PLACE WAGER
+            </button>
+<div class="grid grid-cols-4 gap-2 pt-4 border-t border-outline-variant/20">
+<div class="flex flex-col items-center gap-1 group cursor-pointer">
+<span class="material-symbols-outlined text-slate-500 group-hover:text-cyan-400 transition-colors" data-icon="receipt_long">receipt_long</span>
+<span class="text-[9px] text-slate-500 font-medium">SLIP</span>
+</div>
+<div class="flex flex-col items-center gap-1 group cursor-pointer">
+<span class="material-symbols-outlined text-slate-500 group-hover:text-cyan-400 transition-colors" data-icon="history">history</span>
+<span class="text-[9px] text-slate-500 font-medium">MY BETS</span>
+</div>
+<div class="flex flex-col items-center gap-1 group cursor-pointer">
+<span class="material-symbols-outlined text-slate-500 group-hover:text-cyan-400 transition-colors" data-icon="leaderboard">leaderboard</span>
+<span class="text-[9px] text-slate-500 font-medium">RANK</span>
+</div>
+<div class="flex flex-col items-center gap-1 group cursor-pointer">
+<span class="material-symbols-outlined text-slate-500 group-hover:text-cyan-400 transition-colors" data-icon="forum">forum</span>
+<span class="text-[9px] text-slate-500 font-medium">CHAT</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="pt-16 pr-80 min-h-screen">
+<div class="max-w-6xl mx-auto p-8">
+<!-- Hero Results Section -->
+<div class="relative rounded-xl overflow-hidden mb-12 h-[400px] flex flex-col items-center justify-center bg-surface-container-lowest">
+<!-- Background visual: Dimmed podium/stadium -->
+<div class="absolute inset-0 opacity-20 grayscale scale-105">
+<img class="w-full h-full object-cover" data-alt="cinematic wide shot of a high-tech futuristic racing stadium at night with blue ambient glow and massive holographic displays dimmed" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDS-_AHE6wlM0Ys2ysEhidRG7QcQozpzcT1uaovTZB6b3vSsq-H6M0hC449qDWEPVGfT-8-Ichq9-XvRC7US8qr6ZgFWE9e4af5Z88D_MtrQAJlZIhC0vTwItyOQyIisWYOKeIDh85zTwg6l1spiToQInB9ELPWR9DT9bY093BGSUkVB9481VeO8H9-qMM9aEA9lsCYrDUTMGoYbmEQjaWSkNlMZC7MOlEp-zXVqZmd4ZJPoogUvKad_rCTcne5hpDScOLbN8kYVtev"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background"></div>
+</div>
+<div class="relative z-10 text-center">
+<div class="inline-flex items-center gap-2 bg-surface-container-highest/60 backdrop-blur px-4 py-1 rounded-full border border-primary/20 mb-6">
+<span class="w-2 h-2 rounded-full bg-primary-fixed-dim animate-pulse"></span>
+<span class="text-[11px] font-bold tracking-[0.2em] text-primary uppercase">Market 03 Settled</span>
+</div>
+<h1 class="text-7xl md:text-8xl font-headline font-black tracking-tighter text-white mb-2 italic">
+                        RESULTS
+                    </h1>
+<div class="mt-8 flex flex-col items-center">
+<p class="text-slate-400 font-headline font-medium tracking-widest uppercase text-sm mb-2">Next Race Commencing In</p>
+<div class="text-5xl font-headline font-black text-primary-container tracking-tighter drop-shadow-[0_0_15px_rgba(0,229,255,0.4)]">
+                            00:45
+                        </div>
+</div>
+</div>
+</div>
+<!-- Results Grid: 4 Ranking Cards -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 relative">
+<!-- Card 1: SOL (1st) -->
+<div class="group relative overflow-hidden bg-surface-container-low p-6 rounded-lg transition-all hover:bg-surface-bright hover:-translate-y-1">
+<div class="absolute top-0 right-0 p-4 opacity-5">
+<span class="text-9xl font-black italic -mr-8 -mt-8">1</span>
+</div>
+<div class="relative z-10">
+<div class="w-12 h-12 bg-secondary/10 border border-secondary/30 rounded flex items-center justify-center mb-6">
+<span class="text-secondary font-black font-headline text-xl">1ST</span>
+</div>
+<div class="w-20 h-20 rounded-full border-2 border-secondary overflow-hidden mb-6 bg-surface-container-highest shadow-[0_0_20px_rgba(64,229,108,0.2)]">
+<img class="w-full h-full object-cover" data-alt="3d stylized powerful chrome wolf head avatar with emerald glowing eyes on dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkv2nKIWcs96vYwmmPcGPWOgUDFtl0OmfWyBW0ugaG29jvAbgX7xAG6yaxFqwkczOtJXjc_RQ5jstuzrrYJ8oQUCbKzWu9SIYN5Ax9Jjf_IBFxN6W24aW0N61qinBWKY3D6WJ65SPVgM0ZdEMj1qPAutD29-z7B_pyv329YfI8C5ebLjsmkP85K1hXsyLIxVZ-T5kY2EXOE6IkBlywhunO3yHLnFzT3JwsjoWfkSelSoeULNAesOsybt8335xPeFFr9GhPpCCvCcqD"/>
+</div>
+<h2 class="text-2xl font-headline font-black tracking-tighter text-white uppercase italic">SOL</h2>
+<p class="text-secondary font-bold text-sm tracking-widest mb-4">WINNER</p>
+<div class="h-[2px] w-12 bg-secondary/40 mb-4"></div>
+<div class="flex justify-between items-center text-[11px] font-bold text-slate-400">
+<span>TOTAL ODDS</span>
+<span class="text-white">2.45x</span>
+</div>
+</div>
+</div>
+<!-- Card 2: ADA (2nd) -->
+<div class="group relative overflow-hidden bg-surface-container-low p-6 rounded-lg transition-all hover:bg-surface-bright hover:-translate-y-1">
+<div class="absolute top-0 right-0 p-4 opacity-5">
+<span class="text-9xl font-black italic -mr-8 -mt-8 text-white">2</span>
+</div>
+<div class="relative z-10">
+<div class="w-12 h-12 bg-slate-500/10 border border-slate-500/30 rounded flex items-center justify-center mb-6">
+<span class="text-slate-300 font-black font-headline text-xl">2ND</span>
+</div>
+<div class="w-20 h-20 rounded-full border-2 border-slate-500 overflow-hidden mb-6 bg-surface-container-highest">
+<img class="w-full h-full object-cover" data-alt="3d stylized chrome robotic eagle avatar with azure glowing eyes on dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbp0ucE4i8V3hr3yHVsurKRtJ9W9rcasr_1ymg8rppAuMMEGyKaRlI2_01grq4bO5CB4gWkTWdMynnwf5IDsij7CASyLMKY8SaWgnSXS2fNAABGjAivOAD4Rx5YBa3GM13YgeiXoFiBVF6_ZT1-2kNOnPmiE5UB4WqyfzD-Eu3mwS9pmrw0LltY7kDLQroqIzpdU4jiMSbtTParS9m1r44MEW5_n4VbqsRrfJR0m9p6YJCkvF__jCE-ti7J7COzl4HZxtRVbzD9Kn7"/>
+</div>
+<h2 class="text-2xl font-headline font-black tracking-tighter text-white uppercase italic">ADA</h2>
+<p class="text-slate-400 font-bold text-sm tracking-widest mb-4">RUNNER UP</p>
+<div class="h-[2px] w-12 bg-slate-500/40 mb-4"></div>
+<div class="flex justify-between items-center text-[11px] font-bold text-slate-400">
+<span>TOTAL ODDS</span>
+<span class="text-white">4.10x</span>
+</div>
+</div>
+</div>
+<!-- Card 3: XRP (3rd) -->
+<div class="group relative overflow-hidden bg-surface-container-low p-6 rounded-lg transition-all hover:bg-surface-bright hover:-translate-y-1">
+<div class="absolute top-0 right-0 p-4 opacity-5">
+<span class="text-9xl font-black italic -mr-8 -mt-8 text-white">3</span>
+</div>
+<div class="relative z-10">
+<div class="w-12 h-12 bg-tertiary-fixed-dim/10 border border-tertiary-fixed-dim/30 rounded flex items-center justify-center mb-6">
+<span class="text-tertiary-fixed-dim font-black font-headline text-xl">3RD</span>
+</div>
+<div class="w-20 h-20 rounded-full border-2 border-tertiary-fixed-dim overflow-hidden mb-6 bg-surface-container-highest">
+<img class="w-full h-full object-cover" data-alt="3d stylized futuristic chrome stallion avatar with amber glowing eyes on dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSEIPLP0q6VtPlpzaj8ZHqZZ0Y282wKhA2xVgWyc9eGYdQ8vv3VZUkqsSkkbweHilCZAizhRdNaf0uvr5H3CuL6v0we1ZgE9tn-g6kuLAYiiQQq_Aywp4RMdoh3RNNLJBkYS9kRhJP91s3GF6Q4laoh61I-r_R-9c2c8HQYDSCIuBxkGFC2ay15rLQE_XHnW8908tjbc1i8fxsa8iv_4RPvfZDxBR8B4LHMYnHArjWSyDcW970dFlhsSZHiLoVs3EmZ1VcZMq5DPeb"/>
+</div>
+<h2 class="text-2xl font-headline font-black tracking-tighter text-white uppercase italic">XRP</h2>
+<p class="text-tertiary-fixed-dim font-bold text-sm tracking-widest mb-4">PODIUM</p>
+<div class="h-[2px] w-12 bg-tertiary-fixed-dim/40 mb-4"></div>
+<div class="flex justify-between items-center text-[11px] font-bold text-slate-400">
+<span>TOTAL ODDS</span>
+<span class="text-white">12.5x</span>
+</div>
+</div>
+</div>
+<!-- Card 4: SUI (4th) -->
+<div class="group relative overflow-hidden bg-surface-container-low p-6 rounded-lg transition-all hover:bg-surface-bright hover:-translate-y-1 opacity-80">
+<div class="absolute top-0 right-0 p-4 opacity-5">
+<span class="text-9xl font-black italic -mr-8 -mt-8 text-white">4</span>
+</div>
+<div class="relative z-10">
+<div class="w-12 h-12 bg-outline-variant/10 border border-outline-variant/30 rounded flex items-center justify-center mb-6">
+<span class="text-outline font-black font-headline text-xl">4TH</span>
+</div>
+<div class="w-20 h-20 rounded-full border-2 border-outline-variant overflow-hidden mb-6 bg-surface-container-highest">
+<img class="w-full h-full object-cover" data-alt="3d stylized sleek chrome panther avatar with violet glowing eyes on dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBa4iLcw9zZnNqnnbEiE6Use6TgDDRFvxGS9h0LVhBgYEs-uMEvsnQxb-jejzIZU0Drvi-5bZNxDXMClYPny6I9_sllj730xiLtEPLFs-mC3ly2n46iK5PwdQjPtwAXAr49pZ0wkyHFUFERw-emewzlwkDubGJQRkemHJ2xIrLICpKeiRLOEYuaNGwxWW8DuQ7iuroUHN6T4HMIvS-EuI0zoF48upxBUZYeHagSYYtSV4D9ZQlZYpYg7R2aZ4kUZ-MJJJp8HJmIk0LI"/>
+</div>
+<h2 class="text-2xl font-headline font-black tracking-tighter text-white uppercase italic">SUI</h2>
+<p class="text-slate-500 font-bold text-sm tracking-widest mb-4">FINALIST</p>
+<div class="h-[2px] w-12 bg-outline-variant/40 mb-4"></div>
+<div class="flex justify-between items-center text-[11px] font-bold text-slate-400">
+<span>TOTAL ODDS</span>
+<span class="text-white">8.20x</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Supplemental Info Section (Asymmetric Layout) -->
+<div class="mt-20 grid grid-cols-12 gap-8">
+<div class="col-span-12 md:col-span-7">
+<h3 class="text-4xl font-headline font-black italic uppercase tracking-tighter text-white mb-6">Market Breakdown</h3>
+<div class="space-y-4">
+<div class="flex items-center gap-4 p-4 bg-surface-container-low rounded">
+<div class="text-primary-container">
+<span class="material-symbols-outlined text-3xl" data-icon="confirmation_number">confirmation_number</span>
+</div>
+<div>
+<p class="text-xs uppercase tracking-widest text-slate-500 font-bold">Winning Ticket Range</p>
+<p class="text-lg font-headline font-bold">#4590 - #4821</p>
+</div>
+</div>
+<div class="flex items-center gap-4 p-4 bg-surface-container-low rounded">
+<div class="text-secondary">
+<span class="material-symbols-outlined text-3xl" data-icon="payments">payments</span>
+</div>
+<div>
+<p class="text-xs uppercase tracking-widest text-slate-500 font-bold">Total Prize Pool Distributed</p>
+<p class="text-lg font-headline font-bold">42.85 ETH</p>
+</div>
+</div>
+</div>
+</div>
+<div class="col-span-12 md:col-span-5 flex flex-col justify-end">
+<div class="p-8 border-2 border-cyan-500/10 rounded-xl bg-gradient-to-br from-cyan-500/5 to-transparent relative overflow-hidden">
+<div class="absolute -bottom-4 -right-4 opacity-10">
+<span class="material-symbols-outlined text-[120px]" data-icon="bolt">bolt</span>
+</div>
+<h4 class="text-cyan-400 font-headline font-bold text-xl mb-4 italic uppercase">Next Up: Market 04</h4>
+<p class="text-sm text-slate-400 mb-6 leading-relaxed">Prepare your strategy. Market 04 features high-gravity terrain modifiers and variable stamina drain. Be the first to secure early odds.</p>
+<button class="px-6 py-3 bg-primary-container text-on-primary-container font-headline font-black italic tracking-tighter uppercase text-sm hover:scale-105 transition-transform">
+                            VIEW ODDS PREVIEW
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer Meta (Optional for refined shell) -->
+<footer class="pr-80 py-8 px-8 border-t border-outline-variant/10 text-[10px] text-slate-600 flex justify-between uppercase tracking-widest font-medium">
+<div>© 2024 Kinetic Prestige • Provably Fair Racing</div>
+<div class="flex gap-6">
+<a class="hover:text-cyan-400" href="#">Terms</a>
+<a class="hover:text-cyan-400" href="#">Support</a>
+<a class="hover:text-cyan-400" href="#">Status</a>
+</div>
+</footer>
+</body></html>

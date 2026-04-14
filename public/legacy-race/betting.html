@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Binance Ring Rally Betting</title>
+    <link rel="icon" href="./assets/coin-logos/btc.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.174.0/build/three.module.js"
+        }
+      }
+    </script>
+    <script type="module" src="./betting-main.js?v=12"></script>
+  </head>
+  <body>
+    <main class="app-shell betting-shell">
+      <a class="site-title" href="./main-menu.html" aria-label="Rialo Race"><img src="./assets/create_a_logo_in_this_exact_layout_style_use_the_u_019d8db9-c7d9-75dc-ad2e-f5463423c3be-removebg-preview.png" alt="Rialo Race" /></a>
+      <nav class="page-nav panel">
+        <a class="page-nav-link is-active" href="./main-menu.html">Live Markets</a>
+        <a class="page-nav-link" href="./replay-menu.html">Replay</a>
+        <a class="page-nav-link" href="./community.html">Rankings</a>
+        <a class="page-nav-link" href="./rewards.html">Rewards</a>
+        <a class="page-nav-link" href="./my-bets.html">History</a>
+        <span class="page-nav-spacer"></span>
+        <span class="page-nav-points" id="headerPoints">Points --</span>
+        <a class="page-nav-link page-nav-account" id="accountLink" href="./login.html">Login</a>
+      </nav>
+
+      <section class="hero-panel panel" hidden aria-hidden="true"></section>
+
+      <section class="main-grid">
+        <section class="panel viewport-panel">
+          <div class="viewport-toolbar" hidden aria-hidden="true">
+            <div class="viewport-status-card"></div>
+          </div>
+          <div class="viewport-shell">
+            <div class="viewport" id="viewport"></div>
+            <div class="viewport-standings-compact" id="standings" aria-label="Standings overlay"></div>
+            <button class="logo-toggle-button" id="logoToggleButton" type="button">Logos: On</button>
+            <button class="camera-focus-button" id="cameraFocusButton" type="button">Focus: Auto</button>
+            <div class="countdown-overlay" id="raceCountdown" hidden aria-live="polite">3</div>
+          </div>
+        </section>
+
+        <aside class="sidebar">
+          <section class="panel sidebar-panel">
+            <div class="panel-heading">
+              <h2>Bet History</h2>
+              <span class="mini-pill">Session</span>
+            </div>
+            <div class="notes-list" id="notes"></div>
+          </section>
+        </aside>
+      </section>
+
+      <section class="panel bet-slip-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">Bet Slip</span>
+            <h2>Choose first, second, third</h2>
+          </div>
+          <span class="mini-pill" id="selectionBadge">3 picks</span>
+        </div>
+        <div class="betting-mini-status">
+          <span class="pill" id="connectionBadge">Connecting</span>
+          <span class="mini-pill" id="betStatusValue">Open</span>
+          <span class="mini-pill" id="nextRaceValue">05:00</span>
+          <span class="mini-pill" id="pointsBalance">1,250 pts</span>
+          <button class="ghost-button secondary" id="cameraButton" type="button">Camera: Overview</button>
+        </div>
+        <form class="bet-form" id="betForm">
+          <div class="bet-place-list" id="betPlaceList">
+            <section class="bet-place-card" data-place="first">
+              <div class="bet-place-head">
+                <span class="bet-place-title">First Place</span>
+                <span class="bet-place-summary" id="firstPlaceSummary">BTC (1.17x)</span>
+              </div>
+              <div class="bet-option-grid" id="firstPlaceButtons"></div>
+            </section>
+            <section class="bet-place-card" data-place="second">
+              <div class="bet-place-head">
+                <span class="bet-place-title">Second Place</span>
+                <span class="bet-place-summary" id="secondPlaceSummary">ETH (1.08x)</span>
+              </div>
+              <div class="bet-option-grid" id="secondPlaceButtons"></div>
+            </section>
+            <section class="bet-place-card" data-place="third">
+              <div class="bet-place-head">
+                <span class="bet-place-title">Third Place</span>
+                <span class="bet-place-summary" id="thirdPlaceSummary">SOL (1.05x)</span>
+              </div>
+              <div class="bet-option-grid" id="thirdPlaceButtons"></div>
+            </section>
+          </div>
+          <label class="bet-field">
+            <span class="coin-label">Stake Points</span>
+            <input class="editor-input" id="betAmountInput" type="number" min="10" step="10" value="100" />
+          </label>
+          <div class="bet-slip-preview" id="betPreview">
+            100 points on BTC first, ETH second, SOL third. Connect these picks to Supabase later.
+          </div>
+          <div class="bet-actions">
+            <button class="ghost-button" id="placeBetButton" type="submit">Place Bet</button>
+            <button class="ghost-button secondary" id="startButton" type="button">Start Race</button>
+            <button class="ghost-button secondary" id="restartButton" type="button">Reset Race</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="coin-grid" id="coinGrid" hidden aria-hidden="true"></section>
+
+      <section class="panel detail-panel">
+        <div class="detail-header">
+          <div>
+            <span class="eyebrow">Selected Racer</span>
+            <h2 id="detailHeading">BTC Betting Detail</h2>
+            <p class="detail-subtitle" id="detailSubtitle">
+              Use this panel for user-facing race stats now, then extend it with Supabase bet and payout data.
+            </p>
+          </div>
+          <span class="mini-pill" id="detailCountBadge">0 samples</span>
+        </div>
+        <div class="detail-stats" id="detailStats"></div>
+        <div class="sample-list" id="detailSampleList"></div>
+      </section>
+    </main>
+  </body>
+</html>

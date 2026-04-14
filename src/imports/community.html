@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rankings</title>
+    <link rel="icon" href="./assets/coin-logos/btc.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./rankings-main.js?v=3"></script>
+  </head>
+  <body>
+    <main class="app-shell page-hub-shell">
+      <a class="site-title" href="./main-menu.html" aria-label="Rialo Race"><img src="./assets/create_a_logo_in_this_exact_layout_style_use_the_u_019d8db9-c7d9-75dc-ad2e-f5463423c3be-removebg-preview.png" alt="Rialo Race" /></a>
+      <nav class="page-nav panel">
+        <a class="page-nav-link" href="./main-menu.html">Live Markets</a>
+        <a class="page-nav-link" href="./replay-menu.html">Replay</a>
+        <a class="page-nav-link is-active" href="./community.html">Rankings</a>
+        <a class="page-nav-link" href="./rewards.html">Rewards</a>
+        <a class="page-nav-link" href="./my-bets.html">History</a>
+        <span class="page-nav-spacer"></span>
+        <span class="page-nav-points" id="headerPoints">Points --</span>
+        <a class="page-nav-link page-nav-account" id="accountLink" href="./login.html">Login</a>
+      </nav>
+
+      <section class="panel auth-panel hub-wide-panel">
+        <div>
+          <span class="eyebrow">Rankings</span>
+          <h1>Rankings</h1>
+          <p class="auth-copy">Every player ranked by current points balance.</p>
+        </div>
+
+        <div class="rankings-list" id="rankingsList">
+          <div class="sample-empty">Loading rankings...</div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

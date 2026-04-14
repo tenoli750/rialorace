@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rewards</title>
+    <link rel="icon" href="./assets/coin-logos/btc.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./rewards-main.js?v=1"></script>
+  </head>
+  <body>
+    <main class="app-shell page-hub-shell">
+      <a class="site-title" href="./main-menu.html" aria-label="Rialo Race"><img src="./assets/create_a_logo_in_this_exact_layout_style_use_the_u_019d8db9-c7d9-75dc-ad2e-f5463423c3be-removebg-preview.png" alt="Rialo Race" /></a>
+      <nav class="page-nav panel">
+        <a class="page-nav-link" href="./main-menu.html">Live Markets</a>
+        <a class="page-nav-link" href="./replay-menu.html">Replay</a>
+        <a class="page-nav-link" href="./community.html">Rankings</a>
+        <a class="page-nav-link is-active" href="./rewards.html">Rewards</a>
+        <a class="page-nav-link" href="./my-bets.html">History</a>
+        <span class="page-nav-spacer"></span>
+        <span class="page-nav-points" id="headerPoints">Points --</span>
+        <a class="page-nav-link page-nav-account" id="accountLink" href="./login.html">Login</a>
+      </nav>
+
+      <section class="panel auth-panel hub-wide-panel">
+        <div>
+          <span class="eyebrow">Rewards</span>
+          <h1>Rewards</h1>
+          <p class="auth-copy">Check in once per KST day for 100 pts.</p>
+        </div>
+      </section>
+
+      <section class="panel main-menu-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">Daily Check-In</span>
+            <h2>KST Reset</h2>
+          </div>
+          <span class="mini-pill">100 pts</span>
+        </div>
+        <div class="profile-grid">
+          <article class="profile-card">
+            <span class="coin-label">Today</span>
+            <span class="profile-value" id="dailyCheckinStatus">Loading</span>
+            <p class="auth-copy" id="dailyCheckinDate">KST day check.</p>
+          </article>
+          <article class="profile-card">
+            <span class="coin-label">Reward</span>
+            <span class="profile-value" id="dailyCheckinReward">100 pts</span>
+            <p class="auth-copy">Added to your points balance.</p>
+          </article>
+          <article class="profile-card">
+            <span class="coin-label">Next Reset</span>
+            <span class="profile-value" id="dailyCheckinReset">KST 00:00</span>
+            <p class="auth-copy">A new claim opens after midnight in Korea.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel main-menu-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">Claim</span>
+            <h2>Daily Reward</h2>
+          </div>
+          <span class="mini-pill" id="dailyCheckinLogin">Checking</span>
+        </div>
+        <div class="profile-grid">
+          <article class="profile-card">
+            <span class="coin-label">Balance</span>
+            <span class="profile-value" id="dailyCheckinBalance">-- pts</span>
+            <p class="auth-copy">Your current points after claimed rewards.</p>
+          </article>
+          <article class="profile-card">
+            <span class="coin-label">Claim Window</span>
+            <span class="profile-value">KST Day</span>
+            <p class="auth-copy">One claim per user before the next KST reset.</p>
+          </article>
+        </div>
+        <div class="bet-actions">
+          <button class="ghost-button" type="button" id="dailyCheckinButton" disabled>Loading</button>
+        </div>
+        <p class="auth-message" id="dailyCheckinMessage" role="status"></p>
+      </section>
+    </main>
+  </body>
+</html>

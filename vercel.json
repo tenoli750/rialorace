@@ -1,0 +1,17 @@
+{
+  "rewrites": [
+    { "source": "/main-menu.html", "destination": "/index.html" },
+    { "source": "/market.html", "destination": "/index.html" },
+    { "source": "/market01-betting.html", "destination": "/index.html" },
+    { "source": "/market02-betting.html", "destination": "/index.html" },
+    { "source": "/replay-menu.html", "destination": "/index.html" },
+    { "source": "/market-replay.html", "destination": "/index.html" },
+    { "source": "/community.html", "destination": "/index.html" },
+    { "source": "/rewards.html", "destination": "/index.html" },
+    { "source": "/my-bets.html", "destination": "/index.html" },
+    { "source": "/login.html", "destination": "/index.html" },
+    { "source": "/profile.html", "destination": "/index.html" },
+    { "source": "/market/:marketId", "destination": "/index.html" },
+    { "source": "/replay/:marketId", "destination": "/index.html" }
+  ]
+}

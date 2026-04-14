@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Binance Ring Rally Main Menu</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./market-menu.js?v=2"></script>
+  </head>
+  <body>
+    <main class="app-shell page-hub-shell">
+      <a class="site-title" href="./main-menu.html" aria-label="Rialo Race"><img src="./assets/create_a_logo_in_this_exact_layout_style_use_the_u_019d8db9-c7d9-75dc-ad2e-f5463423c3be-removebg-preview.png" alt="Rialo Race" /></a>
+      <nav class="page-nav panel">
+        <a class="page-nav-link is-active" href="./main-menu.html">Live Markets</a>
+        <a class="page-nav-link" href="./replay-menu.html">Replay</a>
+        <a class="page-nav-link" href="./community.html">Rankings</a>
+        <a class="page-nav-link" href="./rewards.html">Rewards</a>
+        <a class="page-nav-link" href="./my-bets.html">History</a>
+        <span class="page-nav-spacer"></span>
+        <span class="page-nav-points" id="headerPoints">Points --</span>
+        <a class="page-nav-link page-nav-account" id="accountLink" href="./login.html">Login</a>
+      </nav>
+
+      <section class="hero-panel panel">
+        <div class="hero-topline">
+          <span class="eyebrow">Main Menu</span>
+          <span class="pill">Market Select</span>
+        </div>
+        <div class="hero-copy">
+          <div>
+            <h1>20 Crypto Race Markets</h1>
+            <p>
+              This is the public market hub. Each market below opens the player-facing betting
+              flow with its own Three.js race scene.
+            </p>
+          </div>
+          <div class="hero-stats">
+            <div class="stat-card">
+              <span class="stat-label">Markets</span>
+              <span class="stat-value" id="heroLiveCount">20 Markets</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Tokens</span>
+              <span class="stat-value" id="heroPlannedCount">10 Tokens</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Mode</span>
+              <span class="stat-value">Public</span>
+            </div>
+          </div>
+        </div>
+        <div class="rule-strip">
+          <div class="rule-card">
+            <span class="rule-kicker">Now</span>
+            <span class="rule-text">Use these pages as the public market selection and betting flow</span>
+          </div>
+          <div class="rule-card">
+            <span class="rule-kicker">Markets</span>
+            <span class="rule-text">Each card opens a market-specific betting page with the same shared layout</span>
+          </div>
+          <div class="rule-card">
+            <span class="rule-kicker">Access</span>
+            <span class="rule-text">The editor is kept on a separate admin site and is not linked here</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel main-menu-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">Token Legend</span>
+            <h2>A to J Mapping</h2>
+          </div>
+          <span class="mini-pill">10 Tokens</span>
+        </div>
+        <div class="token-legend-grid" id="tokenLegend"></div>
+      </section>
+
+      <section class="panel main-menu-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">Markets</span>
+            <h2>Choose A Market</h2>
+          </div>
+          <span class="mini-pill" id="marketCount">20 Markets</span>
+        </div>
+        <div class="main-menu-grid market-grid-20" id="marketGrid"></div>
+      </section>
+    </main>
+  </body>
+</html>

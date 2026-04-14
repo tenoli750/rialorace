@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Market 03 Stitch Test</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0c1015;
+        --panel: #101722;
+        --panel-2: #16202b;
+        --line: rgba(130, 197, 255, 0.14);
+        --text: #e8edf5;
+        --muted: #8ea2b7;
+        --accent: #85f1ff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, system-ui, sans-serif;
+        background:
+          radial-gradient(circle at top, rgba(89, 173, 255, 0.12), transparent 30%),
+          linear-gradient(180deg, #0c1015 0%, #0a0e14 100%);
+        color: var(--text);
+      }
+
+      .shell {
+        padding: 20px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+        padding: 16px 18px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(16, 23, 34, 0.78);
+        backdrop-filter: blur(18px);
+      }
+
+      .title {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .eyebrow {
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent);
+        font-weight: 700;
+      }
+
+      .title h1 {
+        margin: 0;
+        font-size: 28px;
+        line-height: 1;
+      }
+
+      .subtitle {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .tabs {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .tab {
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+        padding: 10px 14px;
+        border-radius: 999px;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      .tab.is-active {
+        background: var(--accent);
+        color: #042630;
+        border-color: transparent;
+      }
+
+      .frame-shell {
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        overflow: hidden;
+        background: rgba(16, 23, 34, 0.8);
+        box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+      }
+
+      iframe {
+        display: block;
+        width: 100%;
+        height: calc(100vh - 148px);
+        min-height: 760px;
+        border: 0;
+        background: #111316;
+      }
+
+      @media (max-width: 900px) {
+        .topbar {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        iframe {
+          height: calc(100vh - 196px);
+          min-height: 620px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="topbar">
+        <div class="title">
+          <div class="eyebrow">Stitch Preview</div>
+          <h1>Market 03 State Test</h1>
+          <div class="subtitle">Preview the exported Stitch states as separate market page directions before migration.</div>
+        </div>
+        <div class="tabs" aria-label="State tabs">
+          <button class="tab is-active" data-src="./stitch-market03/pre-race.html">Pre-Race</button>
+          <button class="tab" data-src="./stitch-market03/live-race.html">Live Race</button>
+          <button class="tab" data-src="./stitch-market03/post-race.html">Post-Race</button>
+        </div>
+      </section>
+
+      <section class="frame-shell">
+        <iframe
+          id="stitchFrame"
+          title="Market 03 Stitch Preview"
+          src="./stitch-market03/pre-race.html"
+        ></iframe>
+      </section>
+    </main>
+
+    <script>
+      const frame = document.getElementById("stitchFrame");
+      const tabs = Array.from(document.querySelectorAll(".tab"));
+
+      for (const tab of tabs) {
+        tab.addEventListener("click", () => {
+          for (const candidate of tabs) candidate.classList.remove("is-active");
+          tab.classList.add("is-active");
+          frame.src = tab.dataset.src;
+        });
+      }
+    </script>
+  </body>
+</html>
