@@ -179,7 +179,7 @@ export function LiveMarket() {
           filter: `market_id=eq.${market.id}`
         },
         (payload) => {
-          setChatMessages((messages) => [...messages, payload.new as ChatMessageRow].slice(-50));
+          setChatMessages((messages) => appendUniqueChatMessage(messages, payload.new as ChatMessageRow));
         }
       )
       .subscribe();
@@ -251,7 +251,7 @@ export function LiveMarket() {
     try {
       const row = await createChatMessage(market.id, message);
       if (row) {
-        setChatMessages((messages) => [...messages, row].slice(-50));
+        setChatMessages((messages) => appendUniqueChatMessage(messages, row));
       }
       setChatInput("");
       setChatStatus("");
@@ -558,6 +558,13 @@ function formatChatTime(timestamp: string) {
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date(timestamp));
+}
+
+function appendUniqueChatMessage(messages: ChatMessageRow[], nextMessage: ChatMessageRow) {
+  if (messages.some((message) => message.id === nextMessage.id)) {
+    return messages;
+  }
+  return [...messages, nextMessage].slice(-50);
 }
 
 function getBetTypeLabel(picks: Array<string | null>) {
