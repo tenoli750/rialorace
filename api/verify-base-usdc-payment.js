@@ -2,6 +2,7 @@ import {
   BASE_SEPOLIA_USDC_ADDRESS,
   decodeTransferLog,
   firstRow,
+  formatUsdcUnits,
   getLoginSessionByToken,
   getSupabaseAdmin,
   getTreasuryAddress,
@@ -11,20 +12,19 @@ import {
   rpc
 } from "./base-usdc-shared.js";
 
-function hasExpectedTransfer(receipt, order, treasuryAddress) {
+function getMatchingTransferValue(receipt, order, treasuryAddress) {
   const expectedFrom = normalizeAddress(order.wallet_address);
   const expectedTo = normalizeAddress(treasuryAddress);
-  const expectedValue = BigInt(order.expected_amount_units);
+  let matchingValue = 0n;
 
-  return (receipt.logs || []).some((log) => {
+  for (const log of receipt.logs || []) {
     const transfer = decodeTransferLog(log);
-    return (
-      transfer &&
-      transfer.from === expectedFrom &&
-      transfer.to === expectedTo &&
-      transfer.value === expectedValue
-    );
-  });
+    if (transfer && transfer.from === expectedFrom && transfer.to === expectedTo) {
+      matchingValue += transfer.value;
+    }
+  }
+
+  return matchingValue;
 }
 
 export default async function handler(req, res) {
@@ -90,8 +90,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Transaction did not call Base Sepolia USDC." });
     }
 
-    if (!hasExpectedTransfer(receipt, orderData, treasuryAddress)) {
-      return res.status(400).json({ error: "USDC transfer does not match this points order." });
+    const expectedValue = BigInt(orderData.expected_amount_units);
+    const matchingValue = getMatchingTransferValue(receipt, orderData, treasuryAddress);
+    if (matchingValue !== expectedValue) {
+      const actualLabel = matchingValue > 0n ? `${formatUsdcUnits(matchingValue)} USDC` : "no matching USDC";
+      return res.status(400).json({
+        error: `USDC transfer does not match this order. Expected ${formatUsdcUnits(expectedValue)} USDC, received ${actualLabel}.`
+      });
     }
 
     const { data, error } = await supabase.rpc("mark_base_usdc_point_order_paid", {
