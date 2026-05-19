@@ -27,6 +27,15 @@ function getMatchingTransferValue(receipt, order, treasuryAddress) {
   return matchingValue;
 }
 
+function getErrorMessage(error) {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "object" && error && "message" in error) {
+    const message = String(error.message || "");
+    if (message) return message;
+  }
+  return "Could not verify Base USDC payment.";
+}
+
 export default async function handler(req, res) {
   if (req.method === "OPTIONS") {
     res.setHeader("Allow", "POST, OPTIONS");
@@ -117,7 +126,7 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error("Verify Base USDC payment failed", error);
     return res.status(500).json({
-      error: error instanceof Error ? error.message : "Could not verify Base USDC payment."
+      error: getErrorMessage(error)
     });
   }
 }

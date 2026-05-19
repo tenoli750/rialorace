@@ -1,24 +1,3 @@
-create table if not exists public.base_usdc_point_orders (
-  id uuid primary key default gen_random_uuid(),
-  account_id uuid not null references public.login_accounts(id) on delete cascade,
-  wallet_address text not null,
-  package_id text not null,
-  expected_amount_units bigint not null,
-  points_awarded bigint not null,
-  status text not null default 'pending',
-  tx_hash text unique,
-  created_at timestamp with time zone not null default now(),
-  paid_at timestamp with time zone
-);
-
-create index if not exists base_usdc_point_orders_account_id_created_at_idx
-  on public.base_usdc_point_orders (account_id, created_at desc);
-
-create index if not exists base_usdc_point_orders_status_created_at_idx
-  on public.base_usdc_point_orders (status, created_at desc);
-
-drop function if exists public.mark_base_usdc_point_order_paid(uuid, uuid, text);
-
 create or replace function public.mark_base_usdc_point_order_paid(
   requested_order_id uuid,
   requested_account_id uuid,
