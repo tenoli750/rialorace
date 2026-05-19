@@ -1,4 +1,3 @@
-import { randomInt } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
 export const DEFAULT_SUPABASE_URL = "https://xafeoxmfhlbovzohjaam.supabase.co";
@@ -98,15 +97,17 @@ export function buildExpectedUsdcUnits(packageId) {
     throw new Error("Unknown points package.");
   }
 
-  // A tiny per-order suffix makes matching a transfer to an account-specific order practical.
-  return pointPackage.usdcUnits + randomInt(1, 1000);
+  return pointPackage.usdcUnits;
 }
 
 export function formatUsdcUnits(units) {
   const cleanUnits = BigInt(units);
   const whole = cleanUnits / 1_000_000n;
   const fractional = cleanUnits % 1_000_000n;
-  return `${whole}.${fractional.toString().padStart(6, "0").replace(/0+$/, "") || "0"}`;
+  if (fractional === 0n) {
+    return whole.toString();
+  }
+  return `${whole}.${fractional.toString().padStart(6, "0").replace(/0+$/, "")}`;
 }
 
 export async function getLoginSessionByToken(sessionToken) {

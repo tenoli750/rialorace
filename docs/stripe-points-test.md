@@ -83,6 +83,8 @@ RPC: https://sepolia.base.org
 USDC: 0x036CbD53842c5426634e7929541eC2318f3dCF7e
 ```
 
+Base Sepolia USDC orders use the exact package amount: `1`, `5`, or `10` USDC.
+
 Get test funds:
 
 ```text
