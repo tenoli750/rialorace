@@ -19,6 +19,19 @@ type RaceState = "waiting" | "racing" | "finished";
 type BetHistoryTab = "now" | "next" | "past" | "chat";
 const RACE_INTERVAL_MS = 5 * 60 * 1000;
 
+function normalizeMarketId(value: string | null | undefined) {
+  if (!value) return undefined;
+  const cleanValue = value.trim().toLowerCase();
+  const marketNumberMatch = cleanValue.match(/market-?(\d{1,2})/);
+  if (marketNumberMatch) {
+    return `market-${marketNumberMatch[1].padStart(2, "0")}`;
+  }
+  if (/^\d{1,2}$/.test(cleanValue)) {
+    return `market-${cleanValue.padStart(2, "0")}`;
+  }
+  return cleanValue;
+}
+
 function getLegacyMarketUrl(marketId: string) {
   if (marketId === "market-01") {
     return "/legacy-race/market01-betting.html?id=market-01&embed=viewport";
@@ -30,11 +43,11 @@ function getLegacyMarketUrl(marketId: string) {
 }
 
 export function LiveMarket() {
-  const { marketId } = useParams();
+  const params = useParams();
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const fallbackMarketId = location.pathname.includes("market02") ? "market-02" : "market-01";
-  const selectedMarketId = marketId ?? searchParams.get("id") ?? fallbackMarketId;
+  const selectedMarketId = normalizeMarketId(params.marketId ?? searchParams.get("id")) ?? fallbackMarketId;
   const market = getMarketById(selectedMarketId);
   const { user, points, setPointsBalance, refreshSession } = useAuth();
 
