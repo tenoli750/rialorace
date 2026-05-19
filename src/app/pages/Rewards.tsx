@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { Gift, Lock, Timer, Wallet } from "lucide-react";
+import { CreditCard, Gift, Lock, Timer, Wallet } from "lucide-react";
+import { POINT_PACKAGES, startPointsCheckout } from "../lib/pointsCheckout";
+import type { PointPackageId } from "../lib/pointsCheckout";
 import {
   claimDailyCheckin,
   claimRialoStakingPoints,
@@ -25,6 +27,8 @@ export function Rewards() {
   const [stakingMessage, setStakingMessage] = useState("Login to load your $RIALO staking wallet.");
   const [isStakingAction, setIsStakingAction] = useState(false);
   const [stakeAmount, setStakeAmount] = useState("10");
+  const [purchaseMessage, setPurchaseMessage] = useState("Choose a test package to buy points through Stripe.");
+  const [activePurchasePackage, setActivePurchasePackage] = useState<PointPackageId | null>(null);
   const earningRatePerRialoPerDay = 100;
   const projectedDailyReward = Math.floor(stakedRialo * earningRatePerRialoPerDay);
   const pendingStakingPoints = Math.max(
@@ -115,6 +119,28 @@ export function Rewards() {
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const checkoutStatus = params.get("points_checkout");
+    if (!checkoutStatus) return;
+
+    let refreshTimer: number | undefined;
+    if (checkoutStatus === "success") {
+      setPurchaseMessage("Payment completed. Syncing points from Stripe.");
+      void refreshSession();
+      refreshTimer = window.setTimeout(() => {
+        void refreshSession();
+      }, 2500);
+    } else if (checkoutStatus === "cancelled") {
+      setPurchaseMessage("Checkout cancelled. No points were added.");
+    }
+
+    window.history.replaceState({}, document.title, window.location.pathname);
+    return () => {
+      if (refreshTimer) window.clearTimeout(refreshTimer);
+    };
+  }, [refreshSession]);
+
   const handleClaim = async () => {
     if (!user) {
       alert("Please login to claim rewards");
@@ -141,6 +167,23 @@ export function Rewards() {
       setMessage(error instanceof Error ? error.message : "Could not claim daily reward.");
     } finally {
       setIsClaiming(false);
+    }
+  };
+
+  const handleBuyPoints = async (packageId: PointPackageId) => {
+    if (!user) {
+      alert("Please login to buy points.");
+      return;
+    }
+
+    try {
+      setActivePurchasePackage(packageId);
+      setPurchaseMessage("Opening Stripe Checkout.");
+      await startPointsCheckout(packageId);
+    } catch (error) {
+      console.error("Start points checkout failed", error);
+      setPurchaseMessage(getErrorMessage(error, "Could not start Stripe Checkout."));
+      setActivePurchasePackage(null);
     }
   };
 
@@ -279,6 +322,43 @@ export function Rewards() {
           <span className="text-xs text-[#8a5a44] uppercase tracking-wide">Rewards</span>
           <h1 className="text-2xl text-[#9a3412] mt-1 mb-2">Rewards</h1>
           <p className="text-sm text-[#8a5a44]">Check in once per KST day for 100 pts.</p>
+        </div>
+      </section>
+
+      <section className="bg-white rounded-lg border border-[#fed7aa] p-6 mb-6">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <span className="text-xs text-[#8a5a44] uppercase tracking-wide">Points</span>
+            <h2 className="text-lg text-[#9a3412] mt-1">Buy Test Points</h2>
+          </div>
+          <span className="px-3 py-1 bg-[#ffedd5] text-xs text-[#9a3412] rounded-md">
+            Stripe Test
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {POINT_PACKAGES.map((pointPackage) => (
+            <div key={pointPackage.id} className="p-4 bg-[#fff7ed] rounded-lg border border-[#fed7aa]">
+              <div className="flex items-center gap-2 text-xs text-[#8a5a44] mb-2">
+                <CreditCard className="w-4 h-4" />
+                {pointPackage.name}
+              </div>
+              <div className="text-xl text-[#9a3412] mb-1">{pointPackage.points.toLocaleString()} pts</div>
+              <div className="text-xs text-[#8a5a44] mb-4">{pointPackage.price} test checkout</div>
+              <button
+                type="button"
+                onClick={() => void handleBuyPoints(pointPackage.id)}
+                disabled={!user || activePurchasePackage !== null}
+                className="w-full px-4 py-3 bg-[#9a3412] text-white rounded-lg hover:bg-[#c2410c] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {activePurchasePackage === pointPackage.id ? "Opening" : "Buy"}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 p-3 bg-[#ffedd5] rounded text-xs text-[#8a5a44] text-center">
+          {user ? purchaseMessage : "Login to buy points."}
         </div>
       </section>
 
