@@ -89,16 +89,13 @@ async function switchToBaseSepolia(order: BaseUsdcOrder) {
 }
 
 export function buildBaseUsdcQrPayload(order: BaseUsdcOrder) {
-  return JSON.stringify({
-    chainId: order.chainIdHex,
-    chainName: order.chainName,
-    token: "USDC",
-    tokenAddress: order.usdcAddress,
-    to: order.treasuryAddress,
-    amount: order.amountDisplay,
-    amountUnits: order.amountUnits,
-    orderId: order.orderId
+  const chainId = Number.parseInt(order.chainIdHex, 16);
+  const params = new URLSearchParams({
+    address: order.treasuryAddress,
+    uint256: order.amountUnits
   });
+
+  return `ethereum:${order.usdcAddress}@${chainId}/transfer?${params.toString()}`;
 }
 
 export async function createBaseUsdcOrder(packageId: PointPackageId, walletAddress: string) {

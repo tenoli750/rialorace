@@ -730,7 +730,7 @@ export function Rewards() {
                   )}
                 </div>
                 <div className="mt-3 text-xs text-[#8a5a44] text-center">
-                  QR contains chain, token, receiver, exact amount, and order id.
+                  QR opens a Base Sepolia USDC transfer for the exact amount.
                 </div>
               </div>
 
