@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = "https://gardmxgsrasrzdcfbihv.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_gz4Tbz5IrvoFV5XgPY9LQQ_VfDjxZBI";
+const SUPABASE_URL = "https://xafeoxmfhlbovzohjaam.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_9HD-9e45AJgx5EIJXpiKsg__M75Ebad";
 const LOGIN_SESSION_STORAGE_KEY = "binance-ring-rally-login-session-v1";
 
 export interface LoginSession {
@@ -46,6 +46,19 @@ export interface DailyCheckinRow {
   current_points_balance?: number;
   next_reset_at?: string;
   claimed?: boolean;
+}
+
+export interface RialoStakingRow {
+  login_id?: string;
+  available_rialo: number;
+  staked_rialo: number;
+  earning_rate_points_per_rialo_per_day?: number;
+  projected_daily_points?: number;
+  pending_points?: number;
+  last_claimed_at?: string;
+  points_awarded?: number;
+  total_points_earned?: number;
+  current_points_balance?: number;
 }
 
 export interface RatioSnapshotRow {
@@ -248,8 +261,54 @@ export async function claimDailyCheckin() {
   return firstRow<DailyCheckinRow>(data);
 }
 
+export async function getRialoStakingStatus() {
+  const sessionToken = getLoginSessionToken();
+  if (!sessionToken) return null;
+
+  const { data, error } = await supabase.rpc("get_rialo_staking_status", {
+    requested_session_token: sessionToken
+  });
+  if (error) throw error;
+  return firstRow<RialoStakingRow>(data);
+}
+
+export async function stakeRialo(amount: number) {
+  const sessionToken = getLoginSessionToken();
+  if (!sessionToken) throw new Error("Login required.");
+
+  const { data, error } = await supabase.rpc("stake_rialo_with_login_session", {
+    requested_session_token: sessionToken,
+    requested_amount_rialo: amount
+  });
+  if (error) throw error;
+  return firstRow<RialoStakingRow>(data);
+}
+
+export async function unstakeRialo(amount: number) {
+  const sessionToken = getLoginSessionToken();
+  if (!sessionToken) throw new Error("Login required.");
+
+  const { data, error } = await supabase.rpc("unstake_rialo_with_login_session", {
+    requested_session_token: sessionToken,
+    requested_amount_rialo: amount
+  });
+  if (error) throw error;
+  return firstRow<RialoStakingRow>(data);
+}
+
+export async function claimRialoStakingPoints() {
+  const sessionToken = getLoginSessionToken();
+  if (!sessionToken) throw new Error("Login required.");
+
+  const { data, error } = await supabase.rpc("claim_rialo_staking_points", {
+    requested_session_token: sessionToken
+  });
+  if (error) throw error;
+  return firstRow<RialoStakingRow>(data);
+}
+
 const MIN_ODDS = 1.01;
-const MAX_ODDS = 99;
+const MAX_ODDS = 10;
 
 export async function getOrCreateMarketRatioSnapshot(
   marketId: string,
@@ -334,6 +393,7 @@ function buildOddsFromRecentResults(
   };
   const symbols = marketSymbols.length ? marketSymbols : inferMarketSymbols(results);
   const sampleCount = Math.max(1, results.length);
+  const smoothedSampleCount = sampleCount + Math.max(1, symbols.length);
 
   return Object.fromEntries(
     Object.entries(ratioPlaces).map(([place, field]) => {
@@ -350,7 +410,7 @@ function buildOddsFromRecentResults(
         Object.fromEntries(
           symbols.map((symbol) => {
             const count = counts.get(symbol) ?? 0;
-            const odds = count > 0 ? sampleCount / count : MAX_ODDS;
+            const odds = smoothedSampleCount / (count + 1);
             return [symbol, Number(clamp(odds, MIN_ODDS, MAX_ODDS).toFixed(2))];
           })
         )

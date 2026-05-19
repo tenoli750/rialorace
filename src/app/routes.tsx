@@ -1,5 +1,7 @@
 import { createBrowserRouter } from "react-router";
 import { Root } from "./components/Root";
+import { Landing } from "./pages/Landing";
+import { PrecisionLanding } from "./pages/PrecisionLanding";
 import { MainMenu } from "./pages/MainMenu";
 import { LiveMarket } from "./pages/LiveMarket";
 import { ReplayMenu } from "./pages/ReplayMenu";
@@ -11,11 +13,15 @@ import { Login } from "./pages/Login";
 import { Profile } from "./pages/Profile";
 
 export const router = createBrowserRouter([
+  { path: "/", Component: Landing },
+  { path: "/landing", Component: Landing },
+  { path: "/landing.html", Component: Landing },
+  { path: "/precision-landing", Component: PrecisionLanding },
+  { path: "/precision-landing.html", Component: PrecisionLanding },
   {
     path: "/",
     Component: Root,
     children: [
-      { index: true, Component: MainMenu },
       { path: "main-menu.html", Component: MainMenu },
       { path: "market/:marketId", Component: LiveMarket },
       { path: "market.html", Component: LiveMarket },
