@@ -6,7 +6,9 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "dev:stripe": "npm run build && node scripts/local-stripe-server.js"
+    "dev:stripe": "npm run build && node scripts/local-stripe-server.js",
+    "prices:worker": "node scripts/price-history-worker.js",
+    "prices:once": "node scripts/price-history-worker.js --once"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
