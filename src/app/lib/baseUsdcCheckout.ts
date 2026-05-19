@@ -119,7 +119,7 @@ export async function createBaseUsdcOrder(packageId: PointPackageId, walletAddre
   return readJsonResponse(response) as Promise<BaseUsdcOrder>;
 }
 
-export async function verifyBaseUsdcPayment(orderId: string, txHash: string) {
+export async function verifyBaseUsdcPayment(orderId: string, txHash?: string) {
   const sessionToken = getLoginSessionToken();
   if (!sessionToken) {
     throw new Error("Login required before verifying payment.");
@@ -133,7 +133,7 @@ export async function verifyBaseUsdcPayment(orderId: string, txHash: string) {
     body: JSON.stringify({
       sessionToken,
       orderId,
-      txHash
+      ...(txHash ? { txHash } : {})
     })
   });
 
@@ -144,7 +144,7 @@ export async function verifyBaseUsdcPayment(orderId: string, txHash: string) {
   return readJsonResponse(response) as Promise<BaseUsdcVerifyResult>;
 }
 
-export async function waitForBaseUsdcPayment(orderId: string, txHash: string) {
+export async function waitForBaseUsdcPayment(orderId: string, txHash?: string) {
   for (let attempt = 0; attempt < 30; attempt += 1) {
     const result = await verifyBaseUsdcPayment(orderId, txHash);
     if (result.status === "paid") return result;

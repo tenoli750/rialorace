@@ -339,8 +339,9 @@ export function Rewards() {
 
     try {
       setIsBaseUsdcPaying(true);
-      setBaseUsdcMessage("Verifying Base Sepolia transaction.");
-      const result = await waitForBaseUsdcPayment(baseUsdcOrder.orderId, baseUsdcTxHash);
+      const txHash = baseUsdcTxHash.trim();
+      setBaseUsdcMessage(txHash ? "Verifying Base Sepolia transaction." : "Checking Base Sepolia for your USDC transfer.");
+      const result = await waitForBaseUsdcPayment(baseUsdcOrder.orderId, txHash || undefined);
       await applyBaseUsdcPayment(result);
     } catch (error) {
       console.error("Base Sepolia USDC tx verification failed", error);
@@ -839,10 +840,10 @@ export function Rewards() {
                       <button
                         type="button"
                         onClick={() => void handleVerifyBaseUsdcTxHash()}
-                        disabled={isBaseUsdcPaying || !baseUsdcTxHash}
+                        disabled={isBaseUsdcPaying}
                         className="mt-3 w-full px-4 py-3 bg-[#ffedd5] text-[#9a3412] rounded-lg border border-[#fed7aa] hover:border-[#9a3412] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Verify Transaction
+                        {baseUsdcTxHash.trim() ? "Verify Transaction" : "Check Payment"}
                       </button>
                     </div>
                   </>
