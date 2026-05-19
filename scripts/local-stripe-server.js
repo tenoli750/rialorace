@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { createReadStream, existsSync, readFileSync } from "node:fs";
+import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -48,17 +48,25 @@ function enhanceResponse(res) {
   };
 }
 
+function isFile(filePath) {
+  try {
+    return existsSync(filePath) && statSync(filePath).isFile();
+  } catch {
+    return false;
+  }
+}
+
 function sendStatic(req, res) {
   const url = new URL(req.url || "/", `http://${req.headers.host || `${host}:${port}`}`);
   const pathname = decodeURIComponent(url.pathname);
   const normalizedPath = normalize(pathname).replace(/^(\.\.[/\\])+/, "");
   let filePath = join(distDir, normalizedPath);
 
-  if (pathname === "/" || pathname.endsWith(".html") || !existsSync(filePath)) {
+  if (pathname === "/" || !isFile(filePath)) {
     filePath = join(distDir, "index.html");
   }
 
-  if (!filePath.startsWith(distDir) || !existsSync(filePath)) {
+  if (!filePath.startsWith(distDir) || !isFile(filePath)) {
     res.statusCode = 404;
     res.end("Not found");
     return;
