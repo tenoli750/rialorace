@@ -160,8 +160,9 @@ function mapBetRow(row: BetRow): Bet {
   const market = getMarketById(row.market_id)?.name ?? row.market_id ?? "-";
   const isFinishTimeBet = row.bet_type === "finish_time";
   const finishThresholdSeconds = Number(row.finish_threshold_seconds ?? 58);
+  const finishSymbol = row.finish_time_symbol ?? "Race";
   const picks = isFinishTimeBet
-    ? `Finish: ${row.finish_time_pick === "over" ? `over ${finishThresholdSeconds}s` : `${finishThresholdSeconds}s or less`}`
+    ? `Finish: ${finishSymbol} ${row.finish_time_pick === "over" ? `over ${finishThresholdSeconds}s` : `${finishThresholdSeconds}s or less`}`
     : [
         row.first_pick ? `1st: ${row.first_pick}` : null,
         row.second_pick ? `2nd: ${row.second_pick}` : null,

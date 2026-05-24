@@ -1,7 +1,8 @@
 alter table public.bets
   add column if not exists bet_type text not null default 'podium',
   add column if not exists finish_threshold_seconds integer,
-  add column if not exists finish_time_pick text;
+  add column if not exists finish_time_pick text,
+  add column if not exists finish_time_symbol text;
 
 alter table public.bets
   drop constraint if exists bets_bet_type_check;
@@ -16,6 +17,54 @@ alter table public.bets
 alter table public.bets
   add constraint bets_finish_time_pick_check
   check (finish_time_pick is null or finish_time_pick in ('under', 'over'));
+
+alter table public.bets
+  drop constraint if exists bets_finish_time_symbol_check;
+
+alter table public.bets
+  add constraint bets_finish_time_symbol_check
+  check (finish_time_symbol is null or length(trim(finish_time_symbol)) > 0);
+
+create or replace function public.get_finish_time_duration_seconds(
+  compared_finish_elapsed_ms jsonb,
+  requested_finish_time_symbol text,
+  race_started_at timestamp with time zone,
+  race_finished_at timestamp with time zone
+)
+returns numeric
+language sql
+immutable
+set search_path to 'public'
+as $$
+  select coalesce(
+    nullif(compared_finish_elapsed_ms->>requested_finish_time_symbol, '')::numeric / 1000,
+    case
+      when race_finished_at is null or race_started_at is null then null
+      else extract(epoch from (race_finished_at - race_started_at))
+    end
+  );
+$$;
+
+create or replace function public.get_finish_time_payout_multiplier(
+  ratio_snapshot jsonb,
+  requested_finish_time_symbol text,
+  requested_finish_time_pick text,
+  requested_finish_threshold_seconds integer
+)
+returns numeric
+language sql
+immutable
+set search_path to 'public'
+as $$
+  select coalesce(
+    nullif(ratio_snapshot->'finishTime'->requested_finish_time_symbol->>(case when requested_finish_time_pick = 'under' then 'under' else 'over' end), '')::numeric,
+    nullif(ratio_snapshot->'finishTime'->requested_finish_time_symbol->>(case when requested_finish_time_pick = 'under' then concat('under', requested_finish_threshold_seconds::text) else concat('over', requested_finish_threshold_seconds::text) end), '')::numeric,
+    nullif(ratio_snapshot->'finishTime'->>(case when requested_finish_time_pick = 'under' then 'under' else 'over' end), '')::numeric,
+    nullif(ratio_snapshot->'finishTime'->>(case when requested_finish_time_pick = 'under' then concat('under', requested_finish_threshold_seconds::text) else concat('over', requested_finish_threshold_seconds::text) end), '')::numeric,
+    nullif(ratio_snapshot->'finishTime'->>(case when requested_finish_time_pick = 'under' then 'under60' else 'over60' end), '')::numeric,
+    2
+  );
+$$;
 
 create or replace function public.settle_bets_for_account(requested_account_id uuid)
 returns void
@@ -33,11 +82,16 @@ begin
         when coalesce(b.bet_type, 'podium') = 'finish_time' then
           case
             when (
-              mr.race_finished_at is not null and
               b.finish_threshold_seconds is not null and
               (
-                (b.finish_time_pick = 'under' and extract(epoch from (mr.race_finished_at - mr.race_started_at)) <= b.finish_threshold_seconds) or
-                (b.finish_time_pick = 'over' and extract(epoch from (mr.race_finished_at - mr.race_started_at)) > b.finish_threshold_seconds)
+                (
+                  b.finish_time_pick = 'under' and
+                  public.get_finish_time_duration_seconds(mr.compared_finish_elapsed_ms, b.finish_time_symbol, mr.race_started_at, mr.race_finished_at) <= b.finish_threshold_seconds
+                ) or
+                (
+                  b.finish_time_pick = 'over' and
+                  public.get_finish_time_duration_seconds(mr.compared_finish_elapsed_ms, b.finish_time_symbol, mr.race_started_at, mr.race_finished_at) > b.finish_threshold_seconds
+                )
               )
             ) then 1
             else 0
@@ -50,19 +104,24 @@ begin
     payout_points =
       case
         when coalesce(b.bet_type, 'podium') = 'finish_time' and
-          mr.race_finished_at is not null and
           b.finish_threshold_seconds is not null and
           (
-            (b.finish_time_pick = 'under' and extract(epoch from (mr.race_finished_at - mr.race_started_at)) <= b.finish_threshold_seconds) or
-            (b.finish_time_pick = 'over' and extract(epoch from (mr.race_finished_at - mr.race_started_at)) > b.finish_threshold_seconds)
+            (
+              b.finish_time_pick = 'under' and
+              public.get_finish_time_duration_seconds(mr.compared_finish_elapsed_ms, b.finish_time_symbol, mr.race_started_at, mr.race_finished_at) <= b.finish_threshold_seconds
+            ) or
+            (
+              b.finish_time_pick = 'over' and
+              public.get_finish_time_duration_seconds(mr.compared_finish_elapsed_ms, b.finish_time_symbol, mr.race_started_at, mr.race_finished_at) > b.finish_threshold_seconds
+            )
           )
           then round(
             b.stake_points::numeric *
-            coalesce(
-              nullif(b.ratio_snapshot->'finishTime'->>(case when b.finish_time_pick = 'under' then 'under' else 'over' end), '')::numeric,
-              nullif(b.ratio_snapshot->'finishTime'->>(case when b.finish_time_pick = 'under' then concat('under', b.finish_threshold_seconds::text) else concat('over', b.finish_threshold_seconds::text) end), '')::numeric,
-              nullif(b.ratio_snapshot->'finishTime'->>(case when b.finish_time_pick = 'under' then 'under60' else 'over60' end), '')::numeric,
-              2
+            public.get_finish_time_payout_multiplier(
+              b.ratio_snapshot,
+              b.finish_time_symbol,
+              b.finish_time_pick,
+              b.finish_threshold_seconds
             )
           )::integer
         when coalesce(b.bet_type, 'podium') = 'podium' and (
@@ -85,11 +144,16 @@ begin
     status =
       case
         when coalesce(b.bet_type, 'podium') = 'finish_time' and
-          mr.race_finished_at is not null and
           b.finish_threshold_seconds is not null and
           (
-            (b.finish_time_pick = 'under' and extract(epoch from (mr.race_finished_at - mr.race_started_at)) <= b.finish_threshold_seconds) or
-            (b.finish_time_pick = 'over' and extract(epoch from (mr.race_finished_at - mr.race_started_at)) > b.finish_threshold_seconds)
+            (
+              b.finish_time_pick = 'under' and
+              public.get_finish_time_duration_seconds(mr.compared_finish_elapsed_ms, b.finish_time_symbol, mr.race_started_at, mr.race_finished_at) <= b.finish_threshold_seconds
+            ) or
+            (
+              b.finish_time_pick = 'over' and
+              public.get_finish_time_duration_seconds(mr.compared_finish_elapsed_ms, b.finish_time_symbol, mr.race_started_at, mr.race_finished_at) > b.finish_threshold_seconds
+            )
           )
           then 'won'
         when coalesce(b.bet_type, 'podium') = 'podium' and (
@@ -161,6 +225,21 @@ drop function if exists public.create_bet_with_login_session(
   text
 );
 
+drop function if exists public.create_bet_with_login_session(
+  text,
+  integer,
+  text,
+  text,
+  text,
+  jsonb,
+  text,
+  timestamp with time zone,
+  text,
+  integer,
+  text,
+  text
+);
+
 create or replace function public.create_bet_with_login_session(
   requested_session_token text,
   requested_stake_points integer,
@@ -172,7 +251,8 @@ create or replace function public.create_bet_with_login_session(
   requested_target_race_started_at timestamp with time zone default null::timestamp with time zone,
   requested_bet_type text default 'podium'::text,
   requested_finish_threshold_seconds integer default null::integer,
-  requested_finish_time_pick text default null::text
+  requested_finish_time_pick text default null::text,
+  requested_finish_time_symbol text default null::text
 ) returns table(bet_id uuid, points_balance integer)
 language plpgsql
 security definer
@@ -182,6 +262,7 @@ declare
   account_row record;
   clean_bet_type text;
   clean_finish_time_pick text;
+  clean_finish_time_symbol text;
   clean_finish_threshold_seconds integer;
   new_bet_id uuid;
   new_balance integer;
@@ -212,6 +293,7 @@ begin
   end if;
 
   clean_finish_time_pick := nullif(trim(coalesce(requested_finish_time_pick, '')), '');
+  clean_finish_time_symbol := upper(nullif(trim(coalesce(requested_finish_time_symbol, '')), ''));
   clean_finish_threshold_seconds := requested_finish_threshold_seconds;
   if clean_bet_type = 'finish_time' then
     if clean_finish_threshold_seconds is null or clean_finish_threshold_seconds <= 0 then
@@ -220,8 +302,12 @@ begin
     if clean_finish_time_pick not in ('under', 'over') then
       raise exception 'Finish time pick is required.';
     end if;
+    if clean_finish_time_symbol is null then
+      raise exception 'Finish time symbol is required.';
+    end if;
   else
     clean_finish_time_pick := null;
+    clean_finish_time_symbol := null;
     clean_finish_threshold_seconds := null;
   end if;
 
@@ -247,7 +333,8 @@ begin
     ratio_snapshot,
     bet_type,
     finish_threshold_seconds,
-    finish_time_pick
+    finish_time_pick,
+    finish_time_symbol
   )
   values (
     account_row.account_id,
@@ -260,7 +347,8 @@ begin
     coalesce(requested_ratio_snapshot, '{}'::jsonb),
     clean_bet_type,
     clean_finish_threshold_seconds,
-    clean_finish_time_pick
+    clean_finish_time_pick,
+    clean_finish_time_symbol
   )
   returning id into new_bet_id;
 
@@ -288,6 +376,7 @@ returns table (
   third_pick text,
   finish_threshold_seconds integer,
   finish_time_pick text,
+  finish_time_symbol text,
   status text,
   payout_points integer,
   matched_places integer,
@@ -329,6 +418,7 @@ begin
     b.third_pick,
     b.finish_threshold_seconds,
     b.finish_time_pick,
+    b.finish_time_symbol,
     b.status,
     b.payout_points,
     b.matched_places,
@@ -336,6 +426,9 @@ begin
     b.created_at,
     r.race_finished_at,
     case
+      when r.race_started_at is null then null
+      when coalesce(b.bet_type, 'podium') = 'finish_time' then
+        public.get_finish_time_duration_seconds(r.compared_finish_elapsed_ms, b.finish_time_symbol, r.race_started_at, r.race_finished_at)
       when r.race_finished_at is null then null
       else extract(epoch from (r.race_finished_at - r.race_started_at))
     end,
@@ -368,6 +461,7 @@ returns table (
   third_pick text,
   finish_threshold_seconds integer,
   finish_time_pick text,
+  finish_time_symbol text,
   status text,
   payout_points integer,
   matched_places integer,
@@ -392,6 +486,8 @@ as $$
   order by b.created_at desc;
 $$;
 
+grant execute on function public.get_finish_time_duration_seconds(jsonb, text, timestamp with time zone, timestamp with time zone) to anon, authenticated, service_role;
+grant execute on function public.get_finish_time_payout_multiplier(jsonb, text, text, integer) to anon, authenticated, service_role;
 grant execute on function public.settle_bets_for_account(uuid) to anon, authenticated, service_role;
 grant execute on function public.create_bet_with_login_session(
   text,
@@ -404,6 +500,7 @@ grant execute on function public.create_bet_with_login_session(
   timestamp with time zone,
   text,
   integer,
+  text,
   text
 ) to anon, authenticated, service_role;
 grant execute on function public.list_bets_with_login_session(text) to anon, authenticated, service_role;

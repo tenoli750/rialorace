@@ -18,6 +18,7 @@ import {
 type RaceState = "waiting" | "racing" | "finished";
 type BetHistoryTab = "now" | "next" | "past" | "chat";
 type FinishTimePick = "under" | "over";
+type FinishTimeSelection = { symbol: string; pick: FinishTimePick };
 const RACE_INTERVAL_MS = 5 * 60 * 1000;
 const FINISH_TIME_THRESHOLD_SECONDS = 58;
 const FINISH_TIME_RATIOS = { under: 2, over: 2 };
@@ -59,7 +60,7 @@ export function LiveMarket() {
   const [firstPick, setFirstPick] = useState<string | null>(null);
   const [secondPick, setSecondPick] = useState<string | null>(null);
   const [thirdPick, setThirdPick] = useState<string | null>(null);
-  const [finishTimePick, setFinishTimePick] = useState<FinishTimePick | null>(null);
+  const [finishTimeSelection, setFinishTimeSelection] = useState<FinishTimeSelection | null>(null);
   const [stake, setStake] = useState(100);
   const [standings, setStandings] = useState<string[]>([]);
   const [historyBets, setHistoryBets] = useState<BetRow[]>([]);
@@ -68,7 +69,7 @@ export function LiveMarket() {
   const [chatInput, setChatInput] = useState("");
   const [chatStatus, setChatStatus] = useState("");
   const [betSlipStatus, setBetSlipStatus] = useState("");
-  const [ratios, setRatios] = useState<Record<string, Record<string, number>>>({});
+  const [ratios, setRatios] = useState<Record<string, any>>({});
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const chatListRef = useRef<HTMLDivElement | null>(null);
   const [consoleHeight, setConsoleHeight] = useState<number | null>(null);
@@ -220,8 +221,8 @@ export function LiveMarket() {
   const handlePlaceBet = async (e: React.FormEvent) => {
     e.preventDefault();
     const selectedPicks = [firstPick, secondPick, thirdPick];
-    const isFinishTimeBet = Boolean(finishTimePick);
-    const ratioSnapshot = isFinishTimeBet ? { ...ratios, finishTime: getFinishTimeRatios(ratios) } : ratios;
+    const isFinishTimeBet = Boolean(finishTimeSelection);
+    const ratioSnapshot = isFinishTimeBet ? { ...ratios, finishTime: ratios.finishTime ?? {} } : ratios;
     setBetSlipStatus("");
     if (!user) {
       setBetSlipStatus("Login to place bets.");
@@ -248,8 +249,12 @@ export function LiveMarket() {
               second: tokenSymbolFromLetter(secondPick),
               third: tokenSymbolFromLetter(thirdPick)
             },
-        finishTime: isFinishTimeBet && finishTimePick
-          ? { thresholdSeconds: FINISH_TIME_THRESHOLD_SECONDS, pick: finishTimePick }
+        finishTime: isFinishTimeBet && finishTimeSelection
+          ? {
+              thresholdSeconds: FINISH_TIME_THRESHOLD_SECONDS,
+              pick: finishTimeSelection.pick,
+              symbol: finishTimeSelection.symbol
+            }
           : null,
         ratios: ratioSnapshot
       });
@@ -393,12 +398,12 @@ export function LiveMarket() {
             <h2 className="text-lg text-[#9a3412] mt-1">Choose podium or finish time</h2>
           </div>
           <span className="px-3 py-1 bg-[#ffedd5] text-xs text-[#9a3412] rounded-md">
-            {finishTimePick ? "Time pick" : `${[firstPick, secondPick, thirdPick].filter(Boolean).length}/3 picks`}
+            {finishTimeSelection ? `${finishTimeSelection.symbol} time` : `${[firstPick, secondPick, thirdPick].filter(Boolean).length}/3 picks`}
           </span>
         </div>
 
         <form onSubmit={handlePlaceBet}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             {/* First Place */}
             <div>
               <div className="text-sm text-[#9a3412] mb-2">First Place</div>
@@ -408,7 +413,7 @@ export function LiveMarket() {
                     key={token!.id}
                     type="button"
                     onClick={() => {
-                      setFinishTimePick(null);
+                      setFinishTimeSelection(null);
                       setFirstPick((current) => current === token!.letter ? null : token!.letter);
                     }}
                     className={`p-2 rounded border text-sm transition-all ${
@@ -440,7 +445,7 @@ export function LiveMarket() {
                     key={token!.id}
                     type="button"
                     onClick={() => {
-                      setFinishTimePick(null);
+                      setFinishTimeSelection(null);
                       setSecondPick((current) => current === token!.letter ? null : token!.letter);
                     }}
                     className={`p-2 rounded border text-sm transition-all ${
@@ -472,7 +477,7 @@ export function LiveMarket() {
                     key={token!.id}
                     type="button"
                     onClick={() => {
-                      setFinishTimePick(null);
+                      setFinishTimeSelection(null);
                       setThirdPick((current) => current === token!.letter ? null : token!.letter);
                     }}
                     className={`p-2 rounded border text-sm transition-all ${
@@ -494,36 +499,50 @@ export function LiveMarket() {
                 ))}
               </div>
             </div>
+          </div>
 
-            {/* Finish Time */}
-            <div>
-              <div className="text-sm text-[#9a3412] mb-2">Finish Time</div>
-              <div className="grid grid-cols-1 gap-2">
-                {(["under", "over"] as FinishTimePick[]).map((pick) => (
-                  <button
-                    key={pick}
-                    type="button"
-                    onClick={() => {
-                      setFirstPick(null);
-                      setSecondPick(null);
-                      setThirdPick(null);
-                      setFinishTimePick((current) => current === pick ? null : pick);
-                    }}
-                    className={`p-3 rounded border text-sm transition-all ${
-                      finishTimePick === pick
-                        ? "bg-[#9a3412] text-white border-[#9a3412]"
-                        : "bg-[#fff7ed] text-[#9a3412] border-[#fed7aa] hover:border-[#9a3412]"
-                    }`}
-                  >
-                    <span className="flex w-full items-center justify-between gap-3">
-                      <span>{getFinishTimeBetLabel(pick)}</span>
-                      <span className={finishTimePick === pick ? "shrink-0 text-xs text-white/80" : "shrink-0 text-xs text-[#8a5a44]"}>
-                        {formatRatio(getFinishTimeRatio(ratios, pick))}
-                      </span>
-                    </span>
-                  </button>
-                ))}
-              </div>
+          <div className="mb-6">
+            <div className="text-sm text-[#9a3412] mb-2">Finish Time by Token</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              {tokens.map((token) => (
+                <div key={token!.id} className="rounded border border-[#fed7aa] bg-[#fff7ed] p-3">
+                  <div className="mb-3 flex items-center gap-2 text-sm text-[#9a3412]">
+                    <img src={token!.image} alt="" className="w-6 h-6 rounded-full object-contain bg-white" />
+                    <span>{token!.symbol}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["under", "over"] as FinishTimePick[]).map((pick) => {
+                      const selected = isFinishTimeSelectionSelected(finishTimeSelection, token!.symbol, pick);
+                      return (
+                        <button
+                          key={`${token!.symbol}-${pick}`}
+                          type="button"
+                          onClick={() => {
+                            setFirstPick(null);
+                            setSecondPick(null);
+                            setThirdPick(null);
+                            setFinishTimeSelection((current) =>
+                              isFinishTimeSelectionSelected(current, token!.symbol, pick) ? null : { symbol: token!.symbol, pick }
+                            );
+                          }}
+                          className={`p-2 rounded border text-xs transition-all ${
+                            selected
+                              ? "bg-[#9a3412] text-white border-[#9a3412]"
+                              : "bg-white text-[#9a3412] border-[#fed7aa] hover:border-[#9a3412]"
+                          }`}
+                        >
+                          <span className="flex flex-col items-start gap-1">
+                            <span>{getFinishTimeBetLabel(pick)}</span>
+                            <span className={selected ? "text-white/80" : "text-[#8a5a44]"}>
+                              {formatRatio(getFinishTimeRatio(ratios, token!.symbol, pick))}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -543,16 +562,16 @@ export function LiveMarket() {
             <button
               type="submit"
               className="px-6 py-2 bg-[#9a3412] text-white rounded hover:bg-[#c2410c] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!finishTimePick && ![firstPick, secondPick, thirdPick].some(Boolean)}
+              disabled={!finishTimeSelection && ![firstPick, secondPick, thirdPick].some(Boolean)}
             >
               Place Bet
             </button>
           </div>
 
-          {(finishTimePick || [firstPick, secondPick, thirdPick].some(Boolean) || betSlipStatus) && (
+          {(finishTimeSelection || [firstPick, secondPick, thirdPick].some(Boolean) || betSlipStatus) && (
             <div className="mt-4 p-3 bg-[#ffedd5] rounded text-sm text-[#9a3412]">
-              {finishTimePick
-                ? `${getFinishTimeBetLabel(finishTimePick)} bet. Potential win ${getFinishTimePotentialWin(stake, ratios, finishTimePick).toLocaleString()} pts.`
+              {finishTimeSelection
+                ? `${finishTimeSelection.symbol} ${getFinishTimeBetLabel(finishTimeSelection.pick)} bet. Potential win ${getFinishTimePotentialWin(stake, ratios, finishTimeSelection.symbol, finishTimeSelection.pick).toLocaleString()} pts.`
                 : [firstPick, secondPick, thirdPick].some(Boolean)
                   ? `${getBetTypeLabel([firstPick, secondPick, thirdPick])} bet. Potential win ${getPotentialWin(stake, ratios, firstPick, secondPick, thirdPick).toLocaleString()} pts.`
                   : "Select a pick to see potential win."}
@@ -580,7 +599,8 @@ function tokenSymbolFromLetter(letter: string | null) {
 function formatBetPicks(row: BetRow) {
   if (row.bet_type === "finish_time") {
     const threshold = Number(row.finish_threshold_seconds ?? FINISH_TIME_THRESHOLD_SECONDS);
-    return `Finish: ${row.finish_time_pick === "over" ? `over ${threshold}s` : `${threshold}s or less`}`;
+    const symbol = row.finish_time_symbol ?? "Race";
+    return `Finish: ${symbol} ${row.finish_time_pick === "over" ? `over ${threshold}s` : `${threshold}s or less`}`;
   }
 
   return [
@@ -663,18 +683,19 @@ function getPotentialWin(
   return Math.round(Number(stake || 0) * multiplier);
 }
 
-function getFinishTimeRatios(ratios: Record<string, Record<string, number>>) {
+function getFinishTimeRatios(ratios: Record<string, any>, symbol: string) {
   const finishTime = ratios.finishTime ?? {};
+  const tokenFinishTime = finishTime[symbol] ?? {};
   const thresholdKey = String(FINISH_TIME_THRESHOLD_SECONDS).replace(".", "_");
 
   return {
-    under: Number(finishTime.under ?? finishTime[`under${thresholdKey}`] ?? finishTime.under60 ?? FINISH_TIME_RATIOS.under),
-    over: Number(finishTime.over ?? finishTime[`over${thresholdKey}`] ?? finishTime.over60 ?? FINISH_TIME_RATIOS.over)
+    under: Number(tokenFinishTime.under ?? tokenFinishTime[`under${thresholdKey}`] ?? finishTime.under ?? finishTime.under60 ?? FINISH_TIME_RATIOS.under),
+    over: Number(tokenFinishTime.over ?? tokenFinishTime[`over${thresholdKey}`] ?? finishTime.over ?? finishTime.over60 ?? FINISH_TIME_RATIOS.over)
   };
 }
 
-function getFinishTimeRatio(ratios: Record<string, Record<string, number>>, pick: FinishTimePick) {
-  const finishTimeRatios = getFinishTimeRatios(ratios);
+function getFinishTimeRatio(ratios: Record<string, any>, symbol: string, pick: FinishTimePick) {
+  const finishTimeRatios = getFinishTimeRatios(ratios, symbol);
   return pick === "under" ? finishTimeRatios.under : finishTimeRatios.over;
 }
 
@@ -682,11 +703,15 @@ function getFinishTimeBetLabel(pick: FinishTimePick) {
   return pick === "under" ? `${FINISH_TIME_THRESHOLD_SECONDS}s or less` : `Over ${FINISH_TIME_THRESHOLD_SECONDS}s`;
 }
 
-function getFinishTimePotentialWin(stake: number, ratios: Record<string, Record<string, number>>, pick: FinishTimePick) {
-  return Math.round(Number(stake || 0) * getFinishTimeRatio(ratios, pick));
+function getFinishTimePotentialWin(stake: number, ratios: Record<string, any>, symbol: string, pick: FinishTimePick) {
+  return Math.round(Number(stake || 0) * getFinishTimeRatio(ratios, symbol, pick));
 }
 
-function getTokenRatio(ratios: Record<string, Record<string, number>>, place: string, symbol: string) {
+function isFinishTimeSelectionSelected(selection: FinishTimeSelection | null, symbol: string, pick: FinishTimePick) {
+  return selection?.symbol === symbol && selection.pick === pick;
+}
+
+function getTokenRatio(ratios: Record<string, any>, place: string, symbol: string) {
   return Number(ratios?.[place]?.[symbol] ?? 1);
 }
 

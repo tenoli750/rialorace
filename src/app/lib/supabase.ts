@@ -23,6 +23,7 @@ export interface BetRow {
   third_pick: string | null;
   finish_threshold_seconds?: number | null;
   finish_time_pick?: "under" | "over" | string | null;
+  finish_time_symbol?: string | null;
   status: "placed" | "won" | "lost" | string;
   payout_points: number;
   matched_places: number;
@@ -68,7 +69,7 @@ export interface RialoStakingRow {
 export interface RatioSnapshotRow {
   market_id: string;
   target_race_started_at: string;
-  ratio_snapshot: Record<string, Record<string, number>>;
+  ratio_snapshot: Record<string, any>;
   sample_count: number;
 }
 
@@ -219,8 +220,8 @@ export async function createBetRecord(params: {
   stake: number;
   betType?: "podium" | "finish_time";
   placements: { first?: string | null; second?: string | null; third?: string | null };
-  finishTime?: { thresholdSeconds: number; pick: "under" | "over" } | null;
-  ratios: Record<string, Record<string, number>>;
+  finishTime?: { thresholdSeconds: number; pick: "under" | "over"; symbol?: string | null } | null;
+  ratios: Record<string, any>;
 }) {
   const sessionToken = getLoginSessionToken();
   if (!sessionToken) throw new Error("Login required before placing a bet.");
@@ -236,7 +237,8 @@ export async function createBetRecord(params: {
     requested_target_race_started_at: params.targetRaceStartedAt,
     requested_bet_type: params.betType ?? "podium",
     requested_finish_threshold_seconds: params.finishTime?.thresholdSeconds ?? null,
-    requested_finish_time_pick: params.finishTime?.pick ?? null
+    requested_finish_time_pick: params.finishTime?.pick ?? null,
+    requested_finish_time_symbol: params.finishTime?.symbol ?? null
   });
   if (error) throw error;
   return firstRow<any>(data);
@@ -326,7 +328,7 @@ export async function getOrCreateMarketRatioSnapshot(
   marketSymbols: string[] = []
 ) {
   const savedSnapshot = await fetchMarketRatioSnapshot(marketId, targetRaceStartedAt);
-  if (savedSnapshot && hasFinishTimeRatios(savedSnapshot.ratio_snapshot)) {
+  if (savedSnapshot && hasFinishTimeRatios(savedSnapshot.ratio_snapshot, marketSymbols)) {
     return savedSnapshot;
   }
 
@@ -337,7 +339,7 @@ export async function getOrCreateMarketRatioSnapshot(
   });
   if (!error) {
     const rpcSnapshot = firstRow<RatioSnapshotRow>(data);
-    if (rpcSnapshot && hasFinishTimeRatios(rpcSnapshot.ratio_snapshot)) {
+    if (rpcSnapshot && hasFinishTimeRatios(rpcSnapshot.ratio_snapshot, marketSymbols)) {
       return rpcSnapshot;
     }
   }
@@ -364,7 +366,7 @@ async function buildAndSaveMarketRatioSnapshot(
 ) {
   const { data, error } = await supabase
     .from("market_results_v2")
-    .select("first_place, second_place, third_place, fourth_place, race_started_at, race_finished_at")
+    .select("first_place, second_place, third_place, fourth_place, race_started_at, race_finished_at, compared_finish_elapsed_ms")
     .eq("market_id", marketId)
     .order("race_started_at", { ascending: false })
     .limit(100);
@@ -395,7 +397,7 @@ async function buildAndSaveMarketRatioSnapshot(
 }
 
 function buildOddsFromRecentResults(
-  results: Array<Record<string, string | null>>,
+  results: Array<Record<string, any>>,
   marketSymbols: string[]
 ) {
   const ratioPlaces = {
@@ -433,42 +435,65 @@ function buildOddsFromRecentResults(
 
   return {
     ...placeOdds,
-    finishTime: buildFinishTimeOdds(results)
+    finishTime: buildFinishTimeOdds(results, symbols)
   };
 }
 
-function buildFinishTimeOdds(results: Array<Record<string, string | null>>) {
-  const durations = results
-    .map((result) => getFinishDurationSeconds(result.race_started_at, result.race_finished_at))
-    .filter((duration): duration is number => Number.isFinite(duration));
-  const sampleCount = Math.max(1, durations.length);
-  const underCount = durations.filter((duration) => duration <= FINISH_TIME_THRESHOLD_SECONDS).length;
-  const overCount = durations.length - underCount;
-  const smoothedSampleCount = sampleCount + 2;
-  const underOdds = smoothedSampleCount / (underCount + 1);
-  const overOdds = smoothedSampleCount / (overCount + 1);
-
-  return {
-    thresholdSeconds: FINISH_TIME_THRESHOLD_SECONDS,
-    under: Number(clamp(underOdds, MIN_ODDS, MAX_ODDS).toFixed(2)),
-    over: Number(clamp(overOdds, MIN_ODDS, MAX_ODDS).toFixed(2)),
-    under58: Number(clamp(underOdds, MIN_ODDS, MAX_ODDS).toFixed(2)),
-    over58: Number(clamp(overOdds, MIN_ODDS, MAX_ODDS).toFixed(2))
+function buildFinishTimeOdds(results: Array<Record<string, any>>, marketSymbols: string[]) {
+  const thresholdKey = String(FINISH_TIME_THRESHOLD_SECONDS).replace(".", "_");
+  const finishTimeOdds: Record<string, any> = {
+    thresholdSeconds: FINISH_TIME_THRESHOLD_SECONDS
   };
+
+  for (const symbol of marketSymbols) {
+    const durations = results
+      .map((result) => getTokenFinishDurationSeconds(result.compared_finish_elapsed_ms, symbol))
+      .filter((duration): duration is number => Number.isFinite(duration));
+    const sampleCount = Math.max(1, durations.length);
+    const underCount = durations.filter((duration) => duration <= FINISH_TIME_THRESHOLD_SECONDS).length;
+    const overCount = durations.length - underCount;
+    const smoothedSampleCount = sampleCount + 2;
+    const underOdds = Number(clamp(smoothedSampleCount / (underCount + 1), MIN_ODDS, MAX_ODDS).toFixed(2));
+    const overOdds = Number(clamp(smoothedSampleCount / (overCount + 1), MIN_ODDS, MAX_ODDS).toFixed(2));
+
+    finishTimeOdds[symbol] = {
+      under: underOdds,
+      over: overOdds,
+      [`under${thresholdKey}`]: underOdds,
+      [`over${thresholdKey}`]: overOdds,
+      sampleCount: durations.length,
+      underCount,
+      overCount
+    };
+  }
+
+  return finishTimeOdds;
 }
 
-function getFinishDurationSeconds(startedAt: string | null | undefined, finishedAt: string | null | undefined) {
-  if (!startedAt || !finishedAt) return Number.NaN;
-  const duration = (new Date(finishedAt).getTime() - new Date(startedAt).getTime()) / 1000;
-  return duration > 0 ? duration : Number.NaN;
+function getTokenFinishDurationSeconds(comparedFinishElapsedMs: any, symbol: string) {
+  const elapsedMs = Number(comparedFinishElapsedMs?.[symbol]);
+  return elapsedMs > 0 ? elapsedMs / 1000 : Number.NaN;
 }
 
-function hasFinishTimeRatios(ratioSnapshot: Record<string, Record<string, number>> | null | undefined) {
+function hasFinishTimeRatios(ratioSnapshot: Record<string, any> | null | undefined, marketSymbols: string[] = []) {
   const finishTime = ratioSnapshot?.finishTime;
-  return Number.isFinite(Number(finishTime?.under)) && Number.isFinite(Number(finishTime?.over));
+  if (!finishTime) return false;
+  if (!marketSymbols.length) {
+    return Object.values(finishTime).some((entry) =>
+      typeof entry === "object" &&
+      entry !== null &&
+      Number.isFinite(Number((entry as Record<string, unknown>).under)) &&
+      Number.isFinite(Number((entry as Record<string, unknown>).over))
+    );
+  }
+
+  return marketSymbols.every((symbol) =>
+    Number.isFinite(Number(finishTime[symbol]?.under)) &&
+    Number.isFinite(Number(finishTime[symbol]?.over))
+  );
 }
 
-function inferMarketSymbols(results: Array<Record<string, string | null>>) {
+function inferMarketSymbols(results: Array<Record<string, any>>) {
   return Array.from(
     new Set(
       results.flatMap((result) => [
