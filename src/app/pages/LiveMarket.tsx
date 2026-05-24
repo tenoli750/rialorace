@@ -17,7 +17,10 @@ import {
 
 type RaceState = "waiting" | "racing" | "finished";
 type BetHistoryTab = "now" | "next" | "past" | "chat";
+type FinishTimePick = "under" | "over";
 const RACE_INTERVAL_MS = 5 * 60 * 1000;
+const FINISH_TIME_THRESHOLD_SECONDS = 60;
+const FINISH_TIME_RATIOS = { under60: 2, over60: 2 };
 
 function normalizeMarketId(value: string | null | undefined) {
   if (!value) return undefined;
@@ -56,6 +59,7 @@ export function LiveMarket() {
   const [firstPick, setFirstPick] = useState<string | null>(null);
   const [secondPick, setSecondPick] = useState<string | null>(null);
   const [thirdPick, setThirdPick] = useState<string | null>(null);
+  const [finishTimePick, setFinishTimePick] = useState<FinishTimePick | null>(null);
   const [stake, setStake] = useState(100);
   const [standings, setStandings] = useState<string[]>([]);
   const [historyBets, setHistoryBets] = useState<BetRow[]>([]);
@@ -216,13 +220,15 @@ export function LiveMarket() {
   const handlePlaceBet = async (e: React.FormEvent) => {
     e.preventDefault();
     const selectedPicks = [firstPick, secondPick, thirdPick];
+    const isFinishTimeBet = Boolean(finishTimePick);
+    const ratioSnapshot = isFinishTimeBet ? { ...ratios, finishTime: getFinishTimeRatios(ratios) } : ratios;
     setBetSlipStatus("");
     if (!user) {
       setBetSlipStatus("Login to place bets.");
       return;
     }
-    if (!selectedPicks.some(Boolean)) {
-      setBetSlipStatus("Select at least one position.");
+    if (!isFinishTimeBet && !selectedPicks.some(Boolean)) {
+      setBetSlipStatus("Select at least one position or a finish time.");
       return;
     }
     if (stake > points) {
@@ -234,12 +240,18 @@ export function LiveMarket() {
         marketId: market.id,
         targetRaceStartedAt: nextRaceStartedAt,
         stake,
-        placements: {
-          first: tokenSymbolFromLetter(firstPick),
-          second: tokenSymbolFromLetter(secondPick),
-          third: tokenSymbolFromLetter(thirdPick)
-        },
-        ratios
+        betType: isFinishTimeBet ? "finish_time" : "podium",
+        placements: isFinishTimeBet
+          ? { first: null, second: null, third: null }
+          : {
+              first: tokenSymbolFromLetter(firstPick),
+              second: tokenSymbolFromLetter(secondPick),
+              third: tokenSymbolFromLetter(thirdPick)
+            },
+        finishTime: isFinishTimeBet && finishTimePick
+          ? { thresholdSeconds: FINISH_TIME_THRESHOLD_SECONDS, pick: finishTimePick }
+          : null,
+        ratios: ratioSnapshot
       });
       if (Number.isFinite(Number(row?.points_balance))) {
         setPointsBalance(Number(row.points_balance));
@@ -378,15 +390,15 @@ export function LiveMarket() {
             <span className="text-xs text-[#8a5a44] uppercase tracking-wide">
               BET SLIP ({formatKstTime(nextRaceStartedAt)})
             </span>
-            <h2 className="text-lg text-[#9a3412] mt-1">Choose first, second, third</h2>
+            <h2 className="text-lg text-[#9a3412] mt-1">Choose podium or finish time</h2>
           </div>
           <span className="px-3 py-1 bg-[#ffedd5] text-xs text-[#9a3412] rounded-md">
-            {[firstPick, secondPick, thirdPick].filter(Boolean).length}/3 picks
+            {finishTimePick ? "Time pick" : `${[firstPick, secondPick, thirdPick].filter(Boolean).length}/3 picks`}
           </span>
         </div>
 
         <form onSubmit={handlePlaceBet}>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             {/* First Place */}
             <div>
               <div className="text-sm text-[#9a3412] mb-2">First Place</div>
@@ -395,7 +407,10 @@ export function LiveMarket() {
                   <button
                     key={token!.id}
                     type="button"
-                    onClick={() => setFirstPick((current) => current === token!.letter ? null : token!.letter)}
+                    onClick={() => {
+                      setFinishTimePick(null);
+                      setFirstPick((current) => current === token!.letter ? null : token!.letter);
+                    }}
                     className={`p-2 rounded border text-sm transition-all ${
                       firstPick === token!.letter
                         ? "bg-[#9a3412] text-white border-[#9a3412]"
@@ -424,7 +439,10 @@ export function LiveMarket() {
                   <button
                     key={token!.id}
                     type="button"
-                    onClick={() => setSecondPick((current) => current === token!.letter ? null : token!.letter)}
+                    onClick={() => {
+                      setFinishTimePick(null);
+                      setSecondPick((current) => current === token!.letter ? null : token!.letter);
+                    }}
                     className={`p-2 rounded border text-sm transition-all ${
                       secondPick === token!.letter
                         ? "bg-[#9a3412] text-white border-[#9a3412]"
@@ -453,7 +471,10 @@ export function LiveMarket() {
                   <button
                     key={token!.id}
                     type="button"
-                    onClick={() => setThirdPick((current) => current === token!.letter ? null : token!.letter)}
+                    onClick={() => {
+                      setFinishTimePick(null);
+                      setThirdPick((current) => current === token!.letter ? null : token!.letter);
+                    }}
                     className={`p-2 rounded border text-sm transition-all ${
                       thirdPick === token!.letter
                         ? "bg-[#9a3412] text-white border-[#9a3412]"
@@ -467,6 +488,37 @@ export function LiveMarket() {
                       </span>
                       <span className={thirdPick === token!.letter ? "shrink-0 text-xs text-white/80" : "shrink-0 text-xs text-[#8a5a44]"}>
                         {formatRatio(getTokenRatio(ratios, "third", token!.symbol))}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Finish Time */}
+            <div>
+              <div className="text-sm text-[#9a3412] mb-2">Finish Time</div>
+              <div className="grid grid-cols-1 gap-2">
+                {(["under", "over"] as FinishTimePick[]).map((pick) => (
+                  <button
+                    key={pick}
+                    type="button"
+                    onClick={() => {
+                      setFirstPick(null);
+                      setSecondPick(null);
+                      setThirdPick(null);
+                      setFinishTimePick((current) => current === pick ? null : pick);
+                    }}
+                    className={`p-3 rounded border text-sm transition-all ${
+                      finishTimePick === pick
+                        ? "bg-[#9a3412] text-white border-[#9a3412]"
+                        : "bg-[#fff7ed] text-[#9a3412] border-[#fed7aa] hover:border-[#9a3412]"
+                    }`}
+                  >
+                    <span className="flex w-full items-center justify-between gap-3">
+                      <span>{getFinishTimeBetLabel(pick)}</span>
+                      <span className={finishTimePick === pick ? "shrink-0 text-xs text-white/80" : "shrink-0 text-xs text-[#8a5a44]"}>
+                        {formatRatio(getFinishTimeRatio(ratios, pick))}
                       </span>
                     </span>
                   </button>
@@ -491,17 +543,19 @@ export function LiveMarket() {
             <button
               type="submit"
               className="px-6 py-2 bg-[#9a3412] text-white rounded hover:bg-[#c2410c] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={![firstPick, secondPick, thirdPick].some(Boolean)}
+              disabled={!finishTimePick && ![firstPick, secondPick, thirdPick].some(Boolean)}
             >
               Place Bet
             </button>
           </div>
 
-          {([firstPick, secondPick, thirdPick].some(Boolean) || betSlipStatus) && (
+          {(finishTimePick || [firstPick, secondPick, thirdPick].some(Boolean) || betSlipStatus) && (
             <div className="mt-4 p-3 bg-[#ffedd5] rounded text-sm text-[#9a3412]">
-              {[firstPick, secondPick, thirdPick].some(Boolean)
-                ? `${getBetTypeLabel([firstPick, secondPick, thirdPick])} bet. Potential win ${getPotentialWin(stake, ratios, firstPick, secondPick, thirdPick).toLocaleString()} pts.`
-                : "Select a pick to see potential win."}
+              {finishTimePick
+                ? `${getFinishTimeBetLabel(finishTimePick)} bet. Potential win ${getFinishTimePotentialWin(stake, ratios, finishTimePick).toLocaleString()} pts.`
+                : [firstPick, secondPick, thirdPick].some(Boolean)
+                  ? `${getBetTypeLabel([firstPick, secondPick, thirdPick])} bet. Potential win ${getPotentialWin(stake, ratios, firstPick, secondPick, thirdPick).toLocaleString()} pts.`
+                  : "Select a pick to see potential win."}
               {betSlipStatus && <span className="ml-2 font-semibold">{betSlipStatus}</span>}
             </div>
           )}
@@ -524,6 +578,11 @@ function tokenSymbolFromLetter(letter: string | null) {
 }
 
 function formatBetPicks(row: BetRow) {
+  if (row.bet_type === "finish_time") {
+    const threshold = Number(row.finish_threshold_seconds ?? FINISH_TIME_THRESHOLD_SECONDS);
+    return `Finish: ${row.finish_time_pick === "over" ? `${threshold}s or more` : `under ${threshold}s`}`;
+  }
+
   return [
     row.first_pick ? `1st: ${row.first_pick}` : null,
     row.second_pick ? `2nd: ${row.second_pick}` : null,
@@ -602,6 +661,26 @@ function getPotentialWin(
     (second ? Number(ratios.second?.[second] ?? 1) : 1) *
     (third ? Number(ratios.third?.[third] ?? 1) : 1);
   return Math.round(Number(stake || 0) * multiplier);
+}
+
+function getFinishTimeRatios(ratios: Record<string, Record<string, number>>) {
+  return {
+    under60: Number(ratios.finishTime?.under60 ?? FINISH_TIME_RATIOS.under60),
+    over60: Number(ratios.finishTime?.over60 ?? FINISH_TIME_RATIOS.over60)
+  };
+}
+
+function getFinishTimeRatio(ratios: Record<string, Record<string, number>>, pick: FinishTimePick) {
+  const finishTimeRatios = getFinishTimeRatios(ratios);
+  return pick === "under" ? finishTimeRatios.under60 : finishTimeRatios.over60;
+}
+
+function getFinishTimeBetLabel(pick: FinishTimePick) {
+  return pick === "under" ? "Under 60s" : "60s or more";
+}
+
+function getFinishTimePotentialWin(stake: number, ratios: Record<string, Record<string, number>>, pick: FinishTimePick) {
+  return Math.round(Number(stake || 0) * getFinishTimeRatio(ratios, pick));
 }
 
 function getTokenRatio(ratios: Record<string, Record<string, number>>, place: string, symbol: string) {

@@ -17,15 +17,19 @@ export interface BetRow {
   market_id: string;
   target_race_started_at: string | null;
   stake_points: number;
+  bet_type?: "podium" | "finish_time" | string;
   first_pick: string | null;
   second_pick: string | null;
   third_pick: string | null;
+  finish_threshold_seconds?: number | null;
+  finish_time_pick?: "under" | "over" | string | null;
   status: "placed" | "won" | "lost" | string;
   payout_points: number;
   matched_places: number;
   settled_at: string | null;
   created_at: string | null;
   race_finished_at: string | null;
+  finish_duration_seconds?: number | null;
   first_place: string | null;
   second_place: string | null;
   third_place: string | null;
@@ -213,7 +217,9 @@ export async function createBetRecord(params: {
   marketId: string;
   targetRaceStartedAt: string;
   stake: number;
+  betType?: "podium" | "finish_time";
   placements: { first?: string | null; second?: string | null; third?: string | null };
+  finishTime?: { thresholdSeconds: number; pick: "under" | "over" } | null;
   ratios: Record<string, Record<string, number>>;
 }) {
   const sessionToken = getLoginSessionToken();
@@ -227,7 +233,10 @@ export async function createBetRecord(params: {
     requested_third_pick: params.placements.third ?? null,
     requested_ratio_snapshot: params.ratios,
     requested_market_id: params.marketId,
-    requested_target_race_started_at: params.targetRaceStartedAt
+    requested_target_race_started_at: params.targetRaceStartedAt,
+    requested_bet_type: params.betType ?? "podium",
+    requested_finish_threshold_seconds: params.finishTime?.thresholdSeconds ?? null,
+    requested_finish_time_pick: params.finishTime?.pick ?? null
   });
   if (error) throw error;
   return firstRow<any>(data);

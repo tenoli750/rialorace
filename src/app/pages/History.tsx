@@ -158,14 +158,22 @@ function mapBetRow(row: BetRow): Bet {
   const pnl = Number(row.payout_points ?? 0) - Number(row.stake_points ?? 0);
   const status = row.status === "won" || row.status === "lost" ? row.status : "pending";
   const market = getMarketById(row.market_id)?.name ?? row.market_id ?? "-";
-  const picks = [
-    row.first_pick ? `1st: ${row.first_pick}` : null,
-    row.second_pick ? `2nd: ${row.second_pick}` : null,
-    row.third_pick ? `3rd: ${row.third_pick}` : null
-  ].filter(Boolean).join(", ");
-  const result = row.first_place
-    ? `1.${row.first_place} 2.${row.second_place} 3.${row.third_place} 4.${row.fourth_place}`
-    : "Waiting for result";
+  const isFinishTimeBet = row.bet_type === "finish_time";
+  const finishThresholdSeconds = Number(row.finish_threshold_seconds ?? 60);
+  const picks = isFinishTimeBet
+    ? `Finish: ${row.finish_time_pick === "over" ? `${finishThresholdSeconds}s or more` : `under ${finishThresholdSeconds}s`}`
+    : [
+        row.first_pick ? `1st: ${row.first_pick}` : null,
+        row.second_pick ? `2nd: ${row.second_pick}` : null,
+        row.third_pick ? `3rd: ${row.third_pick}` : null
+      ].filter(Boolean).join(", ");
+  const result = isFinishTimeBet
+    ? row.finish_duration_seconds != null
+      ? `Finished in ${Number(row.finish_duration_seconds).toFixed(1)}s`
+      : "Waiting for result"
+    : row.first_place
+      ? `1.${row.first_place} 2.${row.second_place} 3.${row.third_place} 4.${row.fourth_place}`
+      : "Waiting for result";
 
   return {
     id: row.bet_id,
