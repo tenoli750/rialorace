@@ -59,7 +59,9 @@ begin
           then round(
             b.stake_points::numeric *
             coalesce(
-              (b.ratio_snapshot->'finishTime'->>(case when b.finish_time_pick = 'under' then 'under60' else 'over60' end))::numeric,
+              nullif(b.ratio_snapshot->'finishTime'->>(case when b.finish_time_pick = 'under' then 'under' else 'over' end), '')::numeric,
+              nullif(b.ratio_snapshot->'finishTime'->>(case when b.finish_time_pick = 'under' then concat('under', b.finish_threshold_seconds::text) else concat('over', b.finish_threshold_seconds::text) end), '')::numeric,
+              nullif(b.ratio_snapshot->'finishTime'->>(case when b.finish_time_pick = 'under' then 'under60' else 'over60' end), '')::numeric,
               2
             )
           )::integer

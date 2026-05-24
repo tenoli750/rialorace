@@ -318,6 +318,7 @@ export async function claimRialoStakingPoints() {
 
 const MIN_ODDS = 1.01;
 const MAX_ODDS = 10;
+const FINISH_TIME_THRESHOLD_SECONDS = 58;
 
 export async function getOrCreateMarketRatioSnapshot(
   marketId: string,
@@ -325,7 +326,7 @@ export async function getOrCreateMarketRatioSnapshot(
   marketSymbols: string[] = []
 ) {
   const savedSnapshot = await fetchMarketRatioSnapshot(marketId, targetRaceStartedAt);
-  if (savedSnapshot) {
+  if (savedSnapshot && hasFinishTimeRatios(savedSnapshot.ratio_snapshot)) {
     return savedSnapshot;
   }
 
@@ -335,7 +336,10 @@ export async function getOrCreateMarketRatioSnapshot(
     requested_history_limit: 100
   });
   if (!error) {
-    return firstRow<RatioSnapshotRow>(data);
+    const rpcSnapshot = firstRow<RatioSnapshotRow>(data);
+    if (rpcSnapshot && hasFinishTimeRatios(rpcSnapshot.ratio_snapshot)) {
+      return rpcSnapshot;
+    }
   }
 
   return buildAndSaveMarketRatioSnapshot(marketId, targetRaceStartedAt, marketSymbols);
@@ -360,7 +364,7 @@ async function buildAndSaveMarketRatioSnapshot(
 ) {
   const { data, error } = await supabase
     .from("market_results_v2")
-    .select("first_place, second_place, third_place, fourth_place, race_started_at")
+    .select("first_place, second_place, third_place, fourth_place, race_started_at, race_finished_at")
     .eq("market_id", marketId)
     .order("race_started_at", { ascending: false })
     .limit(100);
@@ -404,7 +408,7 @@ function buildOddsFromRecentResults(
   const sampleCount = Math.max(1, results.length);
   const smoothedSampleCount = sampleCount + Math.max(1, symbols.length);
 
-  return Object.fromEntries(
+  const placeOdds = Object.fromEntries(
     Object.entries(ratioPlaces).map(([place, field]) => {
       const counts = new Map(symbols.map((symbol) => [symbol, 0]));
       for (const result of results) {
@@ -426,6 +430,42 @@ function buildOddsFromRecentResults(
       ];
     })
   ) as Record<string, Record<string, number>>;
+
+  return {
+    ...placeOdds,
+    finishTime: buildFinishTimeOdds(results)
+  };
+}
+
+function buildFinishTimeOdds(results: Array<Record<string, string | null>>) {
+  const durations = results
+    .map((result) => getFinishDurationSeconds(result.race_started_at, result.race_finished_at))
+    .filter((duration): duration is number => Number.isFinite(duration));
+  const sampleCount = Math.max(1, durations.length);
+  const underCount = durations.filter((duration) => duration <= FINISH_TIME_THRESHOLD_SECONDS).length;
+  const overCount = durations.length - underCount;
+  const smoothedSampleCount = sampleCount + 2;
+  const underOdds = smoothedSampleCount / (underCount + 1);
+  const overOdds = smoothedSampleCount / (overCount + 1);
+
+  return {
+    thresholdSeconds: FINISH_TIME_THRESHOLD_SECONDS,
+    under: Number(clamp(underOdds, MIN_ODDS, MAX_ODDS).toFixed(2)),
+    over: Number(clamp(overOdds, MIN_ODDS, MAX_ODDS).toFixed(2)),
+    under58: Number(clamp(underOdds, MIN_ODDS, MAX_ODDS).toFixed(2)),
+    over58: Number(clamp(overOdds, MIN_ODDS, MAX_ODDS).toFixed(2))
+  };
+}
+
+function getFinishDurationSeconds(startedAt: string | null | undefined, finishedAt: string | null | undefined) {
+  if (!startedAt || !finishedAt) return Number.NaN;
+  const duration = (new Date(finishedAt).getTime() - new Date(startedAt).getTime()) / 1000;
+  return duration > 0 ? duration : Number.NaN;
+}
+
+function hasFinishTimeRatios(ratioSnapshot: Record<string, Record<string, number>> | null | undefined) {
+  const finishTime = ratioSnapshot?.finishTime;
+  return Number.isFinite(Number(finishTime?.under)) && Number.isFinite(Number(finishTime?.over));
 }
 
 function inferMarketSymbols(results: Array<Record<string, string | null>>) {

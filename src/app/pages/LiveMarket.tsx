@@ -19,8 +19,8 @@ type RaceState = "waiting" | "racing" | "finished";
 type BetHistoryTab = "now" | "next" | "past" | "chat";
 type FinishTimePick = "under" | "over";
 const RACE_INTERVAL_MS = 5 * 60 * 1000;
-const FINISH_TIME_THRESHOLD_SECONDS = 60;
-const FINISH_TIME_RATIOS = { under60: 2, over60: 2 };
+const FINISH_TIME_THRESHOLD_SECONDS = 58;
+const FINISH_TIME_RATIOS = { under: 2, over: 2 };
 
 function normalizeMarketId(value: string | null | undefined) {
   if (!value) return undefined;
@@ -580,7 +580,7 @@ function tokenSymbolFromLetter(letter: string | null) {
 function formatBetPicks(row: BetRow) {
   if (row.bet_type === "finish_time") {
     const threshold = Number(row.finish_threshold_seconds ?? FINISH_TIME_THRESHOLD_SECONDS);
-    return `Finish: ${row.finish_time_pick === "over" ? `${threshold}s or more` : `under ${threshold}s`}`;
+    return `Finish: ${row.finish_time_pick === "over" ? `over ${threshold}s` : `${threshold}s or less`}`;
   }
 
   return [
@@ -664,19 +664,22 @@ function getPotentialWin(
 }
 
 function getFinishTimeRatios(ratios: Record<string, Record<string, number>>) {
+  const finishTime = ratios.finishTime ?? {};
+  const thresholdKey = String(FINISH_TIME_THRESHOLD_SECONDS).replace(".", "_");
+
   return {
-    under60: Number(ratios.finishTime?.under60 ?? FINISH_TIME_RATIOS.under60),
-    over60: Number(ratios.finishTime?.over60 ?? FINISH_TIME_RATIOS.over60)
+    under: Number(finishTime.under ?? finishTime[`under${thresholdKey}`] ?? finishTime.under60 ?? FINISH_TIME_RATIOS.under),
+    over: Number(finishTime.over ?? finishTime[`over${thresholdKey}`] ?? finishTime.over60 ?? FINISH_TIME_RATIOS.over)
   };
 }
 
 function getFinishTimeRatio(ratios: Record<string, Record<string, number>>, pick: FinishTimePick) {
   const finishTimeRatios = getFinishTimeRatios(ratios);
-  return pick === "under" ? finishTimeRatios.under60 : finishTimeRatios.over60;
+  return pick === "under" ? finishTimeRatios.under : finishTimeRatios.over;
 }
 
 function getFinishTimeBetLabel(pick: FinishTimePick) {
-  return pick === "under" ? "Under 60s" : "60s or more";
+  return pick === "under" ? `${FINISH_TIME_THRESHOLD_SECONDS}s or less` : `Over ${FINISH_TIME_THRESHOLD_SECONDS}s`;
 }
 
 function getFinishTimePotentialWin(stake: number, ratios: Record<string, Record<string, number>>, pick: FinishTimePick) {
