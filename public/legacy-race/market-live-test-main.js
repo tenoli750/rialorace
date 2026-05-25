@@ -2,7 +2,7 @@ import { FORMULA, SPEED_MULTIPLIER, getCoinsByIds, TARGET_DISTANCE_METERS } from
 import { SceneEditor } from "./src/editor.js";
 import { buildPlaceholderBallTuning } from "./src/marketSlots.js";
 import { getMarketById, getMarketSymbolIds, formatMarketSymbols, formatMarketTitle } from "./src/markets.js";
-import { RaceEngine } from "./src/raceEngine.js?v=5";
+import { RaceEngine } from "./src/raceEngine.js?v=6";
 import { RaceAudioController } from "./src/raceAudio.js";
 import { ThreeRaceRenderer } from "./src/renderer.js?v=2";
 import { supabase } from "./src/supabaseClient.js?v=3";

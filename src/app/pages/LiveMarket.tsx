@@ -380,6 +380,9 @@ export function LiveMarket() {
                     <div className={`mt-1 ${getBetStatusClass(bet.status)}`}>
                       Status: {String(bet.status ?? "placed").toUpperCase()}
                     </div>
+                    {formatBetResultTime(bet) && (
+                      <div className="text-[#8a5a44] mt-1">{formatBetResultTime(bet)}</div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -614,6 +617,12 @@ function formatStakeWithPayout(row: BetRow) {
   const stake = Number(row.stake_points ?? 0);
   const payout = String(row.status ?? "").toLowerCase() === "won" ? Number(row.payout_points ?? 0) : 0;
   return `${stake.toLocaleString()} pts (${payout.toLocaleString()} pts)`;
+}
+
+function formatBetResultTime(row: BetRow) {
+  if (row.bet_type !== "finish_time" || row.finish_duration_seconds == null) return "";
+  const symbol = row.finish_time_symbol ?? "Race";
+  return `${symbol} official time: ${Number(row.finish_duration_seconds).toFixed(3)}s`;
 }
 
 function getBetStatusClass(status: string | null | undefined) {

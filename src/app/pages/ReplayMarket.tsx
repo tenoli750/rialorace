@@ -8,6 +8,7 @@ interface ReplayRecord {
   id: string;
   startedAt: string;
   rankings: string[];
+  finishElapsedMs: Record<string, number>;
 }
 
 function getLegacyReplayUrl(marketId: string, raceStartedAt?: string) {
@@ -106,7 +107,7 @@ export function ReplayMarket() {
                     return (
                       <span key={`${record.id}-${symbol}-${i}`} className="inline-flex items-center gap-1 mr-2">
                         <img src={token?.image} alt="" className="w-4 h-4 rounded-full object-contain bg-white" />
-                        {i + 1}.{token?.symbol}
+                        {i + 1}.{token?.symbol} {formatTokenFinishTime(record.finishElapsedMs, symbol)}
                       </span>
                     );
                   })}
@@ -124,8 +125,14 @@ function mapReplayRecord(row: RaceResultRow): ReplayRecord {
   return {
     id: row.id,
     startedAt: row.race_started_at,
-    rankings: [row.first_place, row.second_place, row.third_place, row.fourth_place].filter(Boolean)
+    rankings: [row.first_place, row.second_place, row.third_place, row.fourth_place].filter(Boolean),
+    finishElapsedMs: row.compared_finish_elapsed_ms ?? {}
   };
+}
+
+function formatTokenFinishTime(finishElapsedMs: Record<string, number>, symbol: string) {
+  const elapsedMs = Number(finishElapsedMs?.[symbol]);
+  return elapsedMs > 0 ? `${(elapsedMs / 1000).toFixed(3)}s` : "";
 }
 
 function getTokenBySymbol(symbol: string) {

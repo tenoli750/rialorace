@@ -9,7 +9,7 @@ import {
 } from "./src/config.js";
 import { buildPlaceholderBallTuning } from "./src/marketSlots.js";
 import { getMarketById, getMarketSymbolIds, formatMarketSymbols, formatMarketTitle } from "./src/markets.js";
-import { RaceEngine } from "./src/raceEngine.js?v=5";
+import { RaceEngine } from "./src/raceEngine.js?v=6";
 import { RaceAudioController } from "./src/raceAudio.js";
 import { ThreeRaceRenderer } from "./src/renderer.js?v=20";
 import { getLoginSession, supabase } from "./src/supabaseClient.js?v=5";
@@ -161,7 +161,7 @@ function applyFormulaTooltip() {
 async function bootstrapReplayHistory() {
   const { data, error } = await supabase
     .from("market_results_v2")
-    .select("id, market_id, race_started_at, race_finished_at, first_place, second_place, third_place, fourth_place, created_at")
+    .select("id, market_id, race_started_at, race_finished_at, compared_finish_elapsed_ms, first_place, second_place, third_place, fourth_place, created_at")
     .eq("market_id", MARKET_ID)
     .order("race_started_at", { ascending: false })
     .limit(REPLAY_HISTORY_LIMIT);
@@ -242,7 +242,7 @@ function renderReplayHistory() {
           <span class="note-stamp">Game ${index + 1}</span>
           <span class="replay-history-copy">
             <span>${formatReplayStart(entry.race_started_at)} KST</span>
-            <span>1.${entry.first_place} 2.${entry.second_place} 3.${entry.third_place} 4.${entry.fourth_place}</span>
+            <span>1.${entry.first_place} ${formatBackendFinishTime(entry, entry.first_place)} 2.${entry.second_place} ${formatBackendFinishTime(entry, entry.second_place)} 3.${entry.third_place} ${formatBackendFinishTime(entry, entry.third_place)} 4.${entry.fourth_place} ${formatBackendFinishTime(entry, entry.fourth_place)}</span>
           </span>
         </button>
       `;
@@ -398,6 +398,11 @@ function buildReplayEvents(playbackFrames, raceStartedAtMs) {
       speed_factor: Number(row.speed_factor ?? 1)
     }))
   }));
+}
+
+function formatBackendFinishTime(entry, symbol) {
+  const elapsedMs = Number(entry?.compared_finish_elapsed_ms?.[symbol]);
+  return elapsedMs > 0 ? `${(elapsedMs / 1000).toFixed(3)}s` : "";
 }
 
 function formatReplayStart(timestamp) {

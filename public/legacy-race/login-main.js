@@ -1,5 +1,5 @@
 import { getLoginSession, setLoginSessionToken, supabase } from "./src/supabaseClient.js?v=5";
-import { initializeBettingProfile } from "./src/supabaseBettingStore.js?v=2";
+import { initializeBettingProfile } from "./src/supabaseBettingStore.js?v=14";
 
 const DEFAULT_POINTS_BALANCE = 1250;
 

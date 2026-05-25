@@ -173,20 +173,24 @@ export async function recordRaceResult({
 }
 
 export async function resolveOfficialRaceResult({ marketId, raceStartedAtWallMs, intervalMs }) {
+  const raceStartedAt = new Date(raceStartedAtWallMs).toISOString();
   const { data, error: rpcError } = await supabase.rpc("resolve_race_result", {
     requested_market_id: marketId,
-    requested_race_started_at: new Date(raceStartedAtWallMs).toISOString(),
+    requested_race_started_at: raceStartedAt,
     requested_interval_ms: intervalMs
   });
 
-  if (rpcError) {
-    return {
-      ok: false,
-      message: "Supabase official race resolution failed."
-    };
+  let row = rpcError ? null : Array.isArray(data) ? data[0] : data;
+  if (!row?.compared_finish_elapsed_ms) {
+    const { data: resultRow } = await supabase
+      .from("market_results_v2")
+      .select("id, market_id, race_started_at, race_finished_at, compared_finish_elapsed_ms, first_place, second_place, third_place, fourth_place, created_at")
+      .eq("market_id", marketId)
+      .eq("race_started_at", raceStartedAt)
+      .maybeSingle();
+    row = resultRow ?? row;
   }
 
-  const row = Array.isArray(data) ? data[0] : data;
   if (!row?.first_place || !row?.second_place || !row?.third_place || !row?.fourth_place) {
     return {
       ok: false,
@@ -203,9 +207,9 @@ export async function resolveOfficialRaceResult({ marketId, raceStartedAtWallMs,
 
 export async function fetchRaceResults(marketId, limit = 8) {
   const { data, error } = await supabase
-    .from("race_results")
+    .from("market_results_v2")
     .select(
-      "id, market_id, race_started_at, race_finished_at, first_place, second_place, third_place, fourth_place, created_at"
+      "id, market_id, race_started_at, race_finished_at, compared_finish_elapsed_ms, first_place, second_place, third_place, fourth_place, created_at"
     )
     .eq("market_id", marketId)
     .order("race_started_at", { ascending: false })

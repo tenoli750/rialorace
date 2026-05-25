@@ -410,26 +410,39 @@ export class RaceEngine {
     this.state.connectionMessage = message;
   }
 
-  applyOfficialFinishOrder(finishOrder, raceFinishedAtWallMs = Date.now()) {
+  applyOfficialFinishOrder(finishOrder, raceFinishedAtWallMs = Date.now(), finishElapsedMsBySymbol = {}) {
     if (!Array.isArray(finishOrder) || finishOrder.length !== this.state.racers.length) {
       return;
     }
 
+    const raceStartedAtWallMs = this.state.raceStartedAtWallMs || Math.max(0, raceFinishedAtWallMs - this.getOfficialFinishElapsedMs(finishElapsedMsBySymbol));
+    const officialFinishTimes = [];
+
     this.state.finishOrder = [...finishOrder];
     this.state.winnerId = finishOrder[0] ?? null;
     this.state.raceFinished = true;
-    this.state.raceFinishedAtWallMs = raceFinishedAtWallMs;
-    if (!this.state.winnerFinishedAtWallMs) {
-      this.state.winnerFinishedAtWallMs = raceFinishedAtWallMs;
-    }
 
     for (const racer of this.state.racers) {
       const finishIndex = finishOrder.indexOf(racer.id);
+      const officialElapsedMs = Number(finishElapsedMsBySymbol?.[racer.id]);
+      const officialFinishedAtWallMs = officialElapsedMs > 0 ? raceStartedAtWallMs + officialElapsedMs : raceFinishedAtWallMs;
       racer.finishPlace = finishIndex >= 0 ? finishIndex + 1 : null;
-      if (racer.finishPlace && !racer.finishedAtWallMs) {
-        racer.finishedAtWallMs = raceFinishedAtWallMs;
+      if (racer.finishPlace) {
+        racer.finishedAtWallMs = officialFinishedAtWallMs;
+        officialFinishTimes.push(officialFinishedAtWallMs);
       }
     }
+
+    this.state.raceFinishedAtWallMs = officialFinishTimes.length ? Math.max(...officialFinishTimes) : raceFinishedAtWallMs;
+    const winnerElapsedMs = Number(finishElapsedMsBySymbol?.[this.state.winnerId]);
+    this.state.winnerFinishedAtWallMs = winnerElapsedMs > 0
+      ? raceStartedAtWallMs + winnerElapsedMs
+      : this.state.raceFinishedAtWallMs;
+  }
+
+  getOfficialFinishElapsedMs(finishElapsedMsBySymbol = {}) {
+    const values = Object.values(finishElapsedMsBySymbol).map(Number).filter((value) => value > 0);
+    return values.length ? Math.max(...values) : 0;
   }
 
   addNote(message) {

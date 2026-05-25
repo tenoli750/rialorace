@@ -1,11 +1,11 @@
 import { TEST_MARKET_01_COINS } from "./src/config.js?v=2";
-import { RaceEngine } from "./src/raceEngine.js?v=3";
+import { RaceEngine } from "./src/raceEngine.js?v=6";
 import { ThreeRaceRenderer } from "./src/renderer.js?v=2";
 import { BettingUI } from "./src/bettingUi.js?v=3";
 import { buildPlaceholderBallTuning } from "./src/marketSlots.js?v=2";
 import { supabase } from "./src/supabaseClient.js?v=2";
 import { SupabasePriceFeed } from "./src/supabasePriceFeed.js?v=2";
-import { createBetRecord, fetchRaceResults, initializeBettingProfile, resolveOfficialRaceResult } from "./src/supabaseBettingStore.js?v=2";
+import { createBetRecord, fetchRaceResults, initializeBettingProfile, resolveOfficialRaceResult } from "./src/supabaseBettingStore.js?v=14";
 import { RaceAudioController } from "./src/raceAudio.js?v=2";
 
 const RACE_INTERVAL_MS = 5 * 60 * 1000;
@@ -234,7 +234,8 @@ async function resolveOfficialResult() {
     resultResolutionInFlight = false;
     engine.applyOfficialFinishOrder(
       [result.result.first_place, result.result.second_place, result.result.third_place, result.result.fourth_place],
-      new Date(result.result.race_finished_at ?? Date.now()).getTime()
+      new Date(result.result.race_finished_at ?? Date.now()).getTime(),
+      result.result.compared_finish_elapsed_ms ?? {}
     );
     ui.settleBet(engine);
     engine.addNote("Market 01 podium resolved by Supabase.");

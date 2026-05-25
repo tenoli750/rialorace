@@ -86,6 +86,7 @@ export interface RaceResultRow {
   market_id: string;
   race_started_at: string;
   race_finished_at: string | null;
+  compared_finish_elapsed_ms?: Record<string, number> | null;
   first_place: string;
   second_place: string;
   third_place: string;
@@ -524,7 +525,7 @@ export async function listChatMessages(marketId: string) {
 export async function listRaceResults(marketId: string, limit = 10) {
   const { data, error } = await supabase
     .from("market_results_v2")
-    .select("id, market_id, race_started_at, race_finished_at, first_place, second_place, third_place, fourth_place, created_at")
+    .select("id, market_id, race_started_at, race_finished_at, compared_finish_elapsed_ms, first_place, second_place, third_place, fourth_place, created_at")
     .eq("market_id", marketId)
     .order("race_started_at", { ascending: false })
     .limit(limit);

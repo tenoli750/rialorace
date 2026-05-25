@@ -1,12 +1,12 @@
 import { FORMULA, SPEED_MULTIPLIER, getCoinsByIds, TARGET_DISTANCE_METERS } from "./src/config.js";
 import { buildPlaceholderBallTuning } from "./src/marketSlots.js";
 import { getMarketById, getMarketSymbolIds, formatMarketSymbols, formatMarketTitle } from "./src/markets.js";
-import { RaceEngine } from "./src/raceEngine.js?v=5";
+import { RaceEngine } from "./src/raceEngine.js?v=6";
 import { RaceAudioController } from "./src/raceAudio.js";
 import { ThreeRaceRenderer } from "./src/renderer.js?v=20";
 import { getLoginSession, supabase } from "./src/supabaseClient.js?v=5";
 import { BettingUI } from "./src/bettingUi.js?v=16";
-import { createBetRecord, fetchCurrentRaceBets, fetchPastRaceBets, initializeBettingProfile } from "./src/supabaseBettingStore.js?v=13";
+import { createBetRecord, fetchCurrentRaceBets, fetchPastRaceBets, initializeBettingProfile } from "./src/supabaseBettingStore.js?v=14";
 
 const params = new URLSearchParams(window.location.search);
 const MARKET_ID = params.get("id") ?? "market-03";
