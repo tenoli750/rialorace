@@ -20,7 +20,7 @@ type BetHistoryTab = "now" | "next" | "past" | "chat";
 type FinishTimePick = "under" | "over";
 type FinishTimeSelection = { symbol: string; pick: FinishTimePick };
 const RACE_INTERVAL_MS = 5 * 60 * 1000;
-const FINISH_TIME_THRESHOLD_SECONDS = 58;
+const FINISH_TIME_THRESHOLD_SECONDS = 57;
 const FINISH_TIME_RATIOS = { under: 2, over: 2 };
 
 function normalizeMarketId(value: string | null | undefined) {

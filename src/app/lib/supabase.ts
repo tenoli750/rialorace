@@ -320,7 +320,7 @@ export async function claimRialoStakingPoints() {
 
 const MIN_ODDS = 1.01;
 const MAX_ODDS = 10;
-const FINISH_TIME_THRESHOLD_SECONDS = 58;
+const FINISH_TIME_THRESHOLD_SECONDS = 57;
 
 export async function getOrCreateMarketRatioSnapshot(
   marketId: string,
@@ -477,7 +477,7 @@ function getTokenFinishDurationSeconds(comparedFinishElapsedMs: any, symbol: str
 
 function hasFinishTimeRatios(ratioSnapshot: Record<string, any> | null | undefined, marketSymbols: string[] = []) {
   const finishTime = ratioSnapshot?.finishTime;
-  if (!finishTime) return false;
+  if (!finishTime || Number(finishTime.thresholdSeconds) !== FINISH_TIME_THRESHOLD_SECONDS) return false;
   if (!marketSymbols.length) {
     return Object.values(finishTime).some((entry) =>
       typeof entry === "object" &&
