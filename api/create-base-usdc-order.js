@@ -46,9 +46,6 @@ export default async function handler(req, res) {
     }
 
     const treasuryAddress = getTreasuryAddress();
-    if (normalizeAddress(treasuryAddress) === walletAddress) {
-      return res.status(400).json({ error: "Use a separate treasury wallet for Base Sepolia USDC tests." });
-    }
 
     const loginSession = await getLoginSessionByToken(sessionToken);
     const expectedAmountUnits = buildExpectedUsdcUnits(packageId);

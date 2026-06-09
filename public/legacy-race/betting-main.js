@@ -1,7 +1,7 @@
 import { COINS } from "./src/config.js";
-import { RaceEngine } from "./src/raceEngine.js?v=6";
-import { ThreeRaceRenderer } from "./src/renderer.js";
-import { BettingUI } from "./src/bettingUi.js?v=3";
+import { RaceEngine } from "./src/raceEngine.js?v=9";
+import { ThreeRaceRenderer } from "./src/renderer.js?v=23";
+import { BettingUI } from "./src/bettingUi.js?v=26";
 import { supabase } from "./src/supabaseClient.js";
 import { SupabasePriceFeed } from "./src/supabasePriceFeed.js";
 import { createBetRecord, fetchRaceResults, initializeBettingProfile, resolveOfficialRaceResult } from "./src/supabaseBettingStore.js?v=14";

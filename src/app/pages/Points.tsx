@@ -1,0 +1,575 @@
+import { useCallback, useEffect, useState } from "react";
+import { CreditCard, Wallet, X } from "lucide-react";
+import QRCode from "qrcode";
+import { useAuth } from "../contexts/AuthContext";
+import {
+  buildBaseUsdcQrPayload,
+  connectBaseUsdcWallet,
+  createBaseUsdcOrder,
+  sendBaseUsdcOrderFromWallet,
+  waitForBaseUsdcPayment
+} from "../lib/baseUsdcCheckout";
+import type { BaseUsdcOrder, BaseUsdcVerifyResult } from "../lib/baseUsdcCheckout";
+import { POINT_PACKAGES, listPointChargeHistory, startPointsCheckout } from "../lib/pointsCheckout";
+import type { PointChargeHistoryRow, PointPackageId } from "../lib/pointsCheckout";
+
+export function Points() {
+  const { user, points, setPointsBalance, refreshSession } = useAuth();
+  const [purchaseMessage, setPurchaseMessage] = useState("Choose a test package to buy points through Stripe.");
+  const [activePurchasePackage, setActivePurchasePackage] = useState<PointPackageId | null>(null);
+  const [baseUsdcMessage, setBaseUsdcMessage] = useState("Pay with Circle test USDC on Base Sepolia.");
+  const [baseUsdcModalPackage, setBaseUsdcModalPackage] = useState<PointPackageId | null>(null);
+  const [baseUsdcOrder, setBaseUsdcOrder] = useState<BaseUsdcOrder | null>(null);
+  const [baseUsdcQrUrl, setBaseUsdcQrUrl] = useState("");
+  const [baseUsdcWalletAddress, setBaseUsdcWalletAddress] = useState("");
+  const [baseUsdcManualWalletAddress, setBaseUsdcManualWalletAddress] = useState("");
+  const [baseUsdcTxHash, setBaseUsdcTxHash] = useState("");
+  const [isBaseUsdcPreparing, setIsBaseUsdcPreparing] = useState(false);
+  const [isBaseUsdcPaying, setIsBaseUsdcPaying] = useState(false);
+  const [chargeHistory, setChargeHistory] = useState<PointChargeHistoryRow[]>([]);
+  const [chargeHistoryStatus, setChargeHistoryStatus] = useState("Loading charge history.");
+
+  const getErrorMessage = (error: unknown, fallback: string) => {
+    if (error instanceof Error && error.message) return error.message;
+    if (typeof error === "object" && error && "message" in error) {
+      const message = String((error as { message?: unknown }).message ?? "");
+      if (message) return message;
+    }
+    return fallback;
+  };
+
+  const loadChargeHistory = useCallback(async () => {
+    if (!user) {
+      setChargeHistory([]);
+      setChargeHistoryStatus("Login to view charge history.");
+      return;
+    }
+
+    try {
+      setChargeHistoryStatus("Loading charge history.");
+      const rows = await listPointChargeHistory();
+      setChargeHistory(rows);
+      setChargeHistoryStatus(rows.length ? "" : "No charge history yet.");
+    } catch (error) {
+      setChargeHistory([]);
+      setChargeHistoryStatus(getErrorMessage(error, "Could not load charge history."));
+    }
+  }, [user]);
+
+  useEffect(() => {
+    void loadChargeHistory();
+  }, [loadChargeHistory]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function renderQrCode() {
+      if (!baseUsdcOrder) {
+        setBaseUsdcQrUrl("");
+        return;
+      }
+
+      try {
+        const dataUrl = await QRCode.toDataURL(buildBaseUsdcQrPayload(baseUsdcOrder), {
+          width: 220,
+          margin: 1,
+          color: {
+            dark: "#7c2d12",
+            light: "#fff7ed"
+          }
+        });
+        if (!cancelled) setBaseUsdcQrUrl(dataUrl);
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Base USDC QR generation failed", error);
+          setBaseUsdcQrUrl("");
+        }
+      }
+    }
+
+    void renderQrCode();
+    return () => {
+      cancelled = true;
+    };
+  }, [baseUsdcOrder]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const checkoutStatus = params.get("points_checkout");
+    if (!checkoutStatus) return;
+
+    let refreshTimer: number | undefined;
+    if (checkoutStatus === "success") {
+      setPurchaseMessage("Payment completed. Syncing points from Stripe.");
+      void refreshSession();
+      void loadChargeHistory();
+      refreshTimer = window.setTimeout(() => {
+        void refreshSession();
+        void loadChargeHistory();
+      }, 2500);
+    } else if (checkoutStatus === "cancelled") {
+      setPurchaseMessage("Checkout cancelled. No points were added.");
+    }
+
+    window.history.replaceState({}, document.title, window.location.pathname);
+    return () => {
+      if (refreshTimer) window.clearTimeout(refreshTimer);
+    };
+  }, [loadChargeHistory, refreshSession]);
+
+  const handleBuyPoints = async (packageId: PointPackageId) => {
+    if (!user) {
+      alert("Please login to buy points.");
+      return;
+    }
+
+    try {
+      setActivePurchasePackage(packageId);
+      setPurchaseMessage("Opening Stripe Checkout.");
+      await startPointsCheckout(packageId);
+    } catch (error) {
+      console.error("Start points checkout failed", error);
+      setPurchaseMessage(getErrorMessage(error, "Could not start Stripe Checkout."));
+      setActivePurchasePackage(null);
+    }
+  };
+
+  const resetBaseUsdcOrder = () => {
+    setBaseUsdcOrder(null);
+    setBaseUsdcQrUrl("");
+    setBaseUsdcTxHash("");
+  };
+
+  const openBaseUsdcModal = (packageId: PointPackageId) => {
+    if (!user) {
+      alert("Please login to buy points.");
+      return;
+    }
+
+    setBaseUsdcModalPackage(packageId);
+    resetBaseUsdcOrder();
+    setBaseUsdcMessage("Connect a wallet, or enter the wallet that will send Base Sepolia USDC.");
+  };
+
+  const closeBaseUsdcModal = () => {
+    if (isBaseUsdcPreparing || isBaseUsdcPaying) return;
+    setBaseUsdcModalPackage(null);
+    resetBaseUsdcOrder();
+  };
+
+  const applyBaseUsdcPayment = async (result: BaseUsdcVerifyResult) => {
+    if (Number.isFinite(Number(result.pointsBalance))) {
+      setPointsBalance(Number(result.pointsBalance));
+    } else {
+      await refreshSession();
+    }
+    setBaseUsdcMessage(`Base Sepolia USDC payment confirmed. Added ${Number(result.pointsAwarded ?? 0).toLocaleString()} pts.`);
+    void loadChargeHistory();
+    setBaseUsdcModalPackage(null);
+    resetBaseUsdcOrder();
+  };
+
+  const handleConnectBaseUsdcWallet = async () => {
+    if (!baseUsdcModalPackage) return;
+
+    try {
+      setIsBaseUsdcPreparing(true);
+      setBaseUsdcMessage("Connecting wallet.");
+      const walletAddress = await connectBaseUsdcWallet();
+      setBaseUsdcWalletAddress(walletAddress);
+      setBaseUsdcManualWalletAddress(walletAddress);
+      setBaseUsdcMessage("Creating Base Sepolia USDC order.");
+      const order = await createBaseUsdcOrder(baseUsdcModalPackage, walletAddress);
+      setBaseUsdcOrder(order);
+      setBaseUsdcMessage(`Order ready. Send exactly ${order.amountDisplay} USDC on Base Sepolia.`);
+    } catch (error) {
+      console.error("Base Sepolia USDC wallet connect failed", error);
+      setBaseUsdcMessage(getErrorMessage(error, "Could not connect wallet."));
+    } finally {
+      setIsBaseUsdcPreparing(false);
+    }
+  };
+
+  const handleCreateManualBaseUsdcOrder = async () => {
+    if (!baseUsdcModalPackage) return;
+
+    try {
+      setIsBaseUsdcPreparing(true);
+      setBaseUsdcMessage("Creating QR payment order.");
+      const order = await createBaseUsdcOrder(baseUsdcModalPackage, baseUsdcManualWalletAddress);
+      setBaseUsdcOrder(order);
+      setBaseUsdcMessage(`QR ready. Send exactly ${order.amountDisplay} USDC from the listed wallet.`);
+    } catch (error) {
+      console.error("Base Sepolia USDC QR order failed", error);
+      setBaseUsdcMessage(getErrorMessage(error, "Could not create QR payment order."));
+    } finally {
+      setIsBaseUsdcPreparing(false);
+    }
+  };
+
+  const handlePayBaseUsdcOrderWithWallet = async () => {
+    if (!baseUsdcOrder) return;
+
+    try {
+      setIsBaseUsdcPaying(true);
+      let walletAddress = baseUsdcWalletAddress;
+      if (!walletAddress) {
+        walletAddress = await connectBaseUsdcWallet();
+        setBaseUsdcWalletAddress(walletAddress);
+      }
+      setBaseUsdcMessage("Confirm the USDC transfer in your wallet.");
+      const txHash = await sendBaseUsdcOrderFromWallet(baseUsdcOrder, walletAddress);
+      setBaseUsdcTxHash(txHash);
+      setBaseUsdcMessage("Waiting for Base Sepolia confirmation.");
+      const result = await waitForBaseUsdcPayment(baseUsdcOrder.orderId, txHash);
+      await applyBaseUsdcPayment(result);
+    } catch (error) {
+      console.error("Base Sepolia USDC wallet payment failed", error);
+      setBaseUsdcMessage(getErrorMessage(error, "Could not complete wallet payment."));
+    } finally {
+      setIsBaseUsdcPaying(false);
+    }
+  };
+
+  const handleVerifyBaseUsdcTxHash = async () => {
+    if (!baseUsdcOrder) return;
+
+    try {
+      setIsBaseUsdcPaying(true);
+      const txHash = baseUsdcTxHash.trim();
+      setBaseUsdcMessage(txHash ? "Verifying Base Sepolia transaction." : "Checking Base Sepolia for your USDC transfer.");
+      const result = await waitForBaseUsdcPayment(baseUsdcOrder.orderId, txHash || undefined);
+      await applyBaseUsdcPayment(result);
+    } catch (error) {
+      console.error("Base Sepolia USDC tx verification failed", error);
+      setBaseUsdcMessage(getErrorMessage(error, "Could not verify transaction."));
+    } finally {
+      setIsBaseUsdcPaying(false);
+    }
+  };
+
+  const copyBaseUsdcValue = async (value: string, label: string) => {
+    await navigator.clipboard.writeText(value);
+    setBaseUsdcMessage(`${label} copied.`);
+  };
+
+  const selectedBaseUsdcPackage = POINT_PACKAGES.find((pointPackage) => pointPackage.id === baseUsdcModalPackage);
+
+  return (
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
+      <section className="bg-white rounded-lg border border-[#fed7aa] p-6 mb-6">
+        <div className="mb-6">
+          <span className="text-xs text-[#8a5a44] uppercase tracking-wide">Points</span>
+          <h1 className="text-2xl text-[#9a3412] mt-1 mb-2">Buy Test Points</h1>
+          <p className="text-sm text-[#8a5a44]">Add points through Stripe test checkout or Base Sepolia USDC.</p>
+        </div>
+
+        <div className="p-4 bg-[#fff7ed] rounded-lg border border-[#fed7aa]">
+          <div className="text-xs text-[#8a5a44] mb-2">Current Balance</div>
+          <div className="text-2xl text-[#9a3412]">{user ? points.toLocaleString() : "--"} pts</div>
+        </div>
+      </section>
+
+      <section className="bg-white rounded-lg border border-[#fed7aa] p-6">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <span className="text-xs text-[#8a5a44] uppercase tracking-wide">Checkout</span>
+            <h2 className="text-lg text-[#9a3412] mt-1">Packages</h2>
+          </div>
+          <span className="px-3 py-1 bg-[#ffedd5] text-xs text-[#9a3412] rounded-md">
+            Stripe Test
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {POINT_PACKAGES.map((pointPackage) => (
+            <div key={pointPackage.id} className="p-4 bg-[#fff7ed] rounded-lg border border-[#fed7aa]">
+              <div className="flex items-center gap-2 text-xs text-[#8a5a44] mb-2">
+                <CreditCard className="w-4 h-4" />
+                {pointPackage.name}
+              </div>
+              <div className="text-xl text-[#9a3412] mb-1">{pointPackage.points.toLocaleString()} pts</div>
+              <div className="text-xs text-[#8a5a44] mb-4">{pointPackage.price} test checkout</div>
+              <button
+                type="button"
+                onClick={() => void handleBuyPoints(pointPackage.id)}
+                disabled={!user || activePurchasePackage !== null}
+                className="w-full px-4 py-3 bg-[#9a3412] text-white rounded-lg hover:bg-[#c2410c] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {activePurchasePackage === pointPackage.id ? "Opening" : "Buy"}
+              </button>
+              <button
+                type="button"
+                onClick={() => openBaseUsdcModal(pointPackage.id)}
+                disabled={!user || isBaseUsdcPreparing || isBaseUsdcPaying}
+                className="mt-2 w-full px-4 py-3 bg-[#ffedd5] text-[#9a3412] rounded-lg border border-[#fed7aa] hover:border-[#9a3412] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <Wallet className="w-4 h-4" />
+                Base USDC
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 p-3 bg-[#ffedd5] rounded text-xs text-[#8a5a44] text-center">
+          {user ? purchaseMessage : "Login to buy points."}
+        </div>
+        <div className="mt-3 p-3 bg-[#fff7ed] rounded text-xs text-[#8a5a44] text-center border border-[#fed7aa]">
+          {user ? baseUsdcMessage : "Login to pay with Base Sepolia USDC."}
+        </div>
+      </section>
+
+      <section className="bg-white rounded-lg border border-[#fed7aa] p-6 mt-6">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <span className="text-xs text-[#8a5a44] uppercase tracking-wide">History</span>
+            <h2 className="text-lg text-[#9a3412] mt-1">Charge History</h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => void loadChargeHistory()}
+            disabled={!user}
+            className="px-3 py-2 bg-[#ffedd5] text-xs text-[#9a3412] rounded-md border border-[#fed7aa] hover:border-[#9a3412] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Refresh
+          </button>
+        </div>
+
+        {chargeHistoryStatus ? (
+          <div className="py-10 text-center text-sm text-[#8a5a44]">{chargeHistoryStatus}</div>
+        ) : (
+          <div className="space-y-3">
+            {chargeHistory.map((charge) => (
+              <div key={`${charge.method}-${charge.id}`} className="rounded-lg border border-[#fed7aa] bg-[#fff7ed] p-4">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-12 md:items-center">
+                  <div className="md:col-span-2">
+                    <div className="text-xs text-[#8a5a44] mb-1">Method</div>
+                    <div className="text-sm text-[#9a3412]">{charge.label}</div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <div className="text-xs text-[#8a5a44] mb-1">Package</div>
+                    <div className="text-sm text-[#9a3412]">{getPointPackageName(charge.packageId)}</div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <div className="text-xs text-[#8a5a44] mb-1">Points</div>
+                    <div className="text-sm text-[#9a3412]">{charge.points.toLocaleString()} pts</div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <div className="text-xs text-[#8a5a44] mb-1">Amount</div>
+                    <div className="text-sm text-[#9a3412]">{charge.amount}</div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <div className="text-xs text-[#8a5a44] mb-1">Status</div>
+                    <div className={`text-sm font-medium ${getChargeStatusClass(charge.status)}`}>
+                      {formatChargeStatus(charge.status)}
+                    </div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <div className="text-xs text-[#8a5a44] mb-1">Date</div>
+                    <div className="text-sm text-[#9a3412]">{formatChargeDate(charge.completedAt || charge.createdAt)}</div>
+                  </div>
+                </div>
+                {charge.reference && (
+                  <div className="mt-3 truncate text-xs text-[#8a5a44]">
+                    Ref: {charge.reference}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {baseUsdcModalPackage && selectedBaseUsdcPackage && (
+        <div className="fixed inset-0 z-50 bg-black/45 px-4 py-6 flex items-center justify-center">
+          <div className="w-full max-w-4xl max-h-[92vh] overflow-y-auto bg-white rounded-lg border border-[#fed7aa] shadow-xl">
+            <div className="p-5 border-b border-[#fed7aa] flex items-start justify-between gap-4">
+              <div>
+                <span className="text-xs text-[#8a5a44] uppercase tracking-wide">Base Sepolia USDC</span>
+                <h2 className="text-xl text-[#9a3412] mt-1">
+                  {selectedBaseUsdcPackage.points.toLocaleString()} pts for {selectedBaseUsdcPackage.price}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={closeBaseUsdcModal}
+                disabled={isBaseUsdcPreparing || isBaseUsdcPaying}
+                className="h-9 w-9 flex items-center justify-center rounded-md border border-[#fed7aa] text-[#9a3412] hover:border-[#9a3412] disabled:opacity-50"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-5 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
+              <div className="bg-[#fff7ed] border border-[#fed7aa] rounded-lg p-4">
+                <div className="aspect-square w-full bg-white border border-[#fed7aa] rounded-lg flex items-center justify-center overflow-hidden">
+                  {baseUsdcQrUrl ? (
+                    <img src={baseUsdcQrUrl} alt="Base Sepolia USDC payment QR" className="w-full h-full object-contain" />
+                  ) : (
+                    <div className="text-sm text-[#8a5a44] text-center px-4">
+                      Create an order to show QR.
+                    </div>
+                  )}
+                </div>
+                <div className="mt-3 text-xs text-[#8a5a44] text-center">
+                  QR opens a Base Sepolia USDC transfer for the exact amount.
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {!baseUsdcOrder ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-[#fff7ed] border border-[#fed7aa] rounded-lg p-4">
+                      <div className="text-sm text-[#9a3412] mb-2">Browser Wallet</div>
+                      <button
+                        type="button"
+                        onClick={() => void handleConnectBaseUsdcWallet()}
+                        disabled={isBaseUsdcPreparing}
+                        className="w-full px-4 py-3 bg-[#9a3412] text-white rounded-lg hover:bg-[#c2410c] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        <Wallet className="w-4 h-4" />
+                        {isBaseUsdcPreparing ? "Preparing" : "Connect Wallet & Create QR"}
+                      </button>
+                    </div>
+
+                    <div className="bg-[#fff7ed] border border-[#fed7aa] rounded-lg p-4">
+                      <label className="block">
+                        <span className="block text-sm text-[#9a3412] mb-2">Sender Wallet Address</span>
+                        <input
+                          type="text"
+                          value={baseUsdcManualWalletAddress}
+                          onChange={(event) => setBaseUsdcManualWalletAddress(event.target.value)}
+                          placeholder="0x..."
+                          className="w-full rounded-lg border border-[#fed7aa] bg-white px-3 py-3 text-sm text-[#9a3412] outline-none focus:border-[#9a3412]"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => void handleCreateManualBaseUsdcOrder()}
+                        disabled={isBaseUsdcPreparing || !baseUsdcManualWalletAddress}
+                        className="mt-3 w-full px-4 py-3 bg-[#ffedd5] text-[#9a3412] rounded-lg border border-[#fed7aa] hover:border-[#9a3412] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Create QR From Address
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="bg-[#fff7ed] border border-[#fed7aa] rounded-lg p-3">
+                        <div className="text-xs text-[#8a5a44] mb-1">Amount</div>
+                        <div className="text-lg text-[#9a3412]">{baseUsdcOrder.amountDisplay} USDC</div>
+                        <button
+                          type="button"
+                          onClick={() => void copyBaseUsdcValue(baseUsdcOrder.amountDisplay, "Amount")}
+                          className="mt-2 text-xs text-[#9a3412] underline"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                      <div className="bg-[#fff7ed] border border-[#fed7aa] rounded-lg p-3">
+                        <div className="text-xs text-[#8a5a44] mb-1">Network</div>
+                        <div className="text-lg text-[#9a3412]">Base Sepolia</div>
+                      </div>
+                      <div className="bg-[#fff7ed] border border-[#fed7aa] rounded-lg p-3 md:col-span-2">
+                        <div className="text-xs text-[#8a5a44] mb-1">Receiver</div>
+                        <div className="text-sm text-[#9a3412] break-all">{baseUsdcOrder.treasuryAddress}</div>
+                        <button
+                          type="button"
+                          onClick={() => void copyBaseUsdcValue(baseUsdcOrder.treasuryAddress, "Receiver")}
+                          className="mt-2 text-xs text-[#9a3412] underline"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                      <div className="bg-[#fff7ed] border border-[#fed7aa] rounded-lg p-3 md:col-span-2">
+                        <div className="text-xs text-[#8a5a44] mb-1">Token Contract</div>
+                        <div className="text-sm text-[#9a3412] break-all">{baseUsdcOrder.usdcAddress}</div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => void handlePayBaseUsdcOrderWithWallet()}
+                        disabled={isBaseUsdcPaying}
+                        className="px-4 py-3 bg-[#9a3412] text-white rounded-lg hover:bg-[#c2410c] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        <Wallet className="w-4 h-4" />
+                        {isBaseUsdcPaying ? "Confirming" : "Connect Wallet & Pay"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void copyBaseUsdcValue(baseUsdcOrder.orderId, "Order id")}
+                        className="px-4 py-3 bg-[#ffedd5] text-[#9a3412] rounded-lg border border-[#fed7aa] hover:border-[#9a3412] transition-colors"
+                      >
+                        Copy Order ID
+                      </button>
+                    </div>
+
+                    <div className="bg-[#fff7ed] border border-[#fed7aa] rounded-lg p-4">
+                      <label className="block">
+                        <span className="block text-sm text-[#9a3412] mb-2">Transaction Hash</span>
+                        <input
+                          type="text"
+                          value={baseUsdcTxHash}
+                          onChange={(event) => setBaseUsdcTxHash(event.target.value)}
+                          placeholder="0x..."
+                          className="w-full rounded-lg border border-[#fed7aa] bg-white px-3 py-3 text-sm text-[#9a3412] outline-none focus:border-[#9a3412]"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => void handleVerifyBaseUsdcTxHash()}
+                        disabled={isBaseUsdcPaying}
+                        className="mt-3 w-full px-4 py-3 bg-[#ffedd5] text-[#9a3412] rounded-lg border border-[#fed7aa] hover:border-[#9a3412] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {baseUsdcTxHash.trim() ? "Verify Transaction" : "Check Payment"}
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                <div className="p-3 bg-[#ffedd5] rounded text-xs text-[#8a5a44] text-center">
+                  {baseUsdcMessage}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function getPointPackageName(packageId: PointPackageId | string | null) {
+  return POINT_PACKAGES.find((pointPackage) => pointPackage.id === packageId)?.name ?? packageId ?? "-";
+}
+
+function formatChargeStatus(status: string) {
+  const normalizedStatus = String(status || "").toLowerCase();
+  if (normalizedStatus === "paid") return "Paid";
+  if (normalizedStatus === "pending") return "Pending";
+  if (normalizedStatus === "cancelled") return "Cancelled";
+  return normalizedStatus ? normalizedStatus.toUpperCase() : "-";
+}
+
+function getChargeStatusClass(status: string) {
+  const normalizedStatus = String(status || "").toLowerCase();
+  if (normalizedStatus === "paid") return "text-[#15803d]";
+  if (normalizedStatus === "pending") return "text-[#9a3412]";
+  return "text-[#c62828]";
+}
+
+function formatChargeDate(timestamp: string | null | undefined) {
+  if (!timestamp) return "-";
+  return `${new Intl.DateTimeFormat("en-GB", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Seoul"
+  }).format(new Date(timestamp))} KST`;
+}

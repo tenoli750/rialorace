@@ -3,10 +3,11 @@ import { useState, useEffect, useRef } from "react";
 import { getMarketById } from "../data/markets";
 import { getTokenByLetter } from "../data/tokens";
 import { useAuth } from "../contexts/AuthContext";
+import { listChatPickBadges } from "../lib/chatPickBadges";
+import { createLocalBetRecord } from "../lib/localBetRecords";
 import {
   BetRow,
   ChatMessageRow,
-  createBetRecord,
   createChatMessage,
   getOrCreateMarketRatioSnapshot,
   listBetsWithSession,
@@ -66,6 +67,7 @@ export function LiveMarket() {
   const [historyBets, setHistoryBets] = useState<BetRow[]>([]);
   const [historyStatus, setHistoryStatus] = useState("No bets");
   const [chatMessages, setChatMessages] = useState<ChatMessageRow[]>([]);
+  const [chatPickBadges, setChatPickBadges] = useState<Record<string, string>>({});
   const [chatInput, setChatInput] = useState("");
   const [chatStatus, setChatStatus] = useState("");
   const [betSlipStatus, setBetSlipStatus] = useState("");
@@ -75,6 +77,7 @@ export function LiveMarket() {
   const [consoleHeight, setConsoleHeight] = useState<number | null>(null);
 
   const tokens = market?.tokenLetters.map(letter => getTokenByLetter(letter)).filter(Boolean) || [];
+  const currentRaceStartedAt = new Date(getCurrentRaceBoundary(Date.now())).toISOString();
   const nextRaceStartedAt = new Date(getNextRaceBoundary(Date.now())).toISOString();
 
   useEffect(() => {
@@ -209,6 +212,28 @@ export function LiveMarket() {
   }, [activeTab, market]);
 
   useEffect(() => {
+    if (!market || activeTab !== "chat") return;
+    let cancelled = false;
+
+    async function loadChatPickBadges() {
+      try {
+        const badges = await listChatPickBadges(market.id, currentRaceStartedAt);
+        if (!cancelled) setChatPickBadges(badges);
+      } catch {
+        if (!cancelled) setChatPickBadges({});
+      }
+    }
+
+    void loadChatPickBadges();
+    const timer = window.setInterval(loadChatPickBadges, 15000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [activeTab, market?.id, currentRaceStartedAt, chatMessages.length]);
+
+  useEffect(() => {
     if (activeTab !== "chat") return;
     const chatList = chatListRef.current;
     if (!chatList) return;
@@ -237,7 +262,7 @@ export function LiveMarket() {
       return;
     }
     try {
-      const row = await createBetRecord({
+      const row = await createLocalBetRecord({
         marketId: market.id,
         targetRaceStartedAt: nextRaceStartedAt,
         stake,
@@ -269,7 +294,8 @@ export function LiveMarket() {
       setActiveTab("next");
       setBetSlipStatus("Bet saved.");
     } catch (error) {
-      setBetSlipStatus(error instanceof Error ? error.message : "Bet save failed.");
+      console.warn("Bet save failed.", error);
+      setBetSlipStatus(getThrownMessage(error, "Bet save failed."));
     }
   };
 
@@ -342,7 +368,15 @@ export function LiveMarket() {
                 <div ref={chatListRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1">
                   {chatMessages.length ? chatMessages.map((entry) => (
                     <div className="text-xs" key={entry.id}>
-                      <div className="text-[#8a5a44] mb-1">{entry.author_login_id} · {formatChatTime(entry.created_at)}</div>
+                      <div className="mb-1 flex flex-wrap items-center gap-1 text-[#8a5a44]">
+                        <span>{entry.author_login_id}</span>
+                        {chatPickBadges[entry.author_login_id] && (
+                          <span className="rounded border border-[#fed7aa] bg-[#ffedd5] px-1.5 py-0.5 text-[10px] font-semibold text-[#9a3412]">
+                            {chatPickBadges[entry.author_login_id]}
+                          </span>
+                        )}
+                        <span>· {formatChatTime(entry.created_at)}</span>
+                      </div>
                       <div className="text-[#9a3412]">{entry.message}</div>
                     </div>
                   )) : (
@@ -726,4 +760,19 @@ function getTokenRatio(ratios: Record<string, any>, place: string, symbol: strin
 
 function formatRatio(value: number) {
   return `${Number(value || 1).toFixed(2)}x`;
+}
+
+function getThrownMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+  }
+
+  return fallback;
 }

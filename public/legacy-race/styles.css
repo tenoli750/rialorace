@@ -798,6 +798,7 @@ h1 {
 .standing-slot {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
   gap: 12px;
   padding: 10px 12px;
   border-radius: 18px;
@@ -986,6 +987,38 @@ h1 {
   word-break: break-word;
 }
 
+.standing-result-line {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: -2px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 248, 227, 0.16);
+  color: rgba(255, 248, 227, 0.82);
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.15;
+  min-width: 0;
+}
+
+.standing-result-line strong {
+  color: #fff8e6;
+  font-size: 0.96rem;
+  white-space: nowrap;
+}
+
+.standing-result-line.is-backend strong {
+  color: #7ef0b8;
+}
+
+.standing-result-line.is-finalizing {
+  justify-content: center;
+  color: #ffd39a;
+  text-transform: uppercase;
+}
+
 .standing-time-label {
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -1079,10 +1112,23 @@ h1 {
   box-shadow: 0 18px 36px rgba(154, 52, 18, 0.14);
 }
 
+.coin-post-race-rank-main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
 .coin-post-race-rank-label {
   font-size: 1.8rem;
   font-weight: 900;
   color: #fff8eb;
+}
+
+.coin-post-race-rank-time {
+  color: rgba(255, 248, 235, 0.78);
+  font-size: 1.02rem;
+  font-weight: 900;
+  line-height: 1;
 }
 
 .coin-post-race-rank-avatar {
@@ -1132,19 +1178,6 @@ h1 {
   z-index: 2;
 }
 
-body.is-next-race-soon .coin-card > * {
-  visibility: hidden;
-}
-
-body.is-next-race-soon .coin-card .coin-post-race-cover,
-body.is-next-race-soon .coin-card .coin-post-race-cover * {
-  visibility: visible;
-}
-
-body.is-next-race-soon .viewport-standings-compact {
-  display: none;
-}
-
 .coin-post-race-label {
   font-size: 2rem;
   font-weight: 900;
@@ -1165,9 +1198,12 @@ body.is-next-race-soon .viewport-standings-compact {
   box-shadow: 0 10px 20px rgba(154, 52, 18, 0.14);
 }
 
+body.is-next-race-soon .viewport-standings-compact {
+  display: none;
+}
+
 .coin-card.is-post-race .coin-post-race-cover,
- .coin-card.force-post-race-cover .coin-post-race-cover,
-body.is-next-race-soon .coin-card .coin-post-race-cover {
+.coin-card.force-post-race-cover .coin-post-race-cover {
   display: grid;
 }
 
@@ -2375,4 +2411,256 @@ body.is-next-race-soon .coin-card .coin-post-race-cover {
 .embed-viewport .viewport canvas {
   width: 100% !important;
   height: 100% !important;
+}
+
+
+/* Race-Lotto */
+.race-lotto-page .hero-panel {
+  overflow: hidden;
+}
+
+.race-lotto-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.75fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.race-lotto-board,
+.race-lotto-side {
+  padding: 20px;
+  display: grid;
+  gap: 18px;
+}
+
+.lotto-draw-tabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.lotto-draw-tab {
+  appearance: none;
+  border: 1px solid rgba(154, 52, 18, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--text-main);
+  padding: 12px;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+}
+
+.lotto-draw-tab strong,
+.lotto-draw-tab span {
+  font-weight: 900;
+}
+
+.lotto-draw-tab small {
+  color: var(--text-soft);
+  font-weight: 800;
+}
+
+.lotto-draw-tab.is-active {
+  border-color: rgba(154, 52, 18, 0.52);
+  background: rgba(240, 191, 88, 0.22);
+}
+
+.lotto-round-summary,
+.lotto-ticket-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.lotto-round-summary > div,
+.lotto-ticket-summary > div,
+.lotto-ticket-empty {
+  border: 1px solid rgba(154, 52, 18, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 12px;
+  display: grid;
+  gap: 4px;
+}
+
+.lotto-round-summary strong,
+.lotto-ticket-summary strong,
+.lotto-ticket-empty strong {
+  color: var(--text-main);
+  font-size: 1.04rem;
+  font-weight: 900;
+}
+
+.lotto-race-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.lotto-race-card {
+  border: 1px solid rgba(154, 52, 18, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.lotto-race-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.lotto-race-head h3 {
+  margin-top: 4px;
+  font-size: 1.08rem;
+  font-weight: 900;
+}
+
+.lotto-market-symbols {
+  color: var(--text-soft);
+  font-weight: 800;
+}
+
+.lotto-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.lotto-pick-button {
+  appearance: none;
+  min-height: 78px;
+  border: 1px solid rgba(154, 52, 18, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 248, 235, 0.74);
+  color: var(--text-main);
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 8px 6px;
+}
+
+.lotto-pick-button:disabled {
+  cursor: default;
+}
+
+.lotto-pick-button.is-selected {
+  border-color: rgba(154, 52, 18, 0.74);
+  background: rgba(154, 52, 18, 0.9);
+  color: #fff8e6;
+}
+
+.lotto-pick-button.is-winner {
+  border-color: rgba(22, 163, 74, 0.72);
+  box-shadow: inset 0 0 0 2px rgba(22, 163, 74, 0.28);
+}
+
+.lotto-pick-button.is-missed {
+  border-color: rgba(220, 38, 38, 0.55);
+}
+
+.lotto-token-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.lotto-token-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.lotto-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.lotto-actions .ghost-button {
+  min-width: 150px;
+}
+
+.lotto-ticket-card {
+  display: grid;
+  gap: 12px;
+}
+
+.lotto-ticket-list {
+  display: grid;
+  gap: 8px;
+}
+
+.lotto-ticket-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(154, 52, 18, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.68);
+  padding: 10px;
+}
+
+.lotto-ticket-row strong {
+  font-weight: 900;
+}
+
+.lotto-ticket-row small {
+  color: var(--text-soft);
+  font-weight: 800;
+}
+
+.lotto-ticket-row.is-match {
+  border-color: rgba(22, 163, 74, 0.42);
+  background: rgba(220, 252, 231, 0.7);
+}
+
+.lotto-ticket-row.is-miss {
+  border-color: rgba(220, 38, 38, 0.28);
+  background: rgba(254, 226, 226, 0.55);
+}
+
+.lotto-info-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.race-lotto-menu-card .panel-heading {
+  align-items: center;
+}
+
+@media (max-width: 980px) {
+  .race-lotto-grid,
+  .lotto-race-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lotto-round-summary,
+  .lotto-ticket-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .lotto-pick-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lotto-ticket-row {
+    grid-template-columns: 1fr;
+  }
 }

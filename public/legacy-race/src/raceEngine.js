@@ -37,6 +37,7 @@ export class RaceEngine {
       raceStartedAtWallMs: 0,
       raceFinishedAtWallMs: 0,
       finishOrder: [],
+      officialFinishTimesApplied: false,
       prepDurationMs: PREP_DURATION_MS,
       cameraIntroDurationMs: CAMERA_INTRO_DURATION_MS,
       finalCountdownDurationMs: FINAL_COUNTDOWN_DURATION_MS,
@@ -57,6 +58,7 @@ export class RaceEngine {
     this.state.raceStartedAtWallMs = 0;
     this.state.raceFinishedAtWallMs = 0;
     this.state.finishOrder = [];
+    this.state.officialFinishTimesApplied = false;
     this.state.autoResetRequested = false;
     this.state.externalSnapshotMode = false;
     this.state.notes = [];
@@ -263,10 +265,16 @@ export class RaceEngine {
     }
 
     if (this.state.prepStarted && !this.state.raceStarted) {
-      if (now - this.state.prepStartedAtWallMs >= this.state.prepDurationMs) {
-        this.beginRace(now);
+      const scheduledRaceStartedAtWallMs = this.state.prepStartedAtWallMs + this.state.prepDurationMs;
+      if (now < scheduledRaceStartedAtWallMs) {
+        return;
       }
-      return;
+
+      this.beginRace(scheduledRaceStartedAtWallMs);
+      deltaSeconds = Math.max(0, (now - scheduledRaceStartedAtWallMs) / 1000);
+      if (deltaSeconds <= 0) {
+        return;
+      }
     }
 
     if (this.state.externalSnapshotMode) {
@@ -277,6 +285,7 @@ export class RaceEngine {
       return;
     }
 
+    const finishCandidates = [];
     for (const racer of this.state.racers) {
       if (!racer.finishPlace) {
         racer.speedFactor = easeToward(
@@ -289,17 +298,28 @@ export class RaceEngine {
       const speedFactor = racer.finishPlace
         ? racer.postFinishSpeedFactor || POST_FINISH_CRUISE_FACTOR
         : this.getEffectiveSpeedFactor(racer);
-      racer.distanceMeters = Math.min(
-        racer.distanceMeters + BASE_METERS_PER_SECOND * speedFactor * deltaSeconds,
-        VIRTUAL_FINISH_DISTANCE_METERS
-      );
+      const previousDistanceMeters = racer.distanceMeters;
+      const progressedMeters = BASE_METERS_PER_SECOND * speedFactor * deltaSeconds;
+      racer.distanceMeters = Math.min(previousDistanceMeters + progressedMeters, VIRTUAL_FINISH_DISTANCE_METERS);
       if (!racer.finishPlace && racer.distanceMeters >= TARGET_DISTANCE_METERS) {
-        this.lockFinishPlace(racer, now);
+        const finishProgress = progressedMeters > 0
+          ? clamp((TARGET_DISTANCE_METERS - previousDistanceMeters) / progressedMeters, 0, 1)
+          : 1;
+        const finishWallMs = Math.round(now - Math.max(0, (1 - finishProgress) * deltaSeconds * 1000));
+        finishCandidates.push({
+          racer,
+          finishWallMs,
+          index: this.state.racers.indexOf(racer)
+        });
       }
     }
 
+    finishCandidates
+      .sort((left, right) => left.finishWallMs - right.finishWallMs || left.index - right.index)
+      .forEach(({ racer, finishWallMs }) => this.lockFinishPlace(racer, finishWallMs));
+
     if (!this.state.raceFinished && this.state.finishOrder.length === this.state.racers.length) {
-      this.finishRace(now);
+      this.finishRace(Math.max(...this.state.racers.map((racer) => racer.finishedAtWallMs || now)));
     }
 
     if (
@@ -337,14 +357,22 @@ export class RaceEngine {
     racer.postFinishSpeedFactor = Math.max(racer.speedFactor || 1, racer.targetSpeedFactor || 1, 1);
     this.state.finishOrder.push(racer.id);
 
-    this.addNote(`${formatPlace(racer.finishPlace)} ${racer.id} locked its place at ${TARGET_DISTANCE_METERS}m.`);
+    this.addNote(
+      `${formatPlace(racer.finishPlace)} ${racer.id} crossed ${TARGET_DISTANCE_METERS}m in ${formatRaceClock(
+        this.getRacerElapsedRaceMs(racer, finishedAtWallMs)
+      )}.`
+    );
   }
 
   finishRace(finishedAtWallMs) {
     this.state.winnerId = this.state.finishOrder[0] ?? null;
-    this.state.winnerFinishedAtWallMs = finishedAtWallMs;
+    const winner = this.state.racers.find((racer) => racer.id === this.state.winnerId);
+    this.state.winnerFinishedAtWallMs = winner?.finishedAtWallMs || finishedAtWallMs;
     this.state.raceFinished = true;
-    this.state.raceFinishedAtWallMs = finishedAtWallMs;
+    this.state.raceFinishedAtWallMs = Math.max(
+      finishedAtWallMs,
+      ...this.state.racers.map((racer) => racer.finishedAtWallMs || finishedAtWallMs)
+    );
     this.addNote(
       `Final order locked: ${this.state.finishOrder
         .map((id, index) => `${index + 1}.${id}`)
@@ -419,6 +447,7 @@ export class RaceEngine {
     const officialFinishTimes = [];
 
     this.state.finishOrder = [...finishOrder];
+    this.state.officialFinishTimesApplied = true;
     this.state.winnerId = finishOrder[0] ?? null;
     this.state.raceFinished = true;
 
@@ -565,6 +594,23 @@ export class RaceEngine {
     return Math.max(0, finishTime - this.state.raceStartedAtWallMs);
   }
 
+  getRacerElapsedRaceMs(racerOrId, nowWallMs = Date.now()) {
+    if (!this.state.raceStarted) {
+      return 0;
+    }
+
+    const racer =
+      typeof racerOrId === "string"
+        ? this.state.racers.find((entry) => entry.id === racerOrId)
+        : racerOrId;
+    if (!racer) {
+      return 0;
+    }
+
+    const elapsedEndWallMs = racer.finishedAtWallMs || nowWallMs;
+    return Math.max(0, elapsedEndWallMs - this.state.raceStartedAtWallMs);
+  }
+
   getRemainingPrepMs(nowWallMs = Date.now()) {
     if (!this.state.prepStarted || this.state.raceStarted) {
       return 0;
@@ -610,6 +656,17 @@ function createRacer(coin) {
     samples: [],
     sampleKeys: new Set()
   };
+}
+
+function formatRaceClock(milliseconds) {
+  const totalMs = Math.max(0, Math.round(milliseconds));
+  const minutes = Math.floor(totalMs / 60000);
+  const seconds = Math.floor((totalMs % 60000) / 1000);
+  const ms = String(totalMs % 1000).padStart(3, "0");
+  if (minutes > 0) {
+    return `${minutes}:${String(seconds).padStart(2, "0")}.${ms}`;
+  }
+  return `${seconds}.${ms}s`;
 }
 
 function formatPlace(place) {

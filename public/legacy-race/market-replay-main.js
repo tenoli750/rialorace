@@ -9,11 +9,11 @@ import {
 } from "./src/config.js";
 import { buildPlaceholderBallTuning } from "./src/marketSlots.js";
 import { getMarketById, getMarketSymbolIds, formatMarketSymbols, formatMarketTitle } from "./src/markets.js";
-import { RaceEngine } from "./src/raceEngine.js?v=6";
+import { RaceEngine } from "./src/raceEngine.js?v=9";
 import { RaceAudioController } from "./src/raceAudio.js";
-import { ThreeRaceRenderer } from "./src/renderer.js?v=20";
+import { ThreeRaceRenderer } from "./src/renderer.js?v=23";
 import { getLoginSession, supabase } from "./src/supabaseClient.js?v=5";
-import { RaceUI } from "./src/ui.js?v=5";
+import { RaceUI } from "./src/ui.js?v=15";
 
 const params = new URLSearchParams(window.location.search);
 const MARKET_ID = params.get("id") ?? "market-03";
@@ -50,6 +50,7 @@ let replayEvents = [];
 let replaySessionStartedAtMs = 0;
 let replayLocalRaceStartedAtMs = 0;
 let replayNextEventIndex = 0;
+let replayOfficialResultApplied = false;
 
 ui = new RaceUI({
   root: document,
@@ -107,6 +108,7 @@ function frame(now) {
   }
 
   engine.step(deltaSeconds, wallNowMs);
+  maybeApplyOfficialReplayResult(wallNowMs);
 
   if (!previousRaceStarted && engine.state.raceStarted) {
     renderer.setCameraFocusPreset("auto");
@@ -270,6 +272,7 @@ async function loadReplay(replayResult) {
   replayLocalRaceStartedAtMs = replaySessionStartedAtMs + REPLAY_PREP_MS;
   replayEvents = buildReplayEvents(replayData.playbackFrames, new Date(replayResult.race_started_at).getTime());
   replayNextEventIndex = 0;
+  replayOfficialResultApplied = false;
   renderer.stopCameraAnimation(false);
   engine.reset();
   engine.state.prepDurationMs = REPLAY_PREP_MS;
@@ -398,6 +401,43 @@ function buildReplayEvents(playbackFrames, raceStartedAtMs) {
       speed_factor: Number(row.speed_factor ?? 1)
     }))
   }));
+}
+
+function maybeApplyOfficialReplayResult(nowWallMs) {
+  if (replayOfficialResultApplied || !selectedReplayResult || !engine.state.raceStarted) {
+    return;
+  }
+
+  if (!engine.state.raceFinished) {
+    return;
+  }
+
+  const maxOfficialElapsedMs = getMaxOfficialFinishElapsedMs(selectedReplayResult);
+  const finishOrder = getReplayFinishOrder(selectedReplayResult);
+  if (finishOrder.length !== marketCoinIds.length || maxOfficialElapsedMs <= 0) {
+    return;
+  }
+
+  engine.applyOfficialFinishOrder(
+    finishOrder,
+    replayLocalRaceStartedAtMs + maxOfficialElapsedMs,
+    selectedReplayResult.compared_finish_elapsed_ms ?? {}
+  );
+  replayOfficialResultApplied = true;
+  engine.addNote("Replay finish times synced to backend official result.");
+}
+
+function getReplayFinishOrder(entry) {
+  return [entry?.first_place, entry?.second_place, entry?.third_place, entry?.fourth_place].filter((id) =>
+    marketCoinIds.includes(id)
+  );
+}
+
+function getMaxOfficialFinishElapsedMs(entry) {
+  const values = Object.values(entry?.compared_finish_elapsed_ms ?? {})
+    .map(Number)
+    .filter((value) => value > 0);
+  return values.length ? Math.max(...values) : 0;
 }
 
 function formatBackendFinishTime(entry, symbol) {

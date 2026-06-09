@@ -255,6 +255,7 @@ create or replace function public.create_bet_with_login_session(
   requested_finish_time_symbol text default null::text
 ) returns table(bet_id uuid, points_balance integer)
 language plpgsql
+volatile
 security definer
 set search_path to 'public'
 as $$
@@ -475,7 +476,7 @@ returns table (
   fourth_place text
 )
 language sql
-stable
+volatile
 security definer
 set search_path to 'public'
 as $$

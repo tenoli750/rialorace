@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Opening Rialo Race Market</title>
+    <script>
+      const target = new URL("./legacy-race/market.html", window.location.href);
+      target.search = window.location.search;
+      target.hash = window.location.hash;
+      window.location.replace(target.toString());
+    </script>
+  </head>
+  <body>
+    <a id="marketLink" href="./legacy-race/market.html?id=market-01">Open market</a>
+    <script>
+      document.getElementById("marketLink").href = new URL("./legacy-race/market.html" + window.location.search + window.location.hash, window.location.href).toString();
+    </script>
+  </body>
+</html>

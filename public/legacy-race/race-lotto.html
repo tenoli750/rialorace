@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rialo Race-Lotto</title>
+    <link rel="icon" href="./assets/coin-logos/btc.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css?v=12" />
+    <script type="module" src="./race-lotto-main.js?v=3"></script>
+  </head>
+  <body>
+    <main class="app-shell race-lotto-page">
+      <a class="site-title" href="./main-menu.html" aria-label="Rialo Race"><img src="./assets/create_a_logo_in_this_exact_layout_style_use_the_u_019d8db9-c7d9-75dc-ad2e-f5463423c3be-removebg-preview.png" alt="Rialo Race" /></a>
+      <nav class="page-nav panel">
+        <a class="page-nav-link" href="./main-menu.html">Live Markets</a>
+        <a class="page-nav-link" href="./replay-menu.html">Replay</a>
+        <a class="page-nav-link is-active" href="./race-lotto.html">Lotto</a>
+        <a class="page-nav-link" href="./community.html">Rankings</a>
+        <a class="page-nav-link" href="./rewards.html">Rewards</a>
+        <a class="page-nav-link" href="./my-bets.html">History</a>
+        <span class="page-nav-spacer"></span>
+        <span class="page-nav-points" id="headerPoints">Points --</span>
+        <a class="page-nav-link page-nav-account" id="accountLink" href="./login.html">Login</a>
+      </nav>
+
+      <section class="hero-panel panel race-lotto-hero">
+        <div class="hero-topline">
+          <span class="eyebrow">Race-Lotto</span>
+          <span class="pill" id="lottoStatusPill">Loading</span>
+        </div>
+        <div class="hero-copy">
+          <div>
+            <h1>Perfect 6 Jackpot</h1>
+            <p>One daily 10:00 KST lotto. Pick the winners across six token matchups. Jackpot starts at 400,000 pts and rolls forward until it hits.</p>
+          </div>
+          <div class="hero-stats">
+            <div class="stat-card">
+              <span class="stat-label">Jackpot</span>
+              <span class="stat-value" id="jackpotValue">--</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Ticket</span>
+              <span class="stat-value">100 pts</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Draws</span>
+              <span class="stat-value">10:00 KST</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="race-lotto-grid">
+        <section class="panel race-lotto-board">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">Draw Board</span>
+              <h2 id="roundTitle">Race-Lotto</h2>
+            </div>
+            <span class="mini-pill" id="roundStatus">--</span>
+          </div>
+
+
+          <div class="lotto-round-summary">
+            <div>
+              <span class="coin-label">Sales Close</span>
+              <strong id="salesCloseValue">--</strong>
+            </div>
+            <div>
+              <span class="coin-label">Pool</span>
+              <strong id="poolBreakdown">--</strong>
+            </div>
+            <div>
+              <span class="coin-label">Your Picks</span>
+              <strong id="pickCountValue">0 / 6</strong>
+            </div>
+          </div>
+
+          <div class="lotto-race-grid" id="lottoRaceGrid"></div>
+
+          <div class="lotto-actions">
+            <button class="ghost-button" id="submitTicketButton" type="button">Enter Race-Lotto</button>
+            <button class="ghost-button secondary" id="refreshLottoButton" type="button">Refresh</button>
+            <button class="ghost-button secondary" id="settleRoundButton" type="button" hidden>Check Results</button>
+          </div>
+          <div class="bet-slip-preview" id="lottoMessage">Loading the next Race-Lotto.</div>
+        </section>
+
+        <aside class="panel race-lotto-side">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">Ticket</span>
+              <h2>Your Entry</h2>
+            </div>
+            <span class="mini-pill" id="ticketStatus">--</span>
+          </div>
+          <div class="lotto-ticket-card" id="ticketCard"></div>
+          <div class="lotto-info-stack">
+            <div class="rule-card">
+              <span class="rule-kicker">Perfect 6</span>
+              <span class="rule-text">All six first-place picks must match.</span>
+            </div>
+            <div class="rule-card">
+              <span class="rule-kicker">Rollover</span>
+              <span class="rule-text">No perfect ticket means the jackpot carries forward.</span>
+            </div>
+          </div>
+        </aside>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,290 +1,313 @@
-import { ArrowRight, Bell, CirclePlay, Download, Radio, Trophy, Users } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Info, Play, Trophy } from "lucide-react";
 import { Link } from "react-router";
 
-const featuredMarkets = [
-  { title: "Market 01", label: "ETH, SOL, TRX, BNB", href: "/market.html?id=market-01", date: "Live now" },
-  { title: "Market 02", label: "ETH, XRP, ADA, LTC", href: "/market.html?id=market-02", date: "Next gate" },
-];
-
-const teamCards = [
-  { name: "Live Feed", role: "Price movement engine", image: "/assets/icons/Wolf.png" },
-  { name: "Race Track", role: "Realtime visual race", image: "/assets/icons/Horse.png" },
-  { name: "Bet Slip", role: "First, second, third picks", image: "/assets/icons/Bull.png" },
-  { name: "Replay Room", role: "Finished race review", image: "/assets/icons/Stag.png" },
+const aboutSections = [
+  {
+    number: "01",
+    title: "Live Market Races",
+    image: "/assets/about-live-market.png",
+    preview: "screenshot",
+    body:
+      "Every track turns token movement into a race. Four racers line up, the market data moves, and the race view makes the result easy to read without staring at raw charts."
+  },
+  {
+    number: "02",
+    title: "Pick Your Racers",
+    image: "/assets/about-pick-racers.png",
+    preview: "screenshot",
+    body:
+      "Choose a market, read the token lineup, and place your prediction before the run. The app keeps the flow simple: pick, watch, then review the result."
+  },
+  {
+    number: "03",
+    title: "Race Lotto",
+    image: "/assets/about-race-lotto.png",
+    preview: "screenshot",
+    body:
+      "Race Lotto is a perfect-six side mode. Pick winners across six matchups, then wait for the 10:00 and 22:00 KST result windows."
+  },
+  {
+    number: "04",
+    title: "Replay And History",
+    image: "/assets/about-replay-history.png",
+    preview: "screenshot",
+    body:
+      "Finished races are not lost. Replay screens and history records let you check targets, picks, final results, payout status, and point movement."
+  },
+  {
+    number: "05",
+    title: "Points Loop",
+    image: "/assets/about-points-symbol.png",
+    shape: "circle",
+    body:
+      "Points are the arcade credits of Rialo Race. Use them for entries, recharge through the points page, and track every change through history."
+  }
 ];
 
 export function Landing() {
+  const [showAbout, setShowAbout] = useState(false);
+  const [showIntro, setShowIntro] = useState(true);
+
   return (
-    <main className="min-h-screen bg-[#f5efe4] text-[#171310]">
-      <div className="bg-[#16110d] text-[#f9f2e8]">
-        <div className="mx-auto flex max-w-[1480px] flex-col gap-3 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] sm:flex-row sm:items-center sm:justify-between sm:px-7">
-          <div className="flex flex-wrap items-center gap-3">
-            <Link to="/main-menu.html" className="inline-flex items-center gap-2 rounded-full bg-[#e85d24] px-4 py-2 text-white">
-              Enter the app <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-            <Link to="/market.html?id=market-01" className="inline-flex items-center gap-2 rounded-full border border-white/25 px-4 py-2 text-[#f9f2e8]">
-              <CirclePlay className="h-3.5 w-3.5" /> Watch live
-            </Link>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 text-[#d8c5b2]">
-            <span className="inline-flex items-center gap-2"><Download className="h-3.5 w-3.5" /> iOS app soon</span>
-            <span className="inline-flex items-center gap-2"><Download className="h-3.5 w-3.5" /> Android app soon</span>
-          </div>
-        </div>
-      </div>
+    <MonitorShell>
+      {showIntro ? (
+        <IntroVideo onDone={() => setShowIntro(false)} />
+      ) : showAbout ? (
+        <AboutScreen onBack={() => setShowAbout(false)} />
+      ) : (
+        <TitleScreen onAbout={() => setShowAbout(true)} />
+      )}
+    </MonitorShell>
+  );
+}
 
-      <header className="relative z-20 bg-[#f5efe4]/95">
-        <div className="mx-auto flex max-w-[1480px] flex-col items-center gap-5 px-4 py-7 sm:px-7 lg:grid lg:grid-cols-[1fr_auto_1fr]">
-          <nav className="flex flex-wrap justify-center gap-5 text-sm font-semibold uppercase tracking-[0.16em] text-[#6a3a23] lg:justify-start">
-            <a href="#about" className="hover:text-[#e85d24]">About</a>
-            <a href="#markets" className="hover:text-[#e85d24]">Markets</a>
-            <a href="#play" className="hover:text-[#e85d24]">Play</a>
-          </nav>
-          <Link to="/landing.html" className="flex items-center justify-center" aria-label="Rialo Race landing">
-            <img
-              src="/assets/create_a_logo_in_this_exact_layout_style_use_the_u_019d8db9-c7d9-75dc-ad2e-f5463423c3be-removebg-preview.png"
-              alt="Rialo Race"
-              className="h-20 w-auto"
-            />
-          </Link>
-          <nav className="flex flex-wrap justify-center gap-5 text-sm font-semibold uppercase tracking-[0.16em] text-[#6a3a23] lg:justify-end">
-            <a href="#replay" className="hover:text-[#e85d24]">Replay</a>
-            <a href="#updates" className="hover:text-[#e85d24]">Updates</a>
-            <a href="#contact" className="hover:text-[#e85d24]">Contact</a>
-          </nav>
-        </div>
-      </header>
+function IntroVideo({ onDone }: { onDone: () => void }) {
+  return (
+    <section className="absolute inset-0 z-20 overflow-hidden bg-black">
+      <video
+        src="/assets/landing-intro-race.mp4"
+        className="h-full w-full object-cover"
+        autoPlay
+        muted
+        playsInline
+        onEnded={onDone}
+      />
+      <button
+        type="button"
+        onClick={onDone}
+        className="absolute bottom-4 right-4 rounded border border-white/20 bg-black/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/45 backdrop-blur-sm transition-colors hover:border-white/45 hover:bg-black/25 hover:text-white/80 sm:bottom-6 sm:right-6"
+      >
+        Skip
+      </button>
+    </section>
+  );
+}
 
-      <section id="play" className="relative overflow-hidden bg-[#171310] text-[#fff8ec]">
-        <div className="absolute inset-0">
-          <img
-            src="/assets/icons/horse-side.png"
-            alt=""
-            className="absolute bottom-[-6%] right-[-10%] h-[72%] w-auto max-w-none object-contain opacity-25 sm:right-[2%] sm:h-[82%]"
-          />
-          <img
-            src="/assets/icons/bull-side.png"
-            alt=""
-            className="absolute left-[-8%] top-[18%] h-[48%] w-auto max-w-none object-contain opacity-15"
-          />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_62%_44%,rgba(232,93,36,0.22),transparent_34%),linear-gradient(180deg,rgba(23,19,16,0.08),rgba(23,19,16,0.94))]" />
-        </div>
-
-        <div className="relative mx-auto grid min-h-[720px] max-w-[1480px] content-end px-4 pb-10 pt-20 sm:px-7 lg:min-h-[790px] lg:pb-16">
-          <div className="max-w-[980px]">
-            <p className="mb-5 text-sm font-bold uppercase tracking-[0.34em] text-[#f08a4b]">Rialo Race</p>
-            <h1 className="text-[4.5rem] font-black uppercase leading-[0.78] tracking-normal text-[#fff8ec] sm:text-[7.5rem] lg:text-[10.6rem]">
-              Your home
-              <br />
-              for speed
-            </h1>
-            <p className="mt-7 max-w-[680px] text-xl font-semibold uppercase tracking-[0.12em] text-[#f3d5bd]">
-              Live crypto racing, market picks, and replayable results
-            </p>
-          </div>
-
-          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:max-w-[650px]">
-            <Link
-              to="/main-menu.html"
-              className="group rounded-md bg-[#e85d24] p-5 text-white transition-transform hover:-translate-y-1"
-            >
-              <span className="mb-8 flex h-11 w-11 items-center justify-center rounded-full bg-white text-[#e85d24]">
-                <Radio className="h-5 w-5" />
-              </span>
-              <span className="block text-xs font-bold uppercase tracking-[0.24em] text-white/75">Get in the race</span>
-              <span className="mt-2 flex items-center justify-between text-2xl font-black uppercase">
-                Live markets <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-              </span>
-            </Link>
-            <Link
-              to="/replay-menu.html"
-              className="group rounded-md bg-[#fff8ec] p-5 text-[#171310] transition-transform hover:-translate-y-1"
-            >
-              <span className="mb-8 flex h-11 w-11 items-center justify-center rounded-full bg-[#171310] text-white">
-                <Trophy className="h-5 w-5" />
-              </span>
-              <span className="block text-xs font-bold uppercase tracking-[0.24em] text-[#8b634a]">Get ready</span>
-              <span className="mt-2 flex items-center justify-between text-2xl font-black uppercase">
-                Race replay <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-              </span>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section id="markets" className="bg-[#f5efe4]">
-        <div className="mx-auto grid max-w-[1480px] gap-8 px-4 py-16 sm:px-7 lg:grid-cols-[0.82fr_1.18fr] lg:py-24">
-          <div>
-            <p className="text-sm font-black uppercase tracking-[0.26em] text-[#e85d24]">Featured Rialo</p>
-            <h2 className="mt-3 text-5xl font-black uppercase leading-none text-[#171310] sm:text-7xl">
-              Upcoming race
-            </h2>
-            <Link
-              to="/main-menu.html"
-              className="mt-7 inline-flex items-center gap-2 rounded-full border border-[#171310]/20 px-5 py-3 text-sm font-bold uppercase tracking-[0.16em] text-[#171310] hover:border-[#e85d24] hover:text-[#e85d24]"
-            >
-              View all markets <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-
-          <div className="grid gap-5">
-            {featuredMarkets.map((market) => (
-              <Link
-                key={market.title}
-                to={market.href}
-                className="group grid gap-5 overflow-hidden rounded-md border border-[#d8c4af] bg-white p-5 text-[#171310] transition-transform hover:-translate-y-1 sm:grid-cols-[1fr_190px]"
-              >
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.28em] text-[#e85d24]">{market.date}</p>
-                  <h3 className="mt-4 text-4xl font-black uppercase leading-none">{market.title}</h3>
-                  <p className="mt-3 text-base font-semibold text-[#765643]">{market.label}</p>
-                  <span className="mt-8 inline-flex items-center gap-2 text-sm font-black uppercase tracking-[0.16em] text-[#e85d24]">
-                    View details <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </span>
-                </div>
-                <div className="relative min-h-[170px] overflow-hidden rounded-md bg-[#171310]">
-                  <img
-                    src="/assets/icons/horse-side.png"
-                    alt=""
-                    className="absolute bottom-2 right-[-18px] h-[86%] w-auto object-contain opacity-80"
-                  />
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="about" className="bg-[#fff8ec]">
-        <div className="mx-auto grid max-w-[1480px] gap-10 px-4 py-16 sm:px-7 lg:grid-cols-[0.9fr_1.1fr] lg:py-24">
-          <div>
-            <p className="text-sm font-black uppercase tracking-[0.26em] text-[#e85d24]">Who we are</p>
-            <h2 className="mt-4 max-w-[660px] text-5xl font-black uppercase leading-none text-[#171310] sm:text-7xl">
-              A modern platform for live market racing
-            </h2>
-          </div>
-          <div className="grid content-start gap-6">
-            <p className="text-xl leading-8 text-[#553d31]">
-              Rialo Race turns live coin movement into a track where speed, timing, and prediction meet in one readable event.
-            </p>
-            <p className="text-xl leading-8 text-[#553d31]">
-              Players can pick the podium, follow the race, and replay finished markets with the same visual language across every screen.
-            </p>
-            <div className="relative mt-4 min-h-[330px] overflow-hidden rounded-md bg-[#171310]">
-              <iframe
-                title="Rialo Race live market preview"
-                src="/legacy-race/market.html?id=market-01&embed=viewport"
-                className="absolute inset-0 h-full w-full scale-110 border-0 opacity-65"
-              />
-              <div className="absolute inset-0 bg-[#171310]/35" />
-              <div className="absolute bottom-5 left-5 right-5 flex items-center justify-between gap-4 text-white">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.26em] text-[#f08a4b]">Video</p>
-                  <h3 className="mt-1 text-2xl font-black uppercase">Built for realtime speed</h3>
-                </div>
-                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#e85d24]">
-                  <CirclePlay className="h-6 w-6" />
-                </span>
+function MonitorShell({ children }: { children: ReactNode }) {
+  return (
+    <main className="h-screen overflow-hidden bg-[#efebe0] p-2 text-[#171310] sm:p-4">
+      <div className="mx-auto h-full max-w-[1500px]">
+        <div className="flex h-full flex-col rounded-lg border border-[#aaa491] bg-[#d8d3c2] p-3 shadow-[0_30px_70px_rgba(23,19,16,0.28),inset_0_2px_0_rgba(255,255,255,0.6)] sm:p-5 lg:p-7">
+          <div className="min-h-0 flex-1 rounded-md border border-[#aaa491] bg-[#c9c4b3] p-3 shadow-[inset_0_0_24px_rgba(23,19,16,0.22)] sm:p-5">
+            <div className="h-full rounded-md bg-[#111] p-2 shadow-[inset_0_0_18px_rgba(0,0,0,0.9)]">
+              <div className="relative h-full overflow-hidden rounded bg-black font-mono text-[#ff7a00]">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,122,0,0.14),transparent_34%),linear-gradient(180deg,rgba(255,122,0,0.08),transparent_28%,rgba(255,122,0,0.08))]" />
+                <div className="pointer-events-none absolute inset-0 opacity-25 [background-image:repeating-linear-gradient(0deg,transparent_0,transparent_5px,rgba(255,122,0,0.2)_6px)]" />
+                <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_46px_rgba(0,0,0,0.9)]" />
+                {children}
               </div>
             </div>
           </div>
-        </div>
-      </section>
-
-      <section id="replay" className="bg-[#f5efe4]">
-        <div className="mx-auto max-w-[1480px] px-4 py-16 sm:px-7 lg:py-24">
-          <div className="grid gap-7 lg:grid-cols-[0.82fr_1.18fr] lg:items-end">
-            <div>
-              <p className="text-sm font-black uppercase tracking-[0.26em] text-[#e85d24]">Decades of motion</p>
-              <h2 className="mt-3 text-5xl font-black uppercase leading-none text-[#171310] sm:text-7xl">
-                The Rialo track
-              </h2>
-            </div>
-            <p className="max-w-[720px] text-xl leading-8 text-[#553d31]">
-              Every part of the app is built around a fast loop: choose a market, read the racers, place your prediction, then review the finish.
-            </p>
-          </div>
-
-          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {teamCards.map((card) => (
-              <article key={card.name} className="overflow-hidden rounded-md bg-white">
-                <div className="flex h-[260px] items-center justify-center bg-[#171310] p-8">
-                  <img src={card.image} alt="" className="max-h-full max-w-full object-contain" />
-                </div>
-                <div className="p-5">
-                  <h3 className="text-2xl font-black uppercase text-[#171310]">{card.name}</h3>
-                  <p className="mt-2 text-sm font-semibold uppercase tracking-[0.14em] text-[#8b634a]">{card.role}</p>
-                </div>
-              </article>
+          <div className="mt-3 flex h-12 shrink-0 items-center justify-center gap-4 sm:mt-4 sm:h-14">
+            <span className="h-3 w-3 rounded-full bg-[#ff9d00] shadow-[0_0_10px_rgba(255,157,0,0.95)]" />
+            {[0, 1, 2, 3].map((button) => (
+              <span
+                key={button}
+                className="h-4 w-9 rounded-full border border-[#8f8a7a] bg-[#d4cfbd] shadow-[inset_0_2px_2px_rgba(255,255,255,0.6),0_2px_4px_rgba(23,19,16,0.35)] sm:h-5 sm:w-10"
+              />
             ))}
+            <span className="grid h-10 w-10 place-items-center rounded-md border border-[#8f8a7a] bg-[#c8c2b0] text-[#8f8a7a] shadow-[inset_0_2px_2px_rgba(255,255,255,0.55),0_2px_4px_rgba(23,19,16,0.28)] sm:h-12 sm:w-12">
+              |
+            </span>
           </div>
         </div>
-      </section>
-
-      <section id="updates" className="bg-[#171310] text-[#fff8ec]">
-        <div className="mx-auto grid max-w-[1480px] gap-10 px-4 py-16 sm:px-7 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:py-24">
-          <div>
-            <p className="text-sm font-black uppercase tracking-[0.28em] text-[#f08a4b]">We move fast</p>
-            <h2 className="mt-3 text-5xl font-black uppercase leading-none sm:text-7xl">
-              Be first to know
-            </h2>
-          </div>
-          <form className="grid gap-3 sm:grid-cols-[1fr_auto]">
-            <label className="sr-only" htmlFor="landingEmail">Email</label>
-            <input
-              id="landingEmail"
-              type="email"
-              placeholder="Email address"
-              className="min-h-14 rounded-md border border-white/20 bg-white/10 px-4 text-base text-white outline-none placeholder:text-white/55 focus:border-[#f08a4b]"
-            />
-            <button
-              type="button"
-              className="inline-flex min-h-14 items-center justify-center gap-2 rounded-md bg-[#e85d24] px-7 text-sm font-black uppercase tracking-[0.16em] text-white"
-            >
-              Stay on track <Bell className="h-4 w-4" />
-            </button>
-          </form>
-        </div>
-      </section>
-
-      <footer id="contact" className="bg-[#0f0b08] text-[#d8c5b2]">
-        <div className="mx-auto grid max-w-[1480px] gap-10 px-4 py-12 sm:px-7 md:grid-cols-[1.2fr_0.8fr_0.8fr]">
-          <div>
-            <img
-              src="/assets/create_a_logo_in_this_exact_layout_style_use_the_u_019d8db9-c7d9-75dc-ad2e-f5463423c3be-removebg-preview.png"
-              alt="Rialo Race"
-              className="h-16 w-auto brightness-0 invert"
-            />
-            <p className="mt-5 max-w-[520px] text-sm leading-6">
-              Rialo Race is a live crypto racing experience for market watchers, prediction players, and replay-driven competitors.
-            </p>
-          </div>
-          <div>
-            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-white">Contact</h3>
-            <p className="mt-4 text-sm">team@rialorace.com</p>
-            <Link to="/login.html" className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[#f08a4b]">
-              Ask a question <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-          <div>
-            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-white">Social</h3>
-            <div className="mt-4 flex gap-3">
-              <Link to="/community.html" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 text-white">
-                <Users className="h-4 w-4" />
-              </Link>
-              <Link to="/main-menu.html" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 text-white">
-                <Radio className="h-4 w-4" />
-              </Link>
-              <Link to="/rewards.html" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 text-white">
-                <Trophy className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-        </div>
-        <div className="border-t border-white/10 px-4 py-5 text-center text-xs uppercase tracking-[0.16em] text-[#8b7a6a]">
-          © 2026 Rialo Race. All rights reserved.
-        </div>
-      </footer>
+      </div>
     </main>
+  );
+}
+
+function TitleScreen({ onAbout }: { onAbout: () => void }) {
+  return (
+    <section className="relative grid h-full content-center overflow-hidden px-5 py-5">
+      <video
+        src="/assets/menu-background-loop.mp4"
+        className="absolute inset-0 h-full w-full object-cover opacity-55"
+        autoPlay
+        muted
+        loop
+        playsInline
+      />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.18),rgba(0,0,0,0.86)_78%),linear-gradient(180deg,rgba(0,0,0,0.18),rgba(0,0,0,0.62))]" />
+      <div className="relative z-10 mx-auto mb-7 w-full max-w-[1100px] text-center sm:mb-10">
+        <div
+          className="mx-auto mb-6 flex h-20 w-20 items-center justify-center text-[#ff7a00] sm:h-28 sm:w-28 lg:h-32 lg:w-32"
+          style={{ filter: "drop-shadow(0 0 10px rgba(255,122,0,0.95)) drop-shadow(0 0 28px rgba(255,122,0,0.55))" }}
+        >
+          <RialoSymbol />
+        </div>
+        <h1
+          className="mx-auto max-w-[920px] text-center text-5xl font-black uppercase leading-[0.82] tracking-normal sm:text-7xl lg:text-9xl"
+          style={{ textShadow: "0 0 10px rgba(255,122,0,0.9), 8px 8px 0 #2a1000" }}
+        >
+          Rialo
+          <br />
+          Race
+        </h1>
+      </div>
+
+      <nav className="relative z-10 mx-auto grid w-full max-w-[520px] gap-2 sm:gap-4">
+        <MenuLink label="Enter APP" href="/main-menu.html" icon={Play} />
+        <button
+          type="button"
+          onClick={onAbout}
+          className="group grid h-11 grid-cols-[36px_1fr_36px] items-center border border-transparent px-3 text-center text-xl uppercase text-[#e46a00] transition-colors hover:border-[#ff7a00] hover:bg-[#ff7a00]/10 hover:text-[#ff9d00] sm:h-14 sm:grid-cols-[44px_1fr_44px] sm:text-4xl"
+        >
+          <Info className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100" />
+          <span>About</span>
+          <span className="text-[#ffb000] opacity-0 transition-opacity group-hover:opacity-100">&gt;</span>
+        </button>
+        <MenuLink label="Highscores" href="/community.html" icon={Trophy} />
+      </nav>
+    </section>
+  );
+}
+
+function RialoSymbol() {
+  return (
+    <svg viewBox="0 45 90 92" role="img" aria-label="Rialo symbol" className="h-full w-full">
+      <path
+        d="m30.71 52.8c-5.62 0-8.38 5.13-8.38 8.1 0 5.5 4.16 8.03 8.23 8.03h10.31c6.98 0 9.14 4.2 8.14 8.85-0.89 4.29-5.02 7.23-9.4 7.23h-25.78c-6.24 0-7.83 5.97-7.83 8.05 0 6.28 4.71 8.17 7.49 8.17h27.06c9.43 0 9.11 7.53 9.11 8.39v14.5c0 6.26 4.82 8.64 8.26 8.64 6.92 0 8.6-6.48 8.6-8.64v-14.16c0-6.15-4.77-8.42-8.88-8.42-5.03 0-7.83-4.97-7.28-8.52 0.65-4.1 3.59-7.36 9.77-7.36h14.74c5.64 0 8.79-4.71 8.79-8.43 0-3.55-2.18-7.75-8.24-7.75-5.61 0-8.86-3.67-9.06-8.27-0.24-5.16-3.58-8.41-8.3-8.41h-27.35z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function MenuLink({
+  label,
+  href,
+  icon: Icon
+}: {
+  label: string;
+  href: string;
+  icon: typeof Play;
+}) {
+  return (
+    <Link
+      to={href}
+      className="group grid h-11 grid-cols-[36px_1fr_36px] items-center border border-transparent px-3 text-center text-xl uppercase text-[#e46a00] transition-colors hover:border-[#ff7a00] hover:bg-[#ff7a00]/10 hover:text-[#ff9d00] sm:h-14 sm:grid-cols-[44px_1fr_44px] sm:text-4xl"
+    >
+      <Icon className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100" />
+      <span>{label}</span>
+      <span className="text-[#ffb000] opacity-0 transition-opacity group-hover:opacity-100">&gt;</span>
+    </Link>
+  );
+}
+
+function AboutScreen({ onBack }: { onBack: () => void }) {
+  return (
+    <section className="relative mx-auto flex h-full max-w-[980px] flex-col px-3 py-3 sm:px-5 sm:py-5">
+      <div className="z-10 mb-3 flex shrink-0 items-center justify-between gap-4 border border-[#5a2400] bg-black/80 px-4 py-3">
+        <h1
+          className="text-2xl uppercase text-[#ff7a00] sm:text-4xl"
+          style={{ textShadow: "0 0 8px rgba(255,122,0,0.85), 4px 4px 0 #2a1000" }}
+        >
+          About
+        </h1>
+        <button
+          type="button"
+          onClick={onBack}
+          className="group grid h-10 w-[132px] grid-cols-[28px_1fr_28px] items-center border border-transparent px-2 text-center text-base uppercase text-[#e46a00] transition-colors hover:border-[#ff7a00] hover:bg-[#ff7a00]/10 hover:text-[#ff9d00]"
+        >
+          <span className="text-[#ffb000] opacity-0 transition-opacity group-hover:opacity-100">&lt;</span>
+          <span>Back</span>
+          <span />
+        </button>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto pr-2 [scrollbar-color:#ff7a00_#1a0b00] [scrollbar-width:thin]">
+        <div className="grid gap-5 pb-6">
+          <section className="grid gap-5 border border-[#5a2400] bg-black/70 p-5 sm:grid-cols-[190px_1fr] sm:p-7">
+            <div
+              className="mx-auto flex h-36 w-36 items-center justify-center text-[#ff7a00] sm:h-44 sm:w-44"
+              style={{ filter: "drop-shadow(0 0 10px rgba(255,122,0,0.95)) drop-shadow(0 0 28px rgba(255,122,0,0.55))" }}
+            >
+              <RialoSymbol />
+            </div>
+            <div className="self-center text-center sm:text-left">
+              <p className="text-xs uppercase tracking-[0.28em] text-[#ffb000]">Field Guide</p>
+              <h2
+                className="mt-3 text-3xl uppercase text-[#ff7a00] sm:text-5xl"
+                style={{ textShadow: "0 0 8px rgba(255,122,0,0.85), 4px 4px 0 #2a1000" }}
+              >
+                Rialo Race
+              </h2>
+              <p className="mt-5 text-sm uppercase leading-7 text-[#e46a00] sm:text-base sm:leading-8">
+                Rialo Race is an arcade layer for live crypto competition. It turns market movement,
+                animal racers, points, replay, and lotto into one readable game loop.
+              </p>
+            </div>
+          </section>
+
+          {aboutSections.map((section, index) => (
+            <AboutSection key={section.title} section={section} reverse={index % 2 === 1} />
+          ))}
+
+          <section className="border border-[#5a2400] bg-black/70 p-5 text-center sm:p-7">
+            <Link
+              to="/main-menu.html"
+              className="mx-auto grid h-12 max-w-[360px] grid-cols-[40px_1fr_40px] items-center border border-[#ff7a00] bg-[#ff7a00]/10 px-4 text-xl uppercase text-[#ff9d00] shadow-[0_0_18px_rgba(255,122,0,0.35)] transition-colors hover:bg-[#ff7a00]/20 hover:text-[#ffd28a] sm:h-14 sm:text-3xl"
+            >
+              <Play className="h-5 w-5" />
+              <span>Enter App</span>
+              <span className="text-[#ffb000]">&gt;</span>
+            </Link>
+          </section>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AboutSection({
+  section,
+  reverse
+}: {
+  section: (typeof aboutSections)[number];
+  reverse: boolean;
+}) {
+  return (
+    <article
+      className={`grid gap-5 border border-[#5a2400] bg-black/70 p-5 sm:p-6 ${
+        section.preview ? "sm:grid-cols-[1fr_minmax(300px,420px)]" : "sm:grid-cols-[1fr_210px]"
+      }`}
+    >
+      <div className={reverse ? "sm:order-2" : ""}>
+        <div className="text-xs uppercase tracking-[0.28em] text-[#ffb000]">{section.number}</div>
+        <h2 className="mt-3 text-2xl uppercase text-[#ff7a00] sm:text-4xl">{section.title}</h2>
+        <p className="mt-4 text-sm uppercase leading-7 text-[#c75d00] sm:text-base sm:leading-8">
+          {section.body}
+        </p>
+      </div>
+      <div className={`flex min-h-40 items-center justify-center border border-[#5a2400] bg-[#1a0b00] p-3 ${reverse ? "sm:order-1" : ""}`}>
+        {section.preview === "race-lotto" ? (
+          <div className="relative h-44 w-full overflow-hidden border border-[#c75d00] bg-[#1a0b00] shadow-[0_0_18px_rgba(255,122,0,0.25)]">
+            <iframe
+              title="Race Lotto preview"
+              src="/race-lotto"
+              className="pointer-events-none absolute left-0 top-0 h-[760px] w-[1320px] origin-top-left scale-[0.18] border-0 sm:scale-[0.25]"
+            />
+          </div>
+        ) : section.preview === "screenshot" ? (
+          <div className="relative h-52 w-full overflow-hidden border border-[#c75d00] bg-[#1a0b00] shadow-[0_0_18px_rgba(255,122,0,0.25)] sm:h-56">
+            <img
+              src={section.image}
+              alt=""
+              className="h-full w-full object-contain"
+            />
+          </div>
+        ) : (
+          <img
+            src={section.image}
+            alt=""
+            className={`max-h-36 max-w-full object-contain ${
+              section.shape === "circle" ? "aspect-square rounded-full border border-[#ff7a00]/40" : ""
+            }`}
+            style={{ filter: "drop-shadow(0 0 10px rgba(255,122,0,0.55))" }}
+          />
+        )}
+      </div>
+    </article>
   );
 }

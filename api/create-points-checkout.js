@@ -144,8 +144,8 @@ export default async function handler(req, res) {
       payment_intent_data: {
         metadata
       },
-      success_url: `${siteUrl}/rewards.html?points_checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}/rewards.html?points_checkout=cancelled`
+      success_url: `${siteUrl}/points.html?points_checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${siteUrl}/points.html?points_checkout=cancelled`
     };
 
     const paymentMethodTypes = getPaymentMethodTypes();

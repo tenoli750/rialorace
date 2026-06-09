@@ -1,11 +1,11 @@
 import { FORMULA, SPEED_MULTIPLIER, getCoinsByIds, TARGET_DISTANCE_METERS } from "./src/config.js";
 import { buildPlaceholderBallTuning } from "./src/marketSlots.js";
 import { getMarketById, getMarketSymbolIds, formatMarketSymbols, formatMarketTitle } from "./src/markets.js";
-import { RaceEngine } from "./src/raceEngine.js?v=6";
+import { RaceEngine } from "./src/raceEngine.js?v=11";
 import { RaceAudioController } from "./src/raceAudio.js";
-import { ThreeRaceRenderer } from "./src/renderer.js?v=20";
+import { ThreeRaceRenderer } from "./src/renderer.js?v=23";
 import { getLoginSession, supabase } from "./src/supabaseClient.js?v=5";
-import { BettingUI } from "./src/bettingUi.js?v=16";
+import { BettingUI } from "./src/bettingUi.js?v=26";
 import { createBetRecord, fetchCurrentRaceBets, fetchPastRaceBets, initializeBettingProfile } from "./src/supabaseBettingStore.js?v=14";
 
 const params = new URLSearchParams(window.location.search);
@@ -16,6 +16,7 @@ const MARKET_SYMBOLS = formatMarketSymbols(MARKET);
 const MARKET_TITLE = formatMarketTitle(MARKET);
 const STORAGE_KEY = `binance-ring-rally-${MARKET_ID}-public-live-tuning-v1`;
 const BET_HISTORY_MODE_STORAGE_KEY = `binance-ring-rally-${MARKET_ID}-bet-history-mode-v1`;
+const VPS_RECORDING_MODE = params.get("vps") === "1";
 
 const RACE_INTERVAL_MS = 5 * 60 * 1000;
 const RACE_CLOCK_POLL_MS = 5000;
@@ -28,6 +29,16 @@ const ODDS_REFRESH_MS = 60 * 1000;
 const MIN_ODDS = 1.01;
 const MAX_ODDS = 99;
 const BET_HISTORY_MODES = new Set(["now", "next", "past", "test"]);
+const RECORD_FRONTEND_RACE_CLOCK = VPS_RECORDING_MODE || params.get("recordClock") === "1";
+const FRONTEND_CLOCK_SOURCE_LABEL = RECORD_FRONTEND_RACE_CLOCK
+  ? (params.get("clockSource") || (VPS_RECORDING_MODE ? "vps-browser" : "browser"))
+  : "browser";
+const FRONTEND_CLOCK_RECORD_MIN_MS = RACE_CLOCK_POLL_MS - 250;
+const FRONTEND_FINISH_RECORD_BACKOFF_MS = 60_000;
+const FRAME_DELTA_CAP_SECONDS = VPS_RECORDING_MODE ? RACE_INTERVAL_MS / 1000 : 0.25;
+const POST_RACE_BACKEND_RESULT_POLL_MS = 2000;
+const KST_TIME_ZONE = "Asia/Seoul";
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 const engine = new RaceEngine({ autoRestart: false, coins: MARKET_COINS });
 const raceAudio = new RaceAudioController();
@@ -49,6 +60,18 @@ let betHistoryTargetRaceStartAtMs = null;
 let betHistoryMode = getInitialBetHistoryMode();
 let betHistoryRequestId = 0;
 let postRaceRankingRequestId = 0;
+let lastFrontendClockRecordedAt = 0;
+let frontendClockRecordInFlight = false;
+let frontendClockRecordErrorLogged = false;
+let frontendClockRecordBackoffUntil = 0;
+let frontendFinishRecordInFlight = false;
+let frontendFinishRecordBackoffUntil = 0;
+let frontendFinishRecordErrorLogged = false;
+let lastFrontendFinishSignature = "";
+let postRaceBackendResultRaceKey = "";
+let postRaceBackendResultCheckedAt = 0;
+let postRaceBackendResultInFlight = false;
+const frontendFinishRowsByRaceKey = new Map();
 let testChatStarted = false;
 let testChatChannel = null;
 
@@ -119,6 +142,7 @@ ui.setCameraFocusPreset(renderer.getCameraFocusPreset());
 ui.setLogoVisibility(renderer.getMarkerVisibility());
 syncBettingTarget();
 updatePostRaceOverlay();
+publishFrontendRaceClock(buildFrontendRaceClockSnapshot(), { shouldRecord: false });
 
 applyPageCopy();
 applyFormulaTooltip();
@@ -136,7 +160,7 @@ let lastFrameAt = performance.now();
 let previousRaceStarted = engine.state.raceStarted;
 
 function frame(now) {
-  const deltaSeconds = Math.min((now - lastFrameAt) / 1000, 0.25);
+  const deltaSeconds = Math.min(Math.max(0, (now - lastFrameAt) / 1000), FRAME_DELTA_CAP_SECONDS);
   lastFrameAt = now;
   const wallNow = getOfficialNowMs();
 
@@ -147,7 +171,12 @@ function frame(now) {
     updatePostRaceOverlay();
   }
   maybeStartScheduledPrep(wallNow);
-  engine.step(deltaSeconds);
+  if (USE_COIN_TICK_LIVE) {
+    applyCachedLivePriceSamples();
+  }
+  engine.step(deltaSeconds, wallNow);
+  captureFrontendFinishEvents();
+  maybeRefreshBackendFinishResult(wallNow);
   if (!previousRaceStarted && engine.state.raceStarted) {
     renderer.setCameraFocusPreset("auto");
     renderer.setCameraMode("behind");
@@ -164,23 +193,26 @@ function frame(now) {
     scheduleFollowingRace();
     nextRaceScheduledFromFinish = true;
   }
-  if (showPostRaceOverlay) {
-    raceAudio.stopRaceLoop();
-  } else {
-    raceAudio.sync(engine.state);
+  if (!VPS_RECORDING_MODE) {
+    if (showPostRaceOverlay) {
+      raceAudio.stopRaceLoop();
+    } else {
+      raceAudio.sync(engine.state);
+    }
   }
   previousRaceStarted = engine.state.raceStarted;
-  if (USE_COIN_TICK_LIVE) {
-    applyCachedLivePriceSamples();
-  }
   renderer.setWinnerShowcase(null);
   updatePostRaceOverlay(wallNow);
-  ui.setCameraMode(renderer.getCameraMode());
-  ui.setCameraFocusPreset(renderer.getCameraFocusPreset());
+  if (!VPS_RECORDING_MODE) {
+    ui.setCameraMode(renderer.getCameraMode());
+    ui.setCameraFocusPreset(renderer.getCameraFocusPreset());
+  }
   syncBettingTarget(wallNow);
   void syncBetHistoryTarget(wallNow);
-  ui.render(engine);
-  renderer.render(engine, now / 1000);
+  if (!VPS_RECORDING_MODE) {
+    ui.render(engine);
+    renderer.render(engine, now / 1000);
+  }
   requestAnimationFrame(frame);
 }
 
@@ -289,12 +321,42 @@ function scheduleFollowingRace() {
   scheduledRaceStartAtMs = liveSchedule.scheduledRaceStartAtMs;
   showPostRaceOverlay = true;
   ui.setPostRaceRanking(null);
-  void refreshPostRaceRankingFromBackend(completedRaceStartedAtMs);
+  if (!engine.state.officialFinishTimesApplied) {
+    void refreshPostRaceRankingFromBackend(completedRaceStartedAtMs);
+  }
   updatePostRaceOverlay(getOfficialNowMs());
   syncBettingTarget();
   void refreshBettingOdds();
   void syncOfficialRaceClock();
   engine.addNote(`Next race start scheduled for ${formatClockTime(scheduledRaceStartAtMs)}.`);
+}
+
+function maybeRefreshBackendFinishResult(nowMs = getOfficialNowMs()) {
+  if (
+    VPS_RECORDING_MODE ||
+    !engine.state.raceFinished ||
+    engine.state.officialFinishTimesApplied ||
+    !engine.state.raceStartedAtWallMs
+  ) {
+    return;
+  }
+
+  const completedRaceStartedAtMs = engine.state.raceStartedAtWallMs - engine.state.prepDurationMs;
+  const raceKey = new Date(completedRaceStartedAtMs).toISOString();
+  if (
+    postRaceBackendResultInFlight ||
+    (postRaceBackendResultRaceKey === raceKey &&
+      nowMs - postRaceBackendResultCheckedAt < POST_RACE_BACKEND_RESULT_POLL_MS)
+  ) {
+    return;
+  }
+
+  postRaceBackendResultRaceKey = raceKey;
+  postRaceBackendResultCheckedAt = nowMs;
+  postRaceBackendResultInFlight = true;
+  void refreshPostRaceRankingFromBackend(completedRaceStartedAtMs).finally(() => {
+    postRaceBackendResultInFlight = false;
+  });
 }
 
 function updatePostRaceOverlay(nowMs = getOfficialNowMs()) {
@@ -309,7 +371,7 @@ function updatePostRaceOverlay(nowMs = getOfficialNowMs()) {
   }
   const countdownTargetMs = nextPrepStartAtMs ?? getNextRaceBoundary(nowMs);
   const secondsRemaining = Math.max(0, Math.ceil((countdownTargetMs - nowMs) / 1000));
-  overlay.textContent = `NEXT RACE IN ${String(secondsRemaining).padStart(3, "0")}s`;
+  overlay.textContent = `WAITING FOR NEXT ROUND ${String(secondsRemaining).padStart(3, "0")}s`;
 }
 
 function getNextRaceBoundary(timestampMs) {
@@ -490,6 +552,451 @@ function loadSavedMarketTuning() {
 function getOfficialNowMs() {
   return Date.now() + officialServerOffsetMs;
 }
+
+function toIsoOrNull(timestampMs) {
+  return Number.isFinite(timestampMs) && timestampMs > 0 ? new Date(timestampMs).toISOString() : null;
+}
+
+function getFrontendRaceClockPhase(nowMs, currentVisibleRaceStartAtMs, prepStartAtMs) {
+  if (engine.state.raceFinished) {
+    return "finished";
+  }
+  if (engine.state.raceStarted) {
+    return "running";
+  }
+  if (engine.state.prepStarted) {
+    return "prep";
+  }
+  if (
+    Number.isFinite(prepStartAtMs) &&
+    Number.isFinite(currentVisibleRaceStartAtMs) &&
+    nowMs >= prepStartAtMs &&
+    nowMs < currentVisibleRaceStartAtMs
+  ) {
+    return "prep_due";
+  }
+  if (Number.isFinite(currentVisibleRaceStartAtMs) && nowMs >= currentVisibleRaceStartAtMs) {
+    return "start_due";
+  }
+  return "waiting";
+}
+
+function buildFrontendRaceClockSnapshot({
+  backendServerNow = null,
+  estimatedServerNowMs = getOfficialNowMs(),
+  roundTripMs = null
+} = {}) {
+  const nowMs = Number.isFinite(estimatedServerNowMs) ? estimatedServerNowMs : getOfficialNowMs();
+  const prepDurationMs = engine.state.prepDurationMs;
+  const liveSchedule = getLiveVisibleSchedule(nowMs, prepDurationMs);
+  const currentVisibleRaceStartAtMs = Number.isFinite(currentRaceStartAtMs)
+    ? currentRaceStartAtMs
+    : liveSchedule.currentRaceStartAtMs;
+  const resolvedNextPrepStartAtMs = Number.isFinite(nextPrepStartAtMs)
+    ? nextPrepStartAtMs
+    : liveSchedule.nextPrepStartAtMs;
+  const scheduledVisibleRaceStartAtMs = Number.isFinite(scheduledRaceStartAtMs)
+    ? scheduledRaceStartAtMs
+    : liveSchedule.scheduledRaceStartAtMs;
+  const backendRaceStartAtMs = Number.isFinite(currentVisibleRaceStartAtMs)
+    ? currentVisibleRaceStartAtMs - prepDurationMs
+    : null;
+
+  return {
+    marketId: MARKET_ID,
+    sourceLabel: FRONTEND_CLOCK_SOURCE_LABEL,
+    pageUrl: window.location.href.slice(0, 1024),
+    clientReportedAt: new Date().toISOString(),
+    backendServerNow,
+    estimatedFrontendNow: toIsoOrNull(nowMs),
+    officialOffsetMs: officialServerOffsetMs,
+    roundTripMs,
+    currentVisibleRaceStartAt: toIsoOrNull(currentVisibleRaceStartAtMs),
+    backendRaceStartAt: toIsoOrNull(backendRaceStartAtMs),
+    nextPrepStartAt: toIsoOrNull(resolvedNextPrepStartAtMs),
+    scheduledVisibleRaceStartAt: toIsoOrNull(scheduledVisibleRaceStartAtMs),
+    engineRaceStartedAt: toIsoOrNull(engine.state.raceStartedAtWallMs),
+    engineRaceFinishedAt: toIsoOrNull(engine.state.raceFinishedAtWallMs),
+    phase: getFrontendRaceClockPhase(nowMs, currentVisibleRaceStartAtMs, resolvedNextPrepStartAtMs),
+    prepDurationMs,
+    raceIntervalMs: RACE_INTERVAL_MS,
+    documentVisibility: document.visibilityState,
+    userAgent: navigator.userAgent.slice(0, 512)
+  };
+}
+
+function publishFrontendRaceClock(snapshot, { shouldRecord = true } = {}) {
+  window.__RIALO_RACE_CLOCK__ = snapshot;
+  window.__RIALO_GET_RACE_CLOCK__ = () => buildFrontendRaceClockSnapshot();
+  if (shouldRecord) {
+    void recordFrontendRaceClock(snapshot);
+  }
+}
+
+async function recordFrontendRaceClock(snapshot) {
+  if (!RECORD_FRONTEND_RACE_CLOCK || frontendClockRecordInFlight) {
+    return;
+  }
+
+  const now = Date.now();
+  if (now < frontendClockRecordBackoffUntil) {
+    return;
+  }
+  if (now - lastFrontendClockRecordedAt < FRONTEND_CLOCK_RECORD_MIN_MS) {
+    return;
+  }
+
+  frontendClockRecordInFlight = true;
+  lastFrontendClockRecordedAt = now;
+  try {
+    const { error } = await supabase.rpc("record_frontend_race_clock", {
+      requested_market_id: snapshot.marketId,
+      requested_source_label: snapshot.sourceLabel,
+      requested_page_url: snapshot.pageUrl,
+      requested_client_reported_at: snapshot.clientReportedAt,
+      requested_backend_server_now: snapshot.backendServerNow,
+      requested_estimated_frontend_now: snapshot.estimatedFrontendNow,
+      requested_official_offset_ms: snapshot.officialOffsetMs,
+      requested_round_trip_ms: snapshot.roundTripMs,
+      requested_current_visible_race_start_at: snapshot.currentVisibleRaceStartAt,
+      requested_backend_race_start_at: snapshot.backendRaceStartAt,
+      requested_next_prep_start_at: snapshot.nextPrepStartAt,
+      requested_scheduled_visible_race_start_at: snapshot.scheduledVisibleRaceStartAt,
+      requested_engine_race_started_at: snapshot.engineRaceStartedAt,
+      requested_engine_race_finished_at: snapshot.engineRaceFinishedAt,
+      requested_phase: snapshot.phase,
+      requested_prep_duration_ms: snapshot.prepDurationMs,
+      requested_race_interval_ms: snapshot.raceIntervalMs,
+      requested_document_visibility: snapshot.documentVisibility,
+      requested_user_agent: snapshot.userAgent
+    });
+
+    if (error && !frontendClockRecordErrorLogged) {
+      frontendClockRecordBackoffUntil = Date.now() + 60_000;
+      frontendClockRecordErrorLogged = true;
+      console.warn("Frontend race clock record failed.", error.message);
+    } else if (error) {
+      frontendClockRecordBackoffUntil = Date.now() + 60_000;
+    }
+  } catch (error) {
+    frontendClockRecordBackoffUntil = Date.now() + 60_000;
+    if (!frontendClockRecordErrorLogged) {
+      frontendClockRecordErrorLogged = true;
+      console.warn("Frontend race clock record failed.", error instanceof Error ? error.message : String(error));
+    }
+  } finally {
+    frontendClockRecordInFlight = false;
+  }
+}
+
+function getFrontendFinishRaceParts() {
+  const engineVisibleRaceStartAtMs =
+    Number.isFinite(engine.state.raceStartedAtWallMs) && engine.state.raceStartedAtWallMs > 0
+      ? engine.state.raceStartedAtWallMs
+      : currentRaceStartAtMs;
+  const visibleRaceStartAtMs = Number.isFinite(engineVisibleRaceStartAtMs)
+    ? engineVisibleRaceStartAtMs
+    : null;
+  const backendRaceStartAtMs = Number.isFinite(visibleRaceStartAtMs)
+    ? visibleRaceStartAtMs - engine.state.prepDurationMs
+    : null;
+  return {
+    visibleRaceStartAtMs,
+    backendRaceStartAtMs
+  };
+}
+
+function getFrontendFinishRowMap(backendRaceStartAtMs) {
+  const raceKey = `${MARKET_ID}:${new Date(backendRaceStartAtMs).toISOString()}`;
+  let rowsBySymbol = frontendFinishRowsByRaceKey.get(raceKey);
+  if (!rowsBySymbol) {
+    rowsBySymbol = new Map();
+    frontendFinishRowsByRaceKey.set(raceKey, rowsBySymbol);
+  }
+  return rowsBySymbol;
+}
+
+function captureFrontendFinishEvents() {
+  if (!engine.state.raceStarted) {
+    return;
+  }
+
+  const { backendRaceStartAtMs, visibleRaceStartAtMs } = getFrontendFinishRaceParts();
+  if (!Number.isFinite(backendRaceStartAtMs) || !Number.isFinite(visibleRaceStartAtMs)) {
+    return;
+  }
+
+  const rowsBySymbol = getFrontendFinishRowMap(backendRaceStartAtMs);
+  let changed = false;
+  for (const racer of engine.state.racers) {
+    const existing = rowsBySymbol.get(racer.id) ?? {};
+    const hasOfficialFinishApplied = Boolean(engine.state.officialFinishTimesApplied);
+    const actualFinishedAtMs =
+      Number.isFinite(existing.actualEngineFinishedAtMs) && existing.actualEngineFinishedAtMs > 0
+        ? existing.actualEngineFinishedAtMs
+        : hasOfficialFinishApplied
+          ? null
+          : racer.finishedAtWallMs || null;
+    const actualRaceStartedAtMs =
+      Number.isFinite(existing.actualEngineRaceStartedAtMs) && existing.actualEngineRaceStartedAtMs > 0
+        ? existing.actualEngineRaceStartedAtMs
+        : hasOfficialFinishApplied
+          ? null
+          : engine.state.raceStartedAtWallMs || visibleRaceStartAtMs;
+    const actualElapsedMs =
+      Number.isFinite(actualFinishedAtMs) && Number.isFinite(actualRaceStartedAtMs)
+        ? actualFinishedAtMs - actualRaceStartedAtMs
+        : null;
+    const nextRow = {
+      ...existing,
+      symbol: racer.id,
+      frontendFinishPlace: existing.frontendFinishPlace ?? racer.finishPlace ?? null,
+      actualEngineRaceStartedAtMs: actualRaceStartedAtMs,
+      actualEngineFinishedAtMs: actualFinishedAtMs,
+      actualEngineElapsedMs: Number.isFinite(actualElapsedMs) ? actualElapsedMs : null,
+      distanceMeters: Number(racer.distanceMeters ?? 0)
+    };
+    if (nextRow.expectedFrontendFinishedAtMs && nextRow.actualEngineFinishedAtMs) {
+      nextRow.finishDeltaMs = nextRow.actualEngineFinishedAtMs - nextRow.expectedFrontendFinishedAtMs;
+    }
+
+    if (JSON.stringify(existing) !== JSON.stringify(nextRow)) {
+      rowsBySymbol.set(racer.id, nextRow);
+      changed = true;
+    }
+  }
+
+  if (changed && [...rowsBySymbol.values()].some((row) => row.actualEngineFinishedAtMs)) {
+    void recordFrontendFinishSnapshot({ backendRaceStartAtMs, visibleRaceStartAtMs });
+  }
+}
+
+function mergeBackendFinishResult(backendResult, backendRaceStartAtMs) {
+  if (!backendResult || !Number.isFinite(backendRaceStartAtMs)) {
+    return;
+  }
+
+  const visibleRaceStartAtMs = backendRaceStartAtMs + engine.state.prepDurationMs;
+  const rowsBySymbol = getFrontendFinishRowMap(backendRaceStartAtMs);
+  const finishOrder = [
+    backendResult.first_place,
+    backendResult.second_place,
+    backendResult.third_place,
+    backendResult.fourth_place
+  ].filter(Boolean);
+  const comparedElapsed = backendResult.compared_finish_elapsed_ms ?? {};
+
+  for (const symbol of marketCoinIds) {
+    const existing = rowsBySymbol.get(symbol) ?? { symbol };
+    const backendElapsedMs = Number(comparedElapsed?.[symbol]);
+    const backendFinishedAtMs =
+      Number.isFinite(backendElapsedMs) && backendElapsedMs > 0 ? backendRaceStartAtMs + backendElapsedMs : null;
+    const expectedFrontendFinishedAtMs =
+      Number.isFinite(backendElapsedMs) && backendElapsedMs > 0 ? visibleRaceStartAtMs + backendElapsedMs : null;
+    const actualEngineFinishedAtMs = existing.actualEngineFinishedAtMs ?? null;
+    rowsBySymbol.set(symbol, {
+      ...existing,
+      symbol,
+      backendFinishPlace: finishOrder.indexOf(symbol) >= 0 ? finishOrder.indexOf(symbol) + 1 : null,
+      backendElapsedMs: Number.isFinite(backendElapsedMs) && backendElapsedMs > 0 ? backendElapsedMs : null,
+      backendFinishedAtMs,
+      expectedFrontendFinishedAtMs,
+      finishDeltaMs:
+        actualEngineFinishedAtMs && expectedFrontendFinishedAtMs
+          ? actualEngineFinishedAtMs - expectedFrontendFinishedAtMs
+          : existing.finishDeltaMs ?? null
+    });
+  }
+
+  void recordFrontendFinishSnapshot({ backendRaceStartAtMs, visibleRaceStartAtMs });
+}
+
+function buildFrontendFinishPayload(backendRaceStartAtMs) {
+  const rowsBySymbol = getFrontendFinishRowMap(backendRaceStartAtMs);
+  return marketCoinIds.map((symbol) => {
+    const row = rowsBySymbol.get(symbol) ?? { symbol };
+    return {
+      symbol,
+      frontend_finish_place: row.frontendFinishPlace ?? null,
+      backend_finish_place: row.backendFinishPlace ?? null,
+      backend_elapsed_ms: row.backendElapsedMs ?? null,
+      backend_finish_at: toIsoOrNull(row.backendFinishedAtMs),
+      expected_frontend_finish_at: toIsoOrNull(row.expectedFrontendFinishedAtMs),
+      actual_engine_race_started_at: toIsoOrNull(row.actualEngineRaceStartedAtMs),
+      actual_engine_finished_at: toIsoOrNull(row.actualEngineFinishedAtMs),
+      actual_engine_elapsed_ms: row.actualEngineElapsedMs ?? null,
+      finish_delta_ms: row.finishDeltaMs ?? null,
+      distance_meters: Number.isFinite(row.distanceMeters) ? row.distanceMeters : null
+    };
+  });
+}
+
+async function recordFrontendFinishSnapshot({ backendRaceStartAtMs, visibleRaceStartAtMs }) {
+  if (!RECORD_FRONTEND_RACE_CLOCK || frontendFinishRecordInFlight || !Number.isFinite(backendRaceStartAtMs)) {
+    return;
+  }
+
+  if (Date.now() < frontendFinishRecordBackoffUntil) {
+    return;
+  }
+
+  const payload = buildFrontendFinishPayload(backendRaceStartAtMs);
+  if (!payload.some((row) => row.actual_engine_finished_at || row.backend_elapsed_ms)) {
+    return;
+  }
+
+  const signature = JSON.stringify({
+    backendRaceStartAt: toIsoOrNull(backendRaceStartAtMs),
+    payload
+  });
+  if (signature === lastFrontendFinishSignature) {
+    return;
+  }
+
+  frontendFinishRecordInFlight = true;
+  try {
+    const { error } = await supabase.rpc("record_frontend_race_finish_times", {
+      requested_market_id: MARKET_ID,
+      requested_source_label: FRONTEND_CLOCK_SOURCE_LABEL,
+      requested_backend_race_start_at: toIsoOrNull(backendRaceStartAtMs),
+      requested_visible_race_start_at: toIsoOrNull(visibleRaceStartAtMs),
+      requested_page_url: window.location.href.slice(0, 1024),
+      requested_phase: buildFrontendRaceClockSnapshot().phase,
+      requested_finish_payload: payload
+    });
+
+    if (error) {
+      frontendFinishRecordBackoffUntil = Date.now() + FRONTEND_FINISH_RECORD_BACKOFF_MS;
+      if (!frontendFinishRecordErrorLogged) {
+        frontendFinishRecordErrorLogged = true;
+        console.warn("Frontend finish record failed.", error.message);
+      }
+    } else {
+      lastFrontendFinishSignature = signature;
+      frontendFinishRecordErrorLogged = false;
+    }
+  } catch (error) {
+    frontendFinishRecordBackoffUntil = Date.now() + FRONTEND_FINISH_RECORD_BACKOFF_MS;
+    if (!frontendFinishRecordErrorLogged) {
+      frontendFinishRecordErrorLogged = true;
+      console.warn("Frontend finish record failed.", error instanceof Error ? error.message : String(error));
+    }
+  } finally {
+    frontendFinishRecordInFlight = false;
+  }
+}
+
+function toKstOffsetIso(timestampMs) {
+  if (!Number.isFinite(timestampMs) || timestampMs <= 0) {
+    return null;
+  }
+  const date = new Date(timestampMs + KST_OFFSET_MS);
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const hours = String(date.getUTCHours()).padStart(2, "0");
+  const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(date.getUTCSeconds()).padStart(2, "0");
+  const milliseconds = String(date.getUTCMilliseconds()).padStart(3, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}+09:00`;
+}
+
+function buildFrontendOfficialResultSnapshot() {
+  const { backendRaceStartAtMs, visibleRaceStartAtMs } = getFrontendFinishRaceParts();
+  if (!Number.isFinite(backendRaceStartAtMs) || !Number.isFinite(visibleRaceStartAtMs)) {
+    return null;
+  }
+
+  const rowsBySymbol = getFrontendFinishRowMap(backendRaceStartAtMs);
+  const rows = marketCoinIds
+    .map((symbol) => {
+      const row = rowsBySymbol.get(symbol) ?? {};
+      const actualEngineRaceStartedAtMs =
+        Number.isFinite(row.actualEngineRaceStartedAtMs) && row.actualEngineRaceStartedAtMs > 0
+          ? row.actualEngineRaceStartedAtMs
+          : null;
+      const actualEngineFinishedAtMs =
+        Number.isFinite(row.actualEngineFinishedAtMs) && row.actualEngineFinishedAtMs > 0
+          ? row.actualEngineFinishedAtMs
+          : null;
+      const actualEngineElapsedMs =
+        Number.isFinite(row.actualEngineElapsedMs) && row.actualEngineElapsedMs > 0
+          ? row.actualEngineElapsedMs
+          : actualEngineFinishedAtMs && actualEngineRaceStartedAtMs
+            ? actualEngineFinishedAtMs - actualEngineRaceStartedAtMs
+            : null;
+      return {
+        symbol,
+        frontendFinishPlace: row.frontendFinishPlace ?? null,
+        actualEngineRaceStartedAtMs,
+        actualEngineFinishedAtMs,
+        actualEngineElapsedMs: Number.isFinite(actualEngineElapsedMs) ? actualEngineElapsedMs : null,
+        distanceMeters: row.distanceMeters ?? null
+      };
+    })
+    .filter((row) => row.symbol);
+
+  const complete = rows.length === marketCoinIds.length && rows.every((row) => row.actualEngineElapsedMs > 0);
+  if (!complete) {
+    return {
+      marketId: MARKET_ID,
+      sourceLabel: FRONTEND_CLOCK_SOURCE_LABEL,
+      sourceTimeZone: KST_TIME_ZONE,
+      complete: false,
+      raceStartedAt: toIsoOrNull(backendRaceStartAtMs),
+      raceStartedAtKst: toKstOffsetIso(backendRaceStartAtMs),
+      visibleRaceStartAt: toIsoOrNull(visibleRaceStartAtMs),
+      visibleRaceStartAtKst: toKstOffsetIso(visibleRaceStartAtMs),
+      rows
+    };
+  }
+
+  const sortedRows = [...rows].sort((left, right) => {
+    const leftPlace = Number(left.frontendFinishPlace);
+    const rightPlace = Number(right.frontendFinishPlace);
+    if (Number.isFinite(leftPlace) && Number.isFinite(rightPlace)) {
+      return leftPlace - rightPlace;
+    }
+    return left.actualEngineElapsedMs - right.actualEngineElapsedMs;
+  });
+  const finishOrder = sortedRows.map((row) => row.symbol);
+  const comparedFinishElapsedMs = Object.fromEntries(
+    rows.map((row) => [row.symbol, Math.round(row.actualEngineElapsedMs)])
+  );
+  const raceFinishedAtMs = visibleRaceStartAtMs + Math.max(...Object.values(comparedFinishElapsedMs));
+
+  return {
+    marketId: MARKET_ID,
+    sourceLabel: FRONTEND_CLOCK_SOURCE_LABEL,
+    sourceTimeZone: KST_TIME_ZONE,
+    complete: true,
+    raceStartedAt: toIsoOrNull(backendRaceStartAtMs),
+    raceStartedAtKst: toKstOffsetIso(backendRaceStartAtMs),
+    visibleRaceStartAt: toIsoOrNull(visibleRaceStartAtMs),
+    visibleRaceStartAtKst: toKstOffsetIso(visibleRaceStartAtMs),
+    raceFinishedAt: toIsoOrNull(raceFinishedAtMs),
+    raceFinishedAtKst: toKstOffsetIso(raceFinishedAtMs),
+    firstPlace: finishOrder[0] ?? null,
+    secondPlace: finishOrder[1] ?? null,
+    thirdPlace: finishOrder[2] ?? null,
+    fourthPlace: finishOrder[3] ?? null,
+    comparedFinishElapsedMs,
+    rows: rows.map((row) => ({
+      symbol: row.symbol,
+      frontendFinishPlace: row.frontendFinishPlace,
+      actualEngineRaceStartedAt: toIsoOrNull(row.actualEngineRaceStartedAtMs),
+      actualEngineRaceStartedAtKst: toKstOffsetIso(row.actualEngineRaceStartedAtMs),
+      actualEngineFinishedAt: toIsoOrNull(row.actualEngineFinishedAtMs),
+      actualEngineFinishedAtKst: toKstOffsetIso(row.actualEngineFinishedAtMs),
+      actualEngineElapsedMs: Math.round(row.actualEngineElapsedMs),
+      distanceMeters: row.distanceMeters
+    })),
+    capturedAt: new Date().toISOString(),
+    capturedAtKst: toKstOffsetIso(Date.now())
+  };
+}
+
+window.__RIALO_GET_FRONTEND_OFFICIAL_RESULT__ = buildFrontendOfficialResultSnapshot;
 
 async function bootstrapOfficialRaceState() {
   await ensureBettingProfileInitialized();
@@ -700,10 +1207,14 @@ async function saveMarketRatioSnapshot(targetRaceStartedAt, ratios, sampleCount)
 }
 
 async function refreshPostRaceRankingFromBackend(raceStartedAtMs) {
+  if (VPS_RECORDING_MODE) {
+    return;
+  }
+
   const requestId = ++postRaceRankingRequestId;
   const { data, error } = await supabase
     .from("market_results_v2")
-    .select("first_place, second_place, third_place, fourth_place, race_started_at")
+    .select("first_place, second_place, third_place, fourth_place, race_started_at, race_finished_at, compared_finish_elapsed_ms")
     .eq("market_id", MARKET_ID)
     .eq("race_started_at", new Date(raceStartedAtMs).toISOString())
     .maybeSingle();
@@ -719,7 +1230,13 @@ async function refreshPostRaceRankingFromBackend(raceStartedAtMs) {
     return;
   }
 
-  ui.setPostRaceRanking(finishOrder.map((id) => ({ id })));
+  mergeBackendFinishResult(data, raceStartedAtMs);
+  engine.applyOfficialFinishOrder(
+    finishOrder,
+    new Date(data.race_finished_at ?? engine.state.raceFinishedAtWallMs ?? Date.now()).getTime(),
+    data.compared_finish_elapsed_ms ?? {}
+  );
+  ui.setPostRaceRanking(engine.getRanking());
   ui.render(engine);
 }
 
@@ -837,6 +1354,13 @@ async function syncOfficialRaceClock() {
   nextPrepStartAtMs = liveSchedule.nextPrepStartAtMs;
   scheduledRaceStartAtMs = liveSchedule.scheduledRaceStartAtMs;
   syncBettingTarget(estimatedServerNowMs);
+  publishFrontendRaceClock(
+    buildFrontendRaceClockSnapshot({
+      backendServerNow: row.server_now,
+      estimatedServerNowMs,
+      roundTripMs
+    })
+  );
 }
 
 function getTargetVisibleRaceStartMs(nowMs = getOfficialNowMs()) {

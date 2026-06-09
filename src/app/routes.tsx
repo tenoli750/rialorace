@@ -8,9 +8,12 @@ import { ReplayMenu } from "./pages/ReplayMenu";
 import { ReplayMarket } from "./pages/ReplayMarket";
 import { Rankings } from "./pages/Rankings";
 import { Rewards } from "./pages/Rewards";
+import { Points } from "./pages/Points";
 import { History } from "./pages/History";
+import { RaceLotto } from "./pages/RaceLotto";
 import { Login } from "./pages/Login";
 import { Profile } from "./pages/Profile";
+import { Shop } from "./pages/Shop";
 
 export const router = createBrowserRouter([
   { path: "/", Component: Landing },
@@ -38,10 +41,16 @@ export const router = createBrowserRouter([
       { path: "replay-menu.html", Component: ReplayMenu },
       { path: "replay/:marketId", Component: ReplayMarket },
       { path: "market-replay.html", Component: ReplayMarket },
+      { path: "race-lotto", Component: RaceLotto },
+      { path: "lotto", Component: RaceLotto },
+      { path: "shop", Component: Shop },
+      { path: "shop.html", Component: Shop },
       { path: "rankings", Component: Rankings },
       { path: "community.html", Component: Rankings },
       { path: "rewards", Component: Rewards },
       { path: "rewards.html", Component: Rewards },
+      { path: "points", Component: Points },
+      { path: "points.html", Component: Points },
       { path: "history", Component: History },
       { path: "my-bets.html", Component: History },
       { path: "login", Component: Login },

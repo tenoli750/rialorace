@@ -80,7 +80,13 @@ async function handleApi(req, res) {
   const url = new URL(req.url || "/", `http://${req.headers.host || `${host}:${port}`}`);
   const apiModules = {
     "/api/create-base-usdc-order": "../api/create-base-usdc-order.js",
+    "/api/create-bet-record": "../api/create-bet-record.js",
     "/api/create-points-checkout": "../api/create-points-checkout.js",
+    "/api/list-point-charge-history": "../api/list-point-charge-history.js",
+    "/api/list-chat-pick-badges": "../api/list-chat-pick-badges.js",
+    "/api/list-reward-history": "../api/list-reward-history.js",
+    "/api/point-reconciliation": "../api/point-reconciliation.js",
+    "/api/repair-point-balance": "../api/repair-point-balance.js",
     "/api/stripe-webhook": "../api/stripe-webhook.js",
     "/api/verify-base-usdc-payment": "../api/verify-base-usdc-payment.js"
   };
@@ -92,6 +98,7 @@ async function handleApi(req, res) {
     return;
   }
 
+  console.log(`[local-api] ${req.method} ${url.pathname}`);
   enhanceResponse(res);
   const resolvedModulePath = new URL(modulePath, import.meta.url);
   const mod = await import(`${pathToFileURL(fileURLToPath(resolvedModulePath)).href}?t=${Date.now()}`);

@@ -121,6 +121,19 @@ function firstRow<T>(data: T | T[] | null): T | null {
   return Array.isArray(data) ? data[0] ?? null : data;
 }
 
+function getRpcErrorMessage(data: unknown, fallback: string) {
+  if (data && typeof data === "object") {
+    for (const key of ["message", "error"] as const) {
+      const message = (data as Record<string, unknown>)[key];
+      if (typeof message === "string" && message.trim()) {
+        return message;
+      }
+    }
+  }
+
+  return fallback;
+}
+
 function mapLoginSession(row: any): LoginSession | null {
   if (!row?.account_id || !row?.session_token && !getLoginSessionToken()) {
     return null;
@@ -211,7 +224,7 @@ export async function listCurrentRaceBets(marketId: string, targetRaceStartedAt:
     requested_market_id: marketId,
     requested_target_race_started_at: targetRaceStartedAt
   });
-  if (error) throw error;
+  if (error) throw new Error(error.message || "Could not load current race bets.");
   return (Array.isArray(data) ? data : []) as BetRow[];
 }
 
@@ -227,21 +240,29 @@ export async function createBetRecord(params: {
   const sessionToken = getLoginSessionToken();
   if (!sessionToken) throw new Error("Login required before placing a bet.");
 
-  const { data, error } = await supabase.rpc("create_bet_with_login_session", {
-    requested_session_token: sessionToken,
-    requested_stake_points: params.stake,
-    requested_first_pick: params.placements.first ?? null,
-    requested_second_pick: params.placements.second ?? null,
-    requested_third_pick: params.placements.third ?? null,
-    requested_ratio_snapshot: params.ratios,
-    requested_market_id: params.marketId,
-    requested_target_race_started_at: params.targetRaceStartedAt,
-    requested_bet_type: params.betType ?? "podium",
-    requested_finish_threshold_seconds: params.finishTime?.thresholdSeconds ?? null,
-    requested_finish_time_pick: params.finishTime?.pick ?? null,
-    requested_finish_time_symbol: params.finishTime?.symbol ?? null
+  const response = await fetch("/api/create-bet-record", {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store"
+    },
+    body: JSON.stringify({
+      sessionToken,
+      stake: params.stake,
+      placements: params.placements,
+      ratios: params.ratios,
+      marketId: params.marketId,
+      targetRaceStartedAt: params.targetRaceStartedAt,
+      betType: params.betType ?? "podium",
+      finishTime: params.finishTime ?? null
+    })
   });
-  if (error) throw error;
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(getRpcErrorMessage(data, "Bet save failed."));
+  }
   return firstRow<any>(data);
 }
 

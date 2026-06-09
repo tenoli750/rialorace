@@ -1,0 +1,10 @@
+{
+  "name": "rialo-race-clock-profile",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "serve": "node scripts/static-public-server.js",
+    "race:browser": "node scripts/vps-race-browser.js"
+  }
+}

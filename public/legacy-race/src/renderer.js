@@ -22,6 +22,7 @@ const EDITOR_TARGET_IDS = {
 
 const RACER_RADIUS = 0.82;
 const TRACK_MODEL_URL = new URL("../assets/race-track.glb", import.meta.url).href;
+const SHOP_EQUIPMENT_STORAGE_KEY = "rialo-race-racer-equipment-v1";
 const CUSTOM_RACER_MODELS = buildCustomRacerModels();
 const COIN_LOGO_URLS = {
   BTC: new URL("../assets/coin-logos/btc.svg", import.meta.url).href,
@@ -852,6 +853,7 @@ export class ThreeRaceRenderer {
         animationActions: {},
         currentAnimationAction: null,
         currentAnimationRole: null,
+        animationSpeedMultiplier: CUSTOM_RACER_MODELS[coin.id]?.animationSpeedMultiplier ?? 1,
         visualHeadingOffset: CUSTOM_RACER_MODELS[coin.id]?.headingOffset ?? 0
       });
 
@@ -1224,12 +1226,15 @@ export class ThreeRaceRenderer {
 
       setRacerAnimationRole(entry, animationRole);
       if (entry.currentAnimationAction) {
+        const motionSpeedMultiplier = animationRole === "run" || animationRole === "start"
+          ? entry.animationSpeedMultiplier
+          : 1;
         entry.currentAnimationAction.timeScale =
-          animationRole === "run"
+          (animationRole === "run"
             ? clamp(engine.getEffectiveSpeedFactor(racer), 0.1, 3.2)
             : animationRole === "start"
               ? 1.15
-              : 1;
+              : 1) * motionSpeedMultiplier;
         entry.animationMixer?.update(deltaSec);
       }
 
@@ -2392,18 +2397,21 @@ function selectPreferredRacerClips(clips) {
   return {
     idle: findNamedClip(clips, [
       "Idle",
+      "ShastaGroundSloth_Idle",
       "AnimalArmature|Idle",
       "Idle_2",
       "AnimalArmature|Idle_2",
       "Idle_Headlow",
       "AnimalArmature|Idle_Headlow",
       "Idle_2_HeadLow",
-      "AnimalArmature|Idle_2_HeadLow"
-    ]),
+      "AnimalArmature|Idle_2_HeadLow",
+      "ShastaGroundSloth_StandUp-Idle"
+    ], "idle"),
     start: findNamedClip(clips, [
       "Gallop",
       "AnimalArmature|Gallop",
       "Walk",
+      "ShastaGroundSloth_Walk",
       "AnimalArmature|Walk",
       "Gallop_Jump",
       "AnimalArmature|Gallop_Jump",
@@ -2411,24 +2419,38 @@ function selectPreferredRacerClips(clips) {
       "AnimalArmature|Jump_toIdle",
       "Jump_ToIdle",
       "AnimalArmature|Jump_ToIdle"
-    ]),
+    ], "start"),
     run: findNamedClip(clips, [
       "Gallop",
       "AnimalArmature|Gallop",
+      "Run",
+      "AnimalArmature|Run",
       "Walk",
+      "ShastaGroundSloth_Walk",
       "AnimalArmature|Walk",
       "Idle",
       "AnimalArmature|Idle"
-    ])
+    ], "run")
   };
 }
 
-function findNamedClip(clips, preferredNames) {
+function findNamedClip(clips, preferredNames, fallbackRole = "any") {
   for (const name of preferredNames) {
     const clip = clips.find((entry) => entry.name === name);
     if (clip) {
       return clip;
     }
+  }
+
+  if (fallbackRole === "run" || fallbackRole === "start") {
+    return (
+      clips.find((entry) => /gallop/i.test(entry.name) && !/jump/i.test(entry.name)) ??
+      clips.find((entry) => /run/i.test(entry.name)) ??
+      clips.find((entry) => /walk/i.test(entry.name)) ??
+      clips.find((entry) => /idle/i.test(entry.name) && !/hitreact/i.test(entry.name)) ??
+      clips[0] ??
+      null
+    );
   }
 
   return (
@@ -2602,10 +2624,12 @@ function getRacerKey(racerId, suffix) {
 
 function buildCustomRacerModels() {
   const models = {};
+  const shopModelOverrides = readShopModelOverrides();
 
   Object.values(MARKET_MODEL_LINKS).forEach((marketLinks) => {
     Object.entries(marketLinks).forEach(([tokenId, modelKey]) => {
-      const model = RACER_MODEL_LIBRARY[modelKey];
+      const resolvedModelKey = shopModelOverrides[tokenId] ?? modelKey;
+      const model = RACER_MODEL_LIBRARY[resolvedModelKey];
       if (!model || models[tokenId]) {
         return;
       }
@@ -2613,12 +2637,29 @@ function buildCustomRacerModels() {
       models[tokenId] = {
         url: new URL(`../assets/${model.asset}`, import.meta.url).href,
         headingOffset: model.headingOffset ?? -Math.PI / 2,
-        scaleMultiplier: model.scaleMultiplier ?? 1
+        scaleMultiplier: model.scaleMultiplier ?? 1,
+        animationSpeedMultiplier: model.animationSpeedMultiplier ?? 1
       };
     });
   });
 
   return models;
+}
+
+function readShopModelOverrides() {
+  try {
+    const parsed = JSON.parse(window.localStorage?.getItem(SHOP_EQUIPMENT_STORAGE_KEY) ?? "{}");
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+    return Object.fromEntries(
+      Object.entries(parsed).filter((entry) => {
+        return typeof entry[0] === "string" && typeof entry[1] === "string";
+      })
+    );
+  } catch {
+    return {};
+  }
 }
 
 function buildPerRacerDefaults() {

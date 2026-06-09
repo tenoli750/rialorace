@@ -184,6 +184,10 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "Base USDC order not found." });
     }
 
+    if (orderData.status === "cancelled") {
+      return res.status(410).json({ error: "Base USDC order expired. Create a new order." });
+    }
+
     if (orderData.status === "paid") {
       return res.status(200).json({
         status: "paid",

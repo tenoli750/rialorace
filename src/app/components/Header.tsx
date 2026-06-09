@@ -14,6 +14,8 @@ export function Header() {
   const navItems = [
     { path: "/main-menu.html", label: "Live Markets" },
     { path: "/replay-menu.html", label: "Replay" },
+    { path: "/race-lotto", label: "Lotto" },
+    { path: "/shop", label: "Shop" },
     { path: "/community.html", label: "Rankings" },
     { path: "/rewards.html", label: "Rewards" },
     { path: "/my-bets.html", label: "History" },
@@ -47,9 +49,16 @@ export function Header() {
 
           <div className="flex-1" />
 
-          <span className="px-3 py-2 text-sm text-[#9a3412]">
+          <Link
+            to="/points.html"
+            className={`px-3 py-2 rounded-md text-sm transition-colors ${
+              isActive("/points")
+                ? "bg-[#9a3412] text-white"
+                : "text-[#9a3412] hover:bg-[#ffedd5]"
+            }`}
+          >
             {user ? `Points: ${points.toLocaleString()}` : "Points --"}
-          </span>
+          </Link>
 
           <Link
             to={user ? "/profile.html" : "/login.html"}

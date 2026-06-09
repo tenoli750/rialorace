@@ -28,6 +28,19 @@ export const POINT_PACKAGES: Array<{
   }
 ];
 
+export interface PointChargeHistoryRow {
+  id: string;
+  method: "stripe" | "base_usdc" | string;
+  label: string;
+  packageId: PointPackageId | string | null;
+  amount: string;
+  points: number;
+  status: string;
+  reference: string | null;
+  createdAt: string;
+  completedAt?: string | null;
+}
+
 export async function startPointsCheckout(packageId: PointPackageId) {
   const sessionToken = getLoginSessionToken();
   if (!sessionToken) {
@@ -55,4 +68,28 @@ export async function startPointsCheckout(packageId: PointPackageId) {
   }
 
   window.location.assign(payload.checkoutUrl);
+}
+
+export async function listPointChargeHistory() {
+  const sessionToken = getLoginSessionToken();
+  if (!sessionToken) {
+    return [] as PointChargeHistoryRow[];
+  }
+
+  const response = await fetch("/api/list-point-charge-history", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      sessionToken
+    })
+  });
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(payload?.error || "Could not load charge history.");
+  }
+
+  return (Array.isArray(payload?.charges) ? payload.charges : []) as PointChargeHistoryRow[];
 }

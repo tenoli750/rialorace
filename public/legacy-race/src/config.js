@@ -39,6 +39,7 @@ export const RACER_MODEL_LIBRARY = {
   cow: { asset: "cow.glb", headingOffset: -Math.PI / 2 },
   deer: { asset: "deer.glb", headingOffset: -Math.PI / 2 },
   donkey: { asset: "donkey.glb", headingOffset: -Math.PI / 2 },
+  sloth: { asset: "sloth.glb", headingOffset: -Math.PI / 2, scaleMultiplier: 1.05, animationSpeedMultiplier: 2 },
   horse: { asset: "horse.glb", headingOffset: -Math.PI / 2 },
   whiteHorse: { asset: "white-horse.glb", headingOffset: -Math.PI / 2 }
 };

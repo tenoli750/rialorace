@@ -69,6 +69,24 @@ export function MainMenu() {
         </div>
       </section>
 
+      <section className="mb-6 rounded-lg border border-[#fed7aa] bg-white p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-3xl">
+            <span className="text-xs uppercase tracking-wide text-[#8a5a44]">Race-Lotto</span>
+            <h2 className="mt-1 text-xl font-semibold text-[#9a3412]">Perfect 6 Jackpot</h2>
+            <p className="mt-2 text-sm text-[#8a5a44]">
+              Twice-daily 10:00 and 22:00 KST draws across six token matchups.
+            </p>
+          </div>
+          <Link
+            to="/race-lotto"
+            className="flex h-12 w-full items-center justify-center rounded-md bg-[#9a3412] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#7c2d12] lg:w-[260px]"
+          >
+            Open Lotto
+          </Link>
+        </div>
+      </section>
+
       {/* Market Grid */}
       <section className="bg-white rounded-lg border border-[#fed7aa] p-6">
         <div className="mb-4 flex items-center justify-between">

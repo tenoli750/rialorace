@@ -197,7 +197,7 @@ export class RaceUI {
 
   setPostRacePreview(engine, enabled) {
     const ranking = engine.getRanking();
-    this.renderPostRaceRankGrid(ranking, enabled);
+    this.renderPostRaceRankGrid(ranking, enabled, engine);
     engine.state.racers.forEach((racer) => {
       const card = this.coinCardMap.get(racer.id);
       const rank = ranking.findIndex((entry) => entry.id === racer.id) + 1;
@@ -286,9 +286,6 @@ export class RaceUI {
 
     this.dom.standings.innerHTML = ranking
       .map((racer, index) => {
-        const speed = Number.isFinite(racer.displaySpeedFactor)
-          ? racer.displaySpeedFactor
-          : engine.getEffectiveSpeedFactor(racer);
         const priceLabel =
           racer.price === null
             ? "Waiting..."
@@ -300,15 +297,13 @@ export class RaceUI {
               <div class="standing-main">
                 <div class="standing-symbol">${racer.id}</div>
                 <div class="standing-price ${getPolarityClass(racer.changePercent)}">${priceLabel}</div>
-                <div class="standing-time-block">
-                  <span class="standing-time-label">Speed</span>
-                  <span class="standing-time ${getPolarityClass(racer.lastSpeedEffectPercent)}">${formatSpeedWithPercent(speed, racer.lastSpeedEffectPercent)}</span>
-                </div>
+                ${buildStandingSpeedBlock(engine, racer)}
               </div>
             </div>
             <div class="standing-slot-metrics">
               <div class="standing-dot standing-lap-badge" style="background:${racer.css};" aria-label="${formatCompletedLaps(racer.distanceMeters)} laps completed">${formatCompletedLaps(racer.distanceMeters)}</div>
             </div>
+            ${buildStandingResultLine(engine, racer)}
           </div>
         `;
       })
@@ -328,32 +323,15 @@ export class RaceUI {
     const showPostRaceRankingGlobal =
       document.body.classList.contains("is-next-race-soon") ||
       Boolean(this.dom.postRaceOverlay && !this.dom.postRaceOverlay.hidden);
-    this.renderPostRaceRankGrid(ranking, showPostRaceRankingGlobal);
+    this.renderPostRaceRankGrid(ranking, showPostRaceRankingGlobal, engine);
 
     state.racers.forEach((racer) => {
       const card = this.coinCardMap.get(racer.id);
-      const rank = ranking.findIndex((entry) => entry.id === racer.id) + 1;
-      const showPostRaceRanking =
-        document.body.classList.contains("is-next-race-soon") ||
-        Boolean(this.dom.postRaceOverlay && !this.dom.postRaceOverlay.hidden);
       card.card.classList.toggle("is-selected", racer.id === state.selectedRacerId);
-      card.card.classList.toggle("is-post-race", showPostRaceRanking);
-      card.card.classList.toggle("force-post-race-cover", showPostRaceRanking);
-      card.card.dataset.postRaceLabel = `${rank}. ${racer.id}`;
-      card.postRaceCoverEl.hidden = !showPostRaceRanking;
-      if (showPostRaceRanking) {
-        card.postRaceLabelEl.textContent = `${rank}. ${racer.id}`;
-        card.topEl.style.display = "none";
-        card.priceEl.style.display = "none";
-        card.gridlineEl.style.display = "none";
-        card.postRaceCoverEl.style.display = "grid";
-        card.changeEl.textContent = "";
-        card.speedEl.textContent = "";
-        card.distanceEl.textContent = "";
-        card.samplesEl.textContent = "";
-        card.postRaceLogoEl.style.backgroundImage = `url("${getAnimalIconUrl(racer.id)}")`;
-        return;
-      }
+      card.card.classList.toggle("is-post-race", false);
+      card.card.classList.toggle("force-post-race-cover", false);
+      card.card.dataset.postRaceLabel = "";
+      card.postRaceCoverEl.hidden = true;
       card.topEl.style.display = "";
       card.priceEl.style.display = "";
       card.gridlineEl.style.display = "";
@@ -426,7 +404,7 @@ export class RaceUI {
       .join("");
   }
 
-  renderPostRaceRankGrid(ranking, visible) {
+  renderPostRaceRankGrid(ranking, visible, engine = null) {
     if (!this.dom.postRaceRankGrid) {
       return;
     }
@@ -439,7 +417,10 @@ export class RaceUI {
       .map(
         (racer, index) => `
           <article class="coin-post-race-rank-card">
-            <div class="coin-post-race-rank-label">${index + 1}. ${racer.id}</div>
+            <div class="coin-post-race-rank-main">
+              <div class="coin-post-race-rank-label">${index + 1}. ${racer.id}</div>
+              ${buildPostRaceRankTime(engine, racer)}
+            </div>
             <span class="coin-post-race-rank-avatar" style="background-image:url('${getAnimalIconUrl(racer.id)}')"></span>
           </article>
         `
@@ -463,6 +444,27 @@ function getAnimalIconUrl(coinId) {
       LTC: "White Horse.png"
     }[coinId] ?? "Bull.png";
   return new URL(assetName, ANIMAL_ICON_BASE_URL).href;
+}
+
+function buildPostRaceRankTime(engine, racer) {
+  if (!engine?.state?.raceFinished || !racer?.id) {
+    return "";
+  }
+
+  const engineRacer = engine.state.racers.find((entry) => entry.id === racer.id) ?? racer;
+  if (!engineRacer.finishedAtWallMs) {
+    return "";
+  }
+
+  const elapsedMs =
+    typeof engine.getRacerElapsedRaceMs === "function"
+      ? engine.getRacerElapsedRaceMs(engineRacer)
+      : engineRacer.finishedAtWallMs - engine.state.raceStartedAtWallMs;
+  if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) {
+    return "";
+  }
+
+  return `<div class="coin-post-race-rank-time">${formatRaceDuration(elapsedMs)}</div>`;
 }
 
 function formatPrice(price) {
@@ -503,6 +505,48 @@ function formatSpeedWithPercent(speed, effectPercent = 0) {
   return `${speed.toFixed(3)}x (${formatSignedPercent(effectPercent)})`;
 }
 
+function buildStandingSpeedBlock(engine, racer) {
+  const speed = Number.isFinite(racer.displaySpeedFactor)
+    ? racer.displaySpeedFactor
+    : engine.getEffectiveSpeedFactor(racer);
+  return `
+    <div class="standing-time-block">
+      <span class="standing-time-label">Speed</span>
+      <span class="standing-time ${getPolarityClass(racer.lastSpeedEffectPercent)}">${formatSpeedWithPercent(speed, racer.lastSpeedEffectPercent)}</span>
+    </div>
+  `;
+}
+
+function buildStandingResultLine(engine, racer) {
+  if (engine.state.officialFinishTimesApplied && engine.state.raceFinished && racer.finishedAtWallMs) {
+    return `
+      <div class="standing-result-line is-backend">
+        <strong>${formatRaceDuration(engine.getRacerElapsedRaceMs(racer))}</strong>
+      </div>
+    `;
+  }
+
+  if (engine.state.raceFinished) {
+    return `
+      <div class="standing-result-line is-finalizing">
+        <span>Finalizing results</span>
+      </div>
+    `;
+  }
+
+  return "";
+}
+
+function formatRaceDuration(milliseconds) {
+  const totalMs = Math.max(0, Math.round(milliseconds));
+  const minutes = Math.floor(totalMs / 60000);
+  const seconds = Math.floor((totalMs % 60000) / 1000);
+  const ms = String(totalMs % 1000).padStart(3, "0");
+  if (minutes > 0) {
+    return `${minutes}:${String(seconds).padStart(2, "0")}.${ms}`;
+  }
+  return `${seconds}.${ms}s`;
+}
 
 function formatDuration(milliseconds) {
   const totalSeconds = Math.round(milliseconds / 1000);
