@@ -1,16 +1,19 @@
 import { getLoginSession } from "./src/supabaseClient.js?v=5";
-import { MARKET_DEFINITIONS, TOKEN_LEGEND, expandMarketTokens, formatMarketSymbols, formatMarketTitle } from "./src/markets.js";
+import { MARKET_DEFINITIONS, expandMarketTokens, formatMarketSymbols, formatMarketTitle, getTokenLegendForCategory } from "./src/markets.js";
 
 const marketGrid = document.querySelector("#marketGrid");
 const tokenLegend = document.querySelector("#tokenLegend");
 const marketCount = document.querySelector("#marketCount");
 const heroLiveCount = document.querySelector("#heroLiveCount");
 const heroPlannedCount = document.querySelector("#heroPlannedCount");
+const params = new URLSearchParams(window.location.search);
+const activeCategory = params.get("category") === "stocks" ? "stocks" : "crypto";
+const activeTokenLegend = getTokenLegendForCategory(activeCategory);
 
 let activeFilterLetter = null;
 
 if (heroPlannedCount) {
-  heroPlannedCount.textContent = `${Object.keys(TOKEN_LEGEND).length} Tokens`;
+  heroPlannedCount.textContent = `${Object.keys(activeTokenLegend).length} Tokens`;
 }
 
 renderTokenLegend();
@@ -22,7 +25,7 @@ function renderTokenLegend() {
     return;
   }
 
-  tokenLegend.innerHTML = Object.entries(TOKEN_LEGEND)
+  tokenLegend.innerHTML = Object.entries(activeTokenLegend)
     .map(
       ([letter, token]) => `
         <button
@@ -56,7 +59,7 @@ function renderTokenLegend() {
 
 function renderMarketGrid() {
   const visibleMarkets = MARKET_DEFINITIONS.filter(
-    (market) => !activeFilterLetter || market.letters.includes(activeFilterLetter)
+    (market) => market.category === activeCategory && (!activeFilterLetter || market.letters.includes(activeFilterLetter))
   );
 
   if (marketCount) {
@@ -73,9 +76,11 @@ function renderMarketGrid() {
 
   marketGrid.innerHTML = visibleMarkets
     .map((market) => {
-      const tokens = expandMarketTokens(market.letters);
+      const tokens = expandMarketTokens(market.letters, market.category);
       const href =
-        market.id === "market-01"
+        market.id.startsWith("stock-market-")
+          ? `./market.html?id=${market.id}&pagev=99`
+          : market.id === "market-01"
           ? "./market01-betting.html?id=market-01&pagev=99"
           : market.id === "market-02"
             ? "./market02-betting.html?id=market-02&pagev=99"

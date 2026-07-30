@@ -5,14 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Binance Ring Rally Main Menu</title>
     <link rel="stylesheet" href="./styles.css" />
-    <script type="module" src="./market-menu.js?v=4"></script>
+    <script type="module" src="./market-menu.js?v=5"></script>
   </head>
   <body>
     <main class="app-shell page-hub-shell">
       <a class="site-title" href="./main-menu.html" aria-label="Rialo Race"><img src="./assets/create_a_logo_in_this_exact_layout_style_use_the_u_019d8db9-c7d9-75dc-ad2e-f5463423c3be-removebg-preview.png" alt="Rialo Race" /></a>
       <nav class="page-nav panel">
-        <a class="page-nav-link is-active" href="./main-menu.html">Live Markets</a>
-        <a class="page-nav-link" href="./replay-menu.html">Replay</a>
+        <div class="page-nav-dropdown">
+          <a class="page-nav-link is-active" href="./main-menu.html">Live Markets</a>
+          <div class="page-nav-dropdown-menu">
+            <a class="page-nav-dropdown-item" href="./main-menu.html?category=crypto">Crypto</a>
+            <a class="page-nav-dropdown-item" href="./main-menu.html?category=stocks">Stocks</a>
+            <a class="page-nav-dropdown-item" href="./main-menu.html?category=rwa">RWA</a>
+          </div>
+        </div>
+        <div class="page-nav-dropdown">
+          <a class="page-nav-link" href="./replay-menu.html">Replay</a>
+          <div class="page-nav-dropdown-menu">
+            <a class="page-nav-dropdown-item" href="./replay-menu.html?category=crypto">Crypto</a>
+            <a class="page-nav-dropdown-item" href="./replay-menu.html?category=stocks">Stocks</a>
+            <a class="page-nav-dropdown-item" href="./replay-menu.html?category=rwa">RWA</a>
+          </div>
+        </div>
         <a class="page-nav-link" href="./race-lotto.html">Lotto</a>
         <a class="page-nav-link" href="./community.html">Rankings</a>
         <a class="page-nav-link" href="./rewards.html">Rewards</a>

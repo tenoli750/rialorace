@@ -3,7 +3,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-const DEFAULT_MARKETS = Array.from({ length: 20 }, (_, index) => `market-${String(index + 1).padStart(2, "0")}`);
+const DEFAULT_MARKETS = [
+  ...Array.from({ length: 20 }, (_, index) => `market-${String(index + 1).padStart(2, "0")}`),
+  ...Array.from({ length: 20 }, (_, index) => `stock-market-${String(index + 1).padStart(2, "0")}`)
+];
 
 function printHelp() {
   console.log(`Usage:
@@ -11,7 +14,7 @@ function printHelp() {
 
 Environment:
   RACE_BROWSER_BASE_URL    Site origin to open. Default: http://127.0.0.1:5178
-  RACE_BROWSER_MARKETS     Comma-separated market ids. Default: market-01..market-20
+  RACE_BROWSER_MARKETS     Comma-separated market ids. Default: market-01..market-20, stock-market-01..stock-market-20
   RACE_BROWSER_HEADLESS    Set false to show Chrome. Default: true
   RACE_BROWSER_RELOAD_MS   Periodic page reload interval. Default: 21600000
   RACE_BROWSER_CHECK_MS    Health check interval. Default: 30000
@@ -374,16 +377,25 @@ function normalizeRaceStartedAtMs(timestampMs) {
 }
 
 async function requestSupabaseRpc(functionName, body) {
-  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/${functionName}`, {
-    method: "POST",
-    headers: {
-      apikey: supabasePublishableKey,
-      authorization: `Bearer ${supabasePublishableKey}`,
-      "content-type": "application/json",
-      prefer: "return=representation"
-    },
-    body: JSON.stringify(body)
-  });
+  let response;
+  try {
+    response = await fetch(`${supabaseUrl}/rest/v1/rpc/${functionName}`, {
+      method: "POST",
+      headers: {
+        apikey: supabasePublishableKey,
+        authorization: `Bearer ${supabasePublishableKey}`,
+        "content-type": "application/json",
+        prefer: "return=representation"
+      },
+      body: JSON.stringify(body)
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      data: null,
+      message: error instanceof Error ? error.message : String(error)
+    };
+  }
 
   if (!response.ok) {
     return {

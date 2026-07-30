@@ -1,16 +1,24 @@
 import { Link } from "react-router";
 import { useMemo, useState } from "react";
-import { tokens } from "../data/tokens";
-import { markets } from "../data/markets";
-import { getTokenByLetter } from "../data/tokens";
+import { useSearchParams } from "react-router";
+import { getMarketsByCategory } from "../data/markets";
+import { getTokenByLetter, getTokensByCategory, type MarketCategory } from "../data/tokens";
+
+function getCategory(value: string | null): MarketCategory {
+  return value === "stocks" || value === "rwa" ? value : "crypto";
+}
 
 export function ReplayMenu() {
+  const [searchParams] = useSearchParams();
+  const activeCategory = getCategory(searchParams.get("category"));
+  const activeTokens = useMemo(() => getTokensByCategory(activeCategory), [activeCategory]);
+  const activeMarkets = useMemo(() => getMarketsByCategory(activeCategory), [activeCategory]);
   const [selectedRacers, setSelectedRacers] = useState<string[]>([]);
   const selectedRacerSet = useMemo(() => new Set(selectedRacers), [selectedRacers]);
   const visibleMarkets = useMemo(() => {
-    if (!selectedRacers.length) return markets;
-    return markets.filter((market) => selectedRacers.every((letter) => market.tokenLetters.includes(letter)));
-  }, [selectedRacers]);
+    if (!selectedRacers.length) return activeMarkets;
+    return activeMarkets.filter((market) => selectedRacers.every((letter) => market.tokenLetters.includes(letter)));
+  }, [activeMarkets, selectedRacers]);
 
   const toggleRacer = (letter: string) => {
     setSelectedRacers((current) =>
@@ -24,6 +32,11 @@ export function ReplayMenu() {
       <section className="bg-white rounded-lg border border-[#fed7aa] p-6 mb-6">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-lg text-[#9a3412]">Racers</h2>
+          <div className="flex gap-2">
+            <Link to="/replay-menu.html?category=crypto" className={`rounded-md border border-[#fed7aa] px-3 py-1.5 text-xs font-semibold ${activeCategory === "crypto" ? "bg-[#9a3412] text-white" : "bg-[#fff7ed] text-[#9a3412]"}`}>Crypto</Link>
+            <Link to="/replay-menu.html?category=stocks" className={`rounded-md border border-[#fed7aa] px-3 py-1.5 text-xs font-semibold ${activeCategory === "stocks" ? "bg-[#9a3412] text-white" : "bg-[#fff7ed] text-[#9a3412]"}`}>Stocks</Link>
+            <Link to="/replay-menu.html?category=rwa" className={`rounded-md border border-[#fed7aa] px-3 py-1.5 text-xs font-semibold ${activeCategory === "rwa" ? "bg-[#9a3412] text-white" : "bg-[#fff7ed] text-[#9a3412]"}`}>RWA</Link>
+          </div>
           {selectedRacers.length > 0 && (
             <button
               type="button"
@@ -35,7 +48,7 @@ export function ReplayMenu() {
           )}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-          {tokens.map((token) => (
+          {activeTokens.map((token) => (
             <button
               type="button"
               key={token.id}
@@ -84,7 +97,7 @@ export function ReplayMenu() {
               <span className="text-base font-semibold text-[#9a3412]">{market.name}</span>
               <div className="grid grid-cols-2 gap-3">
                 {market.tokenLetters.map((letter) => {
-                  const token = getTokenByLetter(letter);
+                  const token = getTokenByLetter(letter, activeCategory);
                   return (
                     <span
                       key={letter}

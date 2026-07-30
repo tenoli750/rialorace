@@ -11,9 +11,9 @@ import { buildPlaceholderBallTuning } from "./src/marketSlots.js";
 import { getMarketById, getMarketSymbolIds, formatMarketSymbols, formatMarketTitle } from "./src/markets.js";
 import { RaceEngine } from "./src/raceEngine.js?v=9";
 import { RaceAudioController } from "./src/raceAudio.js";
-import { ThreeRaceRenderer } from "./src/renderer.js?v=23";
+import { ThreeRaceRenderer } from "./src/renderer.js?v=24";
 import { getLoginSession, supabase } from "./src/supabaseClient.js?v=5";
-import { RaceUI } from "./src/ui.js?v=15";
+import { RaceUI } from "./src/ui.js?v=16";
 
 const params = new URLSearchParams(window.location.search);
 const MARKET_ID = params.get("id") ?? "market-03";

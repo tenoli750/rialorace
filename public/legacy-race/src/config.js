@@ -17,7 +17,17 @@ export const ALL_COINS = [
   { id: "BNB", symbol: "BNBUSDT", stream: "bnbusdt@kline_1s", css: "#f0b90b", three: 0xf0b90b },
   { id: "ADA", symbol: "ADAUSDT", stream: "adausdt@kline_1s", css: "#2f6bff", three: 0x2f6bff },
   { id: "SUI", symbol: "SUIUSDT", stream: "suiusdt@kline_1s", css: "#6fc8ff", three: 0x6fc8ff },
-  { id: "LTC", symbol: "LTCUSDT", stream: "ltcusdt@kline_1s", css: "#8fa8c9", three: 0x8fa8c9 }
+  { id: "LTC", symbol: "LTCUSDT", stream: "ltcusdt@kline_1s", css: "#8fa8c9", three: 0x8fa8c9 },
+  { id: "CRCL", symbol: "CRCLBUSDT", stream: "crclbusdt@kline_1s", css: "#1d4ed8", three: 0x1d4ed8 },
+  { id: "COINBASE", symbol: "COINBUSDT", stream: "coinbusdt@kline_1s", css: "#0052ff", three: 0x0052ff },
+  { id: "GOOGLE", symbol: "GOOGLBUSDT", stream: "googlbusdt@kline_1s", css: "#4285f4", three: 0x4285f4 },
+  { id: "IBM", symbol: "IBMBUSDT", stream: "ibmbusdt@kline_1s", css: "#2563eb", three: 0x2563eb },
+  { id: "META", symbol: "METABUSDT", stream: "metabusdt@kline_1s", css: "#0866ff", three: 0x0866ff },
+  { id: "MSFT", symbol: "MSFTBUSDT", stream: "msftbusdt@kline_1s", css: "#00a4ef", three: 0x00a4ef },
+  { id: "NVDA", symbol: "NVDABUSDT", stream: "nvdabusdt@kline_1s", css: "#76b900", three: 0x76b900 },
+  { id: "PLTR", symbol: "PLTRBUSDT", stream: "pltrbusdt@kline_1s", css: "#111827", three: 0x111827 },
+  { id: "TSLA", symbol: "TSLABUSDT", stream: "tslabusdt@kline_1s", css: "#e82127", three: 0xe82127 },
+  { id: "SPCX", symbol: "SPCXBUSDT", stream: "spcxbusdt@kline_1s", css: "#7c3aed", three: 0x7c3aed }
 ];
 
 export const COINS = ALL_COINS.filter((coin) => ["BTC", "ETH", "SOL", "DOGE"].includes(coin.id));
@@ -60,6 +70,18 @@ export const MARKET_MODEL_LINKS = {
   market03: {
     SUI: "horse",
     LTC: "whiteHorse"
+  },
+  stocks: {
+    CRCL: "bull",
+    COINBASE: "wolf",
+    GOOGLE: "stag",
+    IBM: "shibaInu",
+    META: "alpaca",
+    MSFT: "cow",
+    NVDA: "deer",
+    PLTR: "donkey",
+    TSLA: "horse",
+    SPCX: "whiteHorse"
   }
 };
 

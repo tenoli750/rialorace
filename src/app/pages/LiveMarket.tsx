@@ -27,6 +27,10 @@ const FINISH_TIME_RATIOS = { under: 2, over: 2 };
 function normalizeMarketId(value: string | null | undefined) {
   if (!value) return undefined;
   const cleanValue = value.trim().toLowerCase();
+  const stockMarketNumberMatch = cleanValue.match(/^stock-market-?(\d{1,2})$/);
+  if (stockMarketNumberMatch) {
+    return `stock-market-${stockMarketNumberMatch[1].padStart(2, "0")}`;
+  }
   const marketNumberMatch = cleanValue.match(/market-?(\d{1,2})/);
   if (marketNumberMatch) {
     return `market-${marketNumberMatch[1].padStart(2, "0")}`;
@@ -38,6 +42,9 @@ function normalizeMarketId(value: string | null | undefined) {
 }
 
 function getLegacyMarketUrl(marketId: string) {
+  if (marketId.startsWith("stock-market-")) {
+    return `/legacy-race/market.html?id=${marketId}&embed=viewport`;
+  }
   if (marketId === "market-01") {
     return "/legacy-race/market01-betting.html?id=market-01&embed=viewport";
   }
@@ -76,7 +83,7 @@ export function LiveMarket() {
   const chatListRef = useRef<HTMLDivElement | null>(null);
   const [consoleHeight, setConsoleHeight] = useState<number | null>(null);
 
-  const tokens = market?.tokenLetters.map(letter => getTokenByLetter(letter)).filter(Boolean) || [];
+  const tokens = market?.tokenLetters.map(letter => getTokenByLetter(letter, market.category)).filter(Boolean) || [];
   const currentRaceStartedAt = new Date(getCurrentRaceBoundary(Date.now())).toISOString();
   const nextRaceStartedAt = new Date(getNextRaceBoundary(Date.now())).toISOString();
 

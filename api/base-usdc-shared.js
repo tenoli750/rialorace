@@ -1,7 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
-export const DEFAULT_SUPABASE_URL = "https://xafeoxmfhlbovzohjaam.supabase.co";
-export const DEFAULT_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_9HD-9e45AJgx5EIJXpiKsg__M75Ebad";
+export const DEFAULT_SUPABASE_URL = "https://rialorace.duckdns.org";
+export const DEFAULT_SUPABASE_PUBLISHABLE_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg0MzA1ODEwLCJleHAiOjE5NDE5ODU4MTB9.QokTW2iTViq5nvwYlv4Ssc3y5vVgtWJpNV7iaKgYBr0";
 export const BASE_SEPOLIA_CHAIN_ID = 84532;
 export const BASE_SEPOLIA_CHAIN_ID_HEX = "0x14a34";
 export const BASE_SEPOLIA_RPC_URL = "https://sepolia.base.org";

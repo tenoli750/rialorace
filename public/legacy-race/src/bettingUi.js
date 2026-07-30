@@ -2,6 +2,19 @@ import { TARGET_DISTANCE_METERS, TRACK_LOOP_METERS } from "./config.js";
 
 const COUNTDOWN_BEEP_URL = new URL("../assets/countdown-beep.mp3", import.meta.url).href;
 const ANIMAL_ICON_BASE_URL = new URL("../assets/icons/", import.meta.url);
+const STOCK_LOGO_BASE_URL = new URL("../assets/stock-logos/", import.meta.url);
+const STOCK_LOGO_FILES = {
+  CRCL: "CRCL.png",
+  COINBASE: "COINBASE.png",
+  GOOGLE: "GOOGLE.png",
+  IBM: "IBM.png",
+  META: "META.png",
+  MSFT: "MSFT.png",
+  NVDA: "NVDA.png",
+  PLTR: "PLTR.png",
+  TSLA: "TSLA.png",
+  SPCX: "SPCX.png"
+};
 const DEFAULT_POINTS_BALANCE = 1250;
 const MAX_VISIBLE_HISTORY_NOTES = 4;
 const PLACE_LABELS = {
@@ -710,6 +723,11 @@ export class BettingUI {
 }
 
 function getAnimalIconUrl(coinId) {
+  const stockLogo = STOCK_LOGO_FILES[coinId];
+  if (stockLogo) {
+    return new URL(stockLogo, STOCK_LOGO_BASE_URL).href;
+  }
+
   const assetName =
     {
       BTC: "Bull.png",

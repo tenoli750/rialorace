@@ -9,7 +9,28 @@ const bucketMs = 5_000;
 const defaultPollMs = 5_000;
 const bootstrapStaleMs = 30_000;
 const requestTimeoutMs = 8_000;
-const watchedCoinIds = ["BTC", "ETH", "SOL", "DOGE", "XRP", "TRX", "BNB", "ADA", "SUI", "LTC"];
+const watchedCoinIds = [
+  "BTC",
+  "ETH",
+  "SOL",
+  "DOGE",
+  "XRP",
+  "TRX",
+  "BNB",
+  "ADA",
+  "SUI",
+  "LTC",
+  "CRCL",
+  "COINBASE",
+  "GOOGLE",
+  "IBM",
+  "META",
+  "MSFT",
+  "NVDA",
+  "PLTR",
+  "TSLA",
+  "SPCX"
+];
 const watchedCoins = ALL_COINS.filter((coin) => watchedCoinIds.includes(coin.id));
 const isOnce = process.argv.includes("--once");
 

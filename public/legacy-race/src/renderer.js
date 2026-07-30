@@ -34,7 +34,17 @@ const COIN_LOGO_URLS = {
   BNB: new URL("../assets/coin-logos/bnb.svg", import.meta.url).href,
   ADA: new URL("../assets/coin-logos/ada.svg", import.meta.url).href,
   SUI: new URL("../assets/coin-logos/sui.png", import.meta.url).href,
-  LTC: new URL("../assets/coin-logos/ltc.svg", import.meta.url).href
+  LTC: new URL("../assets/coin-logos/ltc.svg", import.meta.url).href,
+  CRCL: new URL("../assets/stock-logos/CRCL.png", import.meta.url).href,
+  COINBASE: new URL("../assets/stock-logos/COINBASE.png", import.meta.url).href,
+  GOOGLE: new URL("../assets/stock-logos/GOOGLE.png", import.meta.url).href,
+  IBM: new URL("../assets/stock-logos/IBM.png", import.meta.url).href,
+  META: new URL("../assets/stock-logos/META.png", import.meta.url).href,
+  MSFT: new URL("../assets/stock-logos/MSFT.png", import.meta.url).href,
+  NVDA: new URL("../assets/stock-logos/NVDA.png", import.meta.url).href,
+  PLTR: new URL("../assets/stock-logos/PLTR.png", import.meta.url).href,
+  TSLA: new URL("../assets/stock-logos/TSLA.png", import.meta.url).href,
+  SPCX: new URL("../assets/stock-logos/SPCX.png", import.meta.url).href
 };
 const SHOWCASE_IMAGE_URLS = {
   BTC: new URL("../assets/icons/bull-face-side.png", import.meta.url).href,

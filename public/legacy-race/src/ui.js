@@ -2,6 +2,19 @@ import { MAX_SPEED_FACTOR, MIN_SPEED_FACTOR, TARGET_DISTANCE_METERS, TRACK_LOOP_
 
 const COUNTDOWN_BEEP_URL = new URL("../assets/countdown-beep.mp3", import.meta.url).href;
 const ANIMAL_ICON_BASE_URL = new URL("../assets/icons/", import.meta.url);
+const STOCK_LOGO_BASE_URL = new URL("../assets/stock-logos/", import.meta.url);
+const STOCK_LOGO_FILES = {
+  CRCL: "CRCL.png",
+  COINBASE: "COINBASE.png",
+  GOOGLE: "GOOGLE.png",
+  IBM: "IBM.png",
+  META: "META.png",
+  MSFT: "MSFT.png",
+  NVDA: "NVDA.png",
+  PLTR: "PLTR.png",
+  TSLA: "TSLA.png",
+  SPCX: "SPCX.png"
+};
 
 export class RaceUI {
   constructor({ root, coins, onSelectRacer, onPlayCamera, onStart, onRestart, onToggleCamera, onCycleCameraFocus, onToggleLogos }) {
@@ -430,6 +443,11 @@ export class RaceUI {
 }
 
 function getAnimalIconUrl(coinId) {
+  const stockLogo = STOCK_LOGO_FILES[coinId];
+  if (stockLogo) {
+    return new URL(stockLogo, STOCK_LOGO_BASE_URL).href;
+  }
+
   const assetName =
     {
       BTC: "Bull.png",

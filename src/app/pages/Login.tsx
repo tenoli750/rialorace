@@ -9,6 +9,15 @@ export function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
+  function getErrorMessage(err: unknown, fallback: string) {
+    if (err instanceof Error && err.message) return err.message;
+    if (err && typeof err === "object" && "message" in err) {
+      const message = (err as { message?: unknown }).message;
+      if (typeof message === "string" && message.trim()) return message;
+    }
+    return fallback;
+  }
+
   useEffect(() => {
     if (user) {
       navigate("/profile.html");
@@ -32,7 +41,7 @@ export function Login() {
       await login(username, password);
       navigate("/profile.html");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed. Please try again.");
+      setError(getErrorMessage(err, "Login failed. Please try again."));
     }
   };
 
@@ -52,7 +61,7 @@ export function Login() {
       await signup(username, password);
       navigate("/profile.html");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Signup failed. Please try again.");
+      setError(getErrorMessage(err, "Signup failed. Please try again."));
     }
   };
 
@@ -77,6 +86,7 @@ export function Login() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="your-id"
+                autoComplete="username"
                 minLength={3}
                 required
                 className="w-full px-3 py-2 bg-[#fff7ed] border border-[#fed7aa] rounded text-[#9a3412] focus:outline-none focus:border-[#9a3412]"
@@ -90,6 +100,7 @@ export function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="At least 6 characters"
+                autoComplete="current-password"
                 minLength={6}
                 required
                 className="w-full px-3 py-2 bg-[#fff7ed] border border-[#fed7aa] rounded text-[#9a3412] focus:outline-none focus:border-[#9a3412]"

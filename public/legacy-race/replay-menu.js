@@ -1,10 +1,13 @@
 import { getLoginSession } from "./src/supabaseClient.js?v=5";
-import { MARKET_DEFINITIONS, TOKEN_LEGEND, expandMarketTokens, formatMarketSymbols, formatMarketTitle } from "./src/markets.js";
+import { MARKET_DEFINITIONS, expandMarketTokens, formatMarketSymbols, formatMarketTitle, getTokenLegendForCategory } from "./src/markets.js";
 
 const marketGrid = document.querySelector("#marketGrid");
 const tokenLegend = document.querySelector("#tokenLegend");
 const marketCount = document.querySelector("#marketCount");
 const heroReplayCount = document.querySelector("#heroReplayCount");
+const params = new URLSearchParams(window.location.search);
+const activeCategory = params.get("category") === "stocks" ? "stocks" : "crypto";
+const activeTokenLegend = getTokenLegendForCategory(activeCategory);
 
 let activeFilterLetter = null;
 
@@ -15,7 +18,7 @@ void updateAccountLink();
 function renderTokenLegend() {
   if (!tokenLegend) return;
 
-  tokenLegend.innerHTML = Object.entries(TOKEN_LEGEND)
+  tokenLegend.innerHTML = Object.entries(activeTokenLegend)
     .map(
       ([letter, token]) => `
         <button
@@ -49,7 +52,7 @@ function renderTokenLegend() {
 
 function renderMarketGrid() {
   const visibleMarkets = MARKET_DEFINITIONS.filter(
-    (market) => !activeFilterLetter || market.letters.includes(activeFilterLetter)
+    (market) => market.category === activeCategory && (!activeFilterLetter || market.letters.includes(activeFilterLetter))
   );
 
   if (marketCount) {
@@ -64,7 +67,7 @@ function renderMarketGrid() {
 
   marketGrid.innerHTML = visibleMarkets
     .map((market) => {
-      const tokens = expandMarketTokens(market.letters);
+      const tokens = expandMarketTokens(market.letters, market.category);
       return `
         <a class="main-menu-item is-link market-placeholder-card" href="./market-replay.html?id=${market.id}">
           <span class="main-menu-label">${formatMarketTitle(market)}</span>

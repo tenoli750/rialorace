@@ -3,9 +3,9 @@ import { buildPlaceholderBallTuning } from "./src/marketSlots.js";
 import { getMarketById, getMarketSymbolIds, formatMarketSymbols, formatMarketTitle } from "./src/markets.js";
 import { RaceEngine } from "./src/raceEngine.js?v=11";
 import { RaceAudioController } from "./src/raceAudio.js";
-import { ThreeRaceRenderer } from "./src/renderer.js?v=23";
+import { ThreeRaceRenderer } from "./src/renderer.js?v=24";
 import { getLoginSession, supabase } from "./src/supabaseClient.js?v=5";
-import { BettingUI } from "./src/bettingUi.js?v=26";
+import { BettingUI } from "./src/bettingUi.js?v=27";
 import { createBetRecord, fetchCurrentRaceBets, fetchPastRaceBets, initializeBettingProfile } from "./src/supabaseBettingStore.js?v=14";
 
 const params = new URLSearchParams(window.location.search);

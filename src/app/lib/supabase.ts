@@ -1,7 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = "https://xafeoxmfhlbovzohjaam.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_9HD-9e45AJgx5EIJXpiKsg__M75Ebad";
+const DEFAULT_SUPABASE_URL = "https://rialorace.duckdns.org";
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg0MzA1ODEwLCJleHAiOjE5NDE5ODU4MTB9.QokTW2iTViq5nvwYlv4Ssc3y5vVgtWJpNV7iaKgYBr0";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || DEFAULT_SUPABASE_PUBLISHABLE_KEY;
 const LOGIN_SESSION_STORAGE_KEY = "binance-ring-rally-login-session-v1";
 
 export interface LoginSession {

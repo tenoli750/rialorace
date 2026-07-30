@@ -1139,7 +1139,7 @@ h1 {
   background-color: rgba(255, 255, 255, 0.92);
   background-position: center;
   background-repeat: no-repeat;
-  background-size: cover;
+  background-size: contain;
   border: 2px solid rgba(240, 191, 88, 0.55);
   box-shadow: 0 10px 20px rgba(154, 52, 18, 0.14);
 }
@@ -1644,6 +1644,57 @@ body.is-next-race-soon .viewport-standings-compact {
 
 .page-nav-link.is-active {
   background: rgba(154, 52, 18, 0.12);
+}
+
+.page-nav-dropdown {
+  position: relative;
+  width: 140px;
+  flex: 0 0 140px;
+}
+
+.page-nav-dropdown > .page-nav-link {
+  width: 100%;
+  flex: none;
+}
+
+.page-nav-dropdown-menu {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 8px);
+  z-index: 80;
+  min-width: 140px;
+  padding: 6px;
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  background: rgba(255, 247, 237, 0.98);
+  box-shadow: 0 18px 36px rgba(154, 52, 18, 0.18);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.14s ease, transform 0.14s ease, visibility 0.14s ease;
+}
+
+.page-nav-dropdown:hover .page-nav-dropdown-menu,
+.page-nav-dropdown:focus-within .page-nav-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.page-nav-dropdown-item {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.page-nav-dropdown-item:hover,
+.page-nav-dropdown-item:focus {
+  background: rgba(154, 52, 18, 0.1);
 }
 
 .page-nav-account {

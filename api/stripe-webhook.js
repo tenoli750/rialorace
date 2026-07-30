@@ -7,7 +7,7 @@ export const config = {
   }
 };
 
-const DEFAULT_SUPABASE_URL = "https://xafeoxmfhlbovzohjaam.supabase.co";
+const DEFAULT_SUPABASE_URL = "https://rialorace.duckdns.org";
 
 const POINT_PACKAGES = {
   starter: {
