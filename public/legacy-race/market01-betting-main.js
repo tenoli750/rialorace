@@ -1,7 +1,7 @@
 import { TEST_MARKET_01_COINS } from "./src/config.js?v=2";
 import { RaceEngine } from "./src/raceEngine.js?v=9";
 import { ThreeRaceRenderer } from "./src/renderer.js?v=24";
-import { BettingUI } from "./src/bettingUi.js?v=27";
+import { BettingUI } from "./src/bettingUi.js?v=29";
 import { buildPlaceholderBallTuning } from "./src/marketSlots.js?v=2";
 import { supabase } from "./src/supabaseClient.js?v=2";
 import { SupabasePriceFeed } from "./src/supabasePriceFeed.js?v=2";

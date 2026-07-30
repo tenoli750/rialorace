@@ -8,7 +8,7 @@ import { ThreeRaceRenderer } from "./src/renderer.js?v=24";
 import { supabase } from "./src/supabaseClient.js?v=3";
 import { SupabasePriceFeed } from "./src/supabasePriceFeed.js";
 import { recordRealtimeTestResult } from "./src/supabaseBettingStore.js";
-import { RaceUI } from "./src/ui.js?v=16";
+import { RaceUI } from "./src/ui.js?v=18";
 
 const params = new URLSearchParams(window.location.search);
 const MARKET_ID = params.get("id") ?? "market-03";

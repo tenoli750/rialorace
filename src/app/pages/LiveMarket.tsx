@@ -442,7 +442,9 @@ export function LiveMarket() {
             <h2 className="text-lg text-[#9a3412] mt-1">Choose podium or finish time</h2>
           </div>
           <span className="px-3 py-1 bg-[#ffedd5] text-xs text-[#9a3412] rounded-md">
-            {finishTimeSelection ? `${finishTimeSelection.symbol} time` : `${[firstPick, secondPick, thirdPick].filter(Boolean).length}/3 picks`}
+            {finishTimeSelection
+              ? `${finishTimeSelection.symbol} time`
+              : `${[firstPick, secondPick, thirdPick].filter(Boolean).length}/3 picks`}
           </span>
         </div>
 

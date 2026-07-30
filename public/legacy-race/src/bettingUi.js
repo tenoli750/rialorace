@@ -1,4 +1,4 @@
-import { TARGET_DISTANCE_METERS, TRACK_LOOP_METERS } from "./config.js";
+import { TARGET_DISTANCE_METERS, TRACK_LOOP_METERS, formatDisplaySymbol } from "./config.js";
 
 const COUNTDOWN_BEEP_URL = new URL("../assets/countdown-beep.mp3", import.meta.url).href;
 const ANIMAL_ICON_BASE_URL = new URL("../assets/icons/", import.meta.url);
@@ -603,7 +603,7 @@ export class BettingUI {
         (racer, index) => `
           <article class="coin-post-race-rank-card">
             <div class="coin-post-race-rank-main">
-              <div class="coin-post-race-rank-label">${index + 1}. ${racer.id}</div>
+              <div class="coin-post-race-rank-label">${index + 1}. ${formatDisplaySymbol(racer.id)}</div>
               ${buildPostRaceRankTime(engine, racer)}
             </div>
             <span class="coin-post-race-rank-avatar" style="background-image:url('${getAnimalIconUrl(racer.id)}')"></span>

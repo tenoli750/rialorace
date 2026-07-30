@@ -5,7 +5,7 @@ import { RaceEngine } from "./src/raceEngine.js?v=11";
 import { RaceAudioController } from "./src/raceAudio.js";
 import { ThreeRaceRenderer } from "./src/renderer.js?v=24";
 import { getLoginSession, supabase } from "./src/supabaseClient.js?v=5";
-import { BettingUI } from "./src/bettingUi.js?v=27";
+import { BettingUI } from "./src/bettingUi.js?v=29";
 import { createBetRecord, fetchCurrentRaceBets, fetchPastRaceBets, initializeBettingProfile } from "./src/supabaseBettingStore.js?v=14";
 
 const params = new URLSearchParams(window.location.search);

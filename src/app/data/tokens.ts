@@ -1,6 +1,8 @@
 export interface Token {
   id: string;
   symbol: string;
+  /** Short UI label when symbol is longer than 4 chars (e.g. COINBASE → COIN). */
+  shortSymbol?: string;
   name: string;
   letter: string;
   color: string;
@@ -26,8 +28,8 @@ export const cryptoTokens: Token[] = [
 
 export const stockTokens: Token[] = [
   { id: "crcl", symbol: "CRCL", name: "Circle", letter: "A", color: "#1d4ed8", image: "/legacy-race/assets/stock-logos/CRCL.png", category: "stocks", sourceSymbol: "CRCLBUSDT" },
-  { id: "coinbase", symbol: "COINBASE", name: "Coinbase", letter: "B", color: "#0052ff", image: "/legacy-race/assets/stock-logos/COINBASE.png", category: "stocks", sourceSymbol: "COINBUSDT" },
-  { id: "google", symbol: "GOOGLE", name: "Google", letter: "C", color: "#4285f4", image: "/legacy-race/assets/stock-logos/GOOGLE.png", category: "stocks", sourceSymbol: "GOOGLBUSDT" },
+  { id: "coinbase", symbol: "COINBASE", shortSymbol: "COIN", name: "Coinbase", letter: "B", color: "#0052ff", image: "/legacy-race/assets/stock-logos/COINBASE.png", category: "stocks", sourceSymbol: "COINBUSDT" },
+  { id: "google", symbol: "GOOGLE", shortSymbol: "GOOG", name: "Google", letter: "C", color: "#4285f4", image: "/legacy-race/assets/stock-logos/GOOGLE.png", category: "stocks", sourceSymbol: "GOOGLBUSDT" },
   { id: "ibm", symbol: "IBM", name: "IBM", letter: "D", color: "#2563eb", image: "/legacy-race/assets/stock-logos/IBM.png", category: "stocks", sourceSymbol: "IBMBUSDT" },
   { id: "meta", symbol: "META", name: "Meta", letter: "E", color: "#0866ff", image: "/legacy-race/assets/stock-logos/META.png", category: "stocks", sourceSymbol: "METABUSDT" },
   { id: "msft", symbol: "MSFT", name: "Microsoft", letter: "F", color: "#00a4ef", image: "/legacy-race/assets/stock-logos/MSFT.png", category: "stocks", sourceSymbol: "MSFTBUSDT" },
@@ -53,4 +55,10 @@ export function getTokenById(id: string): Token | undefined {
 
 export function getTokenBySymbol(symbol: string): Token | undefined {
   return tokens.find((token) => token.symbol === symbol);
+}
+
+export function formatDisplaySymbol(symbol: string | null | undefined): string {
+  if (!symbol) return "";
+  const token = getTokenBySymbol(symbol);
+  return token?.shortSymbol ?? symbol;
 }

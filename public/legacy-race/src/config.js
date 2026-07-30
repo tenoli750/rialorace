@@ -40,6 +40,19 @@ export function getCoinsByIds(ids) {
     .filter(Boolean);
 }
 
+/** Short UI labels for long stock ids. Keep full ids for DB/odds keys. */
+const DISPLAY_SYMBOLS = {
+  COINBASE: "COIN",
+  GOOGLE: "GOOG"
+};
+
+export function formatDisplaySymbol(symbol) {
+  if (!symbol) {
+    return "";
+  }
+  return DISPLAY_SYMBOLS[symbol] ?? String(symbol);
+}
+
 export const RACER_MODEL_LIBRARY = {
   bull: { asset: "bull.glb", headingOffset: -Math.PI / 2 },
   wolf: { asset: "wolf.glb", headingOffset: -Math.PI / 2 },
