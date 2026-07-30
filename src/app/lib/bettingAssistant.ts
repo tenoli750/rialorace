@@ -41,6 +41,10 @@ export interface BettingIntent {
   picks: TokenPlacePick[];
   /** Markets must also include these symbols (e.g. "BTC랑 같이 있는"). */
   requireAlso: string[];
+  /** Markets must NOT include these symbols (e.g. "BTC 없는 마켓"). */
+  excludeAlso: string[];
+  /** Optional market name/id queries, e.g. "Nightfall Chase". */
+  marketQueries: string[];
   /** Overlap demote rules (e.g. "겹치면 DOGE를 2등"). */
   demoteOnOverlap: ConflictDemoteRule[];
   /**
@@ -147,9 +151,25 @@ export async function askAssistant(
       shortSymbol: token.shortSymbol ?? null,
       name: token.name
     })),
+    cryptoMarkets: getMarketsByCategory("crypto").map((market) => ({
+      id: market.id,
+      name: market.name,
+      symbols: market.tokenLetters
+        .map((letter) => getTokenByLetter(letter, "crypto")?.symbol)
+        .filter(Boolean)
+    })),
+    stockMarkets: getMarketsByCategory("stocks").map((market) => ({
+      id: market.id,
+      name: market.name,
+      symbols: market.tokenLetters
+        .map((letter) => getTokenByLetter(letter, "stocks")?.symbol)
+        .filter(Boolean)
+    })),
     notes: [
-      "Prefer exact catalog symbols.",
-      "COIN/Coinbase => COINBASE, GOOG/Google => GOOGLE."
+      "Prefer exact catalog symbols and market names.",
+      "COIN/Coinbase => COINBASE, GOOG/Google => GOOGLE.",
+      "Commands like 'DOGE 1st Nightfall Chase' are bets on that named market.",
+      "Commands like 'DOGE 1st on markets without BTC' use excludeAlso: ['BTC']."
     ]
   };
 
@@ -183,6 +203,10 @@ export async function askAssistant(
     }
 
     if (payload?.kind === "chat" && typeof payload.reply === "string") {
+      const fallback = parseBettingIntent(command);
+      if (fallback.ok) {
+        return { ok: true, kind: "bet", intent: fallback.intent };
+      }
       return { ok: true, kind: "chat", reply: payload.reply.trim(), locale };
     }
 
@@ -345,6 +369,14 @@ function normalizeLlmIntent(
     .map((symbol: unknown) => canonicalizeSymbol(symbol))
     .filter((symbol: string | null): symbol is string => Boolean(symbol && allowed.has(symbol)));
 
+  const excludeAlso = (Array.isArray(raw.excludeAlso) ? raw.excludeAlso : [])
+    .map((symbol: unknown) => canonicalizeSymbol(symbol))
+    .filter((symbol: string | null): symbol is string => Boolean(symbol && allowed.has(symbol)));
+
+  const marketQueries = (Array.isArray(raw.marketNames) ? raw.marketNames : Array.isArray(raw.marketQueries) ? raw.marketQueries : [])
+    .map((value: unknown) => String(value || "").trim())
+    .filter(Boolean);
+
   const demoteOnOverlap = (Array.isArray(raw.demoteOnOverlap) ? raw.demoteOnOverlap : [])
     .map((rule: any) => {
       const symbol = canonicalizeSymbol(rule?.symbol);
@@ -360,7 +392,9 @@ function normalizeLlmIntent(
     stake,
     scope: "all",
     picks,
-    requireAlso: [...new Set(requireAlso)],
+    requireAlso: [...new Set(requireAlso)].filter((symbol) => !excludeAlso.includes(symbol)),
+    excludeAlso: [...new Set(excludeAlso)],
+    marketQueries: [...new Set(marketQueries)],
     demoteOnOverlap,
     placementMode,
     clarificationQuestion:
@@ -502,10 +536,12 @@ export function parseBettingIntent(rawInput: string): { ok: true; intent: Bettin
     return { ok: false, message: msg(locale, "stakeTooLow") };
   }
 
+  // Filter-only tokens ("BTC랑 같이") are not stake picks unless they have their own place words.
+  // Exclude-only tokens ("BTC 없는") are never picks.
   const picks = extractPicks(normalized, mentioned).filter((pick) => {
     const token = mentioned.find((entry) => entry.symbol === pick.symbol);
     if (!token) return true;
-    // Filter-only tokens ("BTC랑 같이") are not stake picks unless they have their own place words.
+    if (extractExcludeAlso(normalized, [token]).includes(token.symbol)) return false;
     if (!isLikelyFilterOnly(normalized, token)) return true;
     return hasExplicitPlaceNearToken(normalized, token);
   });
@@ -520,8 +556,11 @@ export function parseBettingIntent(rawInput: string): { ok: true; intent: Bettin
   const requireAlso = extractRequireAlso(normalized, mentioned, pickSymbols).filter(
     (symbol) => !pickSymbols.has(symbol) || isLikelyFilterOnly(normalized, mentioned.find((token) => token.symbol === symbol)!)
   );
-  // Keep requireAlso symbols that are filters; if a symbol is both pick and filter, still require it in market (redundant but ok)
   const requireAlsoUnique = [...new Set(requireAlso)];
+  const excludeAlso = extractExcludeAlso(normalized, mentioned).filter(
+    (symbol) => !requireAlsoUnique.includes(symbol)
+  );
+  const marketQueries = extractMarketQueries(normalized, category);
   const demoteOnOverlap = extractDemoteRules(normalized, mentioned);
 
   const intent: BettingIntent = {
@@ -530,6 +569,8 @@ export function parseBettingIntent(rawInput: string): { ok: true; intent: Bettin
     scope: "all",
     picks,
     requireAlso: requireAlsoUnique,
+    excludeAlso,
+    marketQueries,
     demoteOnOverlap,
     placementMode: inferPlacementModeFromText(normalized, {
       picks,
@@ -646,9 +687,33 @@ export function buildBettingPreview(
       };
     }
   }
+  for (const symbol of intent.excludeAlso) {
+    if (!tokenBySymbol.has(symbol)) {
+      return {
+        ok: false,
+        message: msg(intent.locale || "en", "tokenMissing", {
+          symbol,
+          category: intent.category
+        })
+      };
+    }
+  }
+
+  const namedMarkets = resolveMarketsByQueries(intent.marketQueries, intent.category);
+  if (intent.marketQueries.length > 0 && namedMarkets.length === 0) {
+    return {
+      ok: false,
+      message: msg(intent.locale || "en", "noMarkets")
+    };
+  }
+  const namedMarketIds = namedMarkets.length > 0 ? new Set(namedMarkets.map((market) => market.id)) : null;
 
   const plans: MarketBetPlan[] = [];
   for (const market of allMarkets) {
+    if (namedMarketIds && !namedMarketIds.has(market.id)) {
+      continue;
+    }
+
     const marketSymbols = new Set(
       market.tokenLetters
         .map((letter) => getTokenByLetter(letter, intent.category)?.symbol)
@@ -656,6 +721,9 @@ export function buildBettingPreview(
     );
 
     if (intent.requireAlso.some((symbol) => !marketSymbols.has(symbol))) {
+      continue;
+    }
+    if (intent.excludeAlso.some((symbol) => marketSymbols.has(symbol))) {
       continue;
     }
 
@@ -712,6 +780,15 @@ export function buildBettingPreview(
   const filterSummary = intent.requireAlso.length
     ? msg(locale, "filterOnly", { symbols: intent.requireAlso.join(", ") })
     : null;
+  const excludeSummary = intent.excludeAlso.length
+    ? msg(locale, "filterExclude", { symbols: intent.excludeAlso.join(", ") })
+    : null;
+  const marketSummary =
+    namedMarkets.length > 0
+      ? msg(locale, "filterMarkets", {
+          markets: namedMarkets.map((market) => market.name).join(", ")
+        })
+      : null;
   const demoteSummary = intent.demoteOnOverlap.length
     ? `${msg(locale, "demotePrefix")} ${intent.demoteOnOverlap
         .map((rule) => `${rule.symbol}→${formatPlaceLabel(rule.demoteTo, locale)}`)
@@ -719,7 +796,10 @@ export function buildBettingPreview(
     : null;
 
   const detailLines = summarizePlanGroups(plans);
-  const modeSummary = msg(locale, placementMode === "joint" ? "modeJoint" : "modeIndependent");
+  const modeSummary =
+    intent.picks.length >= 2
+      ? msg(locale, placementMode === "joint" ? "modeJoint" : "modeIndependent")
+      : null;
   const summary = [
     pickSummary,
     modeSummary,
@@ -728,7 +808,9 @@ export function buildBettingPreview(
       stake: intent.stake.toLocaleString(),
       total: totalStake.toLocaleString()
     }),
+    marketSummary,
     filterSummary,
+    excludeSummary,
     demoteSummary,
     skippedCount > 0 ? msg(locale, "skipped", { count: skippedCount }) : null,
     msg(locale, "nextRace", { time: formatKstTime(targetRaceStartedAt) })
@@ -911,17 +993,91 @@ function extractRequireAlso(text: string, mentioned: Token[], pickSymbols: Set<s
       continue;
     }
 
+    // Exclusion phrasing should not also count as requireAlso
+    if (aliases.some((alias) => isExcludePhraseForAlias(text, alias))) {
+      continue;
+    }
+
     if (!required.includes(token.symbol)) {
       required.push(token.symbol);
     }
   }
 
-  // Special: if phrasing is "X랑 같이 있는" and X is in requireAlso, remove X from being only-filter confusion
-  return required.filter((symbol) => {
-    // Keep filter symbols even if they are also picks? Usually filter tokens are NOT the stake pick.
-    // "SOL 1등 BTC랑 같이" → pick SOL, require BTC
-    return true;
-  });
+  return required;
+}
+
+function extractExcludeAlso(text: string, mentioned: Token[]): string[] {
+  const excluded: string[] = [];
+  for (const token of mentioned) {
+    const hit = tokenAliases(token).some((alias) => isExcludePhraseForAlias(text, alias));
+    if (hit && !excluded.includes(token.symbol)) {
+      excluded.push(token.symbol);
+    }
+  }
+  return excluded;
+}
+
+function isExcludePhraseForAlias(text: string, alias: string): boolean {
+  const escaped = escapeRegExp(alias);
+  return new RegExp(
+    `(?:${escaped}\\s*(?:가|이|은|는)?\\s*(?:없는|제외|빼고|없이)|(?:without|except|excluding|no)\\s+${escaped})`,
+    "i"
+  ).test(text);
+}
+
+function extractMarketQueries(text: string, category: MarketCategory): string[] {
+  const markets = getMarketsByCategory(category);
+  const found: string[] = [];
+  const lower = text.toLowerCase();
+
+  for (const market of markets) {
+    const name = market.name;
+    if (name.length < 4) continue;
+    if (lower.includes(name.toLowerCase())) {
+      found.push(name);
+      continue;
+    }
+    // Loose match without spaces/punctuation: "nightfall chase" / "NightfallChase"
+    const compactName = normalizeMarketKey(name);
+    const compactText = normalizeMarketKey(text);
+    if (compactName.length >= 6 && compactText.includes(compactName)) {
+      found.push(name);
+    }
+  }
+
+  return [...new Set(found)];
+}
+
+function resolveMarketsByQueries(queries: string[], category: MarketCategory): Market[] {
+  if (!queries.length) return [];
+  const markets = getMarketsByCategory(category);
+  const matched = new Map<string, Market>();
+
+  for (const query of queries) {
+    const key = normalizeMarketKey(query);
+    if (!key) continue;
+    for (const market of markets) {
+      const nameKey = normalizeMarketKey(market.name);
+      const idKey = normalizeMarketKey(market.id);
+      if (
+        nameKey === key ||
+        idKey === key ||
+        nameKey.includes(key) ||
+        key.includes(nameKey) ||
+        idKey.includes(key)
+      ) {
+        matched.set(market.id, market);
+      }
+    }
+  }
+
+  return [...matched.values()];
+}
+
+function normalizeMarketKey(value: string) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9가-힣]+/g, "");
 }
 
 function extractDemoteRules(text: string, mentioned: Token[]): ConflictDemoteRule[] {
@@ -1024,6 +1180,9 @@ function hasExplicitPlaceNearToken(text: string, token: Token): boolean {
 
 function isLikelyFilterOnly(text: string, token: Token): boolean {
   const aliases = tokenAliases(token);
+  if (aliases.some((alias) => isExcludePhraseForAlias(text, alias))) {
+    return true;
+  }
   return aliases.some((alias) => {
     const escaped = escapeRegExp(alias);
     return new RegExp(

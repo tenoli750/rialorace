@@ -34,6 +34,8 @@ type MsgKey =
   | "modeJoint"
   | "modeIndependent"
   | "filterOnly"
+  | "filterExclude"
+  | "filterMarkets"
   | "demotePrefix"
   | "marketsStake"
   | "skipped"
@@ -64,7 +66,7 @@ type MsgKey =
 
 const MESSAGES: Record<ReplyLocale, Record<MsgKey, string>> = {
   en: {
-    help: 'Examples: "ETH 1st on all markets" / "SOL 1st and DOGE 1st, if overlap DOGE 2nd" / "SOL 1st on markets with BTC"',
+    help: 'Examples: "ETH 1st on all markets" / "DOGE 1st Nightfall Chase" / "DOGE 1st on markets without BTC"',
     emptyCommand: "Enter a betting command.",
     notABet: "That doesn't look like a betting command.",
     unknownToken: "I couldn't tell which token to bet on.",
@@ -83,6 +85,8 @@ const MESSAGES: Record<ReplyLocale, Record<MsgKey, string>> = {
     modeJoint: "Mode: together (markets with all picks only)",
     modeIndependent: "Mode: separate (per token markets)",
     filterOnly: "Filter: markets that also include {symbols}",
+    filterExclude: "Filter: markets without {symbols}",
+    filterMarkets: "Markets: {markets}",
     demotePrefix: "On overlap",
     marketsStake: "{count} markets × {stake} pts = {total} pts",
     skipped: "skipped {count} unmatched",
@@ -116,7 +120,7 @@ const MESSAGES: Record<ReplyLocale, Record<MsgKey, string>> = {
       'Hi — I\'m Rialo Assistant. Ask about markets, points, lotto, or place batch bets. Example: "ETH 1st on all markets" / "DOGE 1st SOL 2nd"'
   },
   ko: {
-    help: '예: "모든 시장에 ETH 1등" / "SOL 1등과 DOGE 1등, 겹치면 DOGE는 2등" / "SOL 1등 BTC랑 같이 있는 마켓"',
+    help: '예: "모든 시장에 ETH 1등" / "DOGE 1등 Nightfall Chase" / "BTC 없는 마켓에 DOGE 1등"',
     emptyCommand: "명령을 입력해 주세요.",
     notABet: "베팅 명령으로 인식하지 못했어요.",
     unknownToken: "어떤 토큰에 걸지 모르겠어요.",
@@ -135,6 +139,8 @@ const MESSAGES: Record<ReplyLocale, Record<MsgKey, string>> = {
     modeJoint: "방식: 같이(둘 다 있는 마켓만)",
     modeIndependent: "방식: 각각(있는 마켓마다)",
     filterOnly: "필터: {symbols} 포함 시장만",
+    filterExclude: "필터: {symbols} 없는 시장만",
+    filterMarkets: "대상 마켓: {markets}",
     demotePrefix: "겹치면",
     marketsStake: "{count}개 시장 × {stake} pts = {total} pts",
     skipped: "조건 미해당 {count}개 스킵",
@@ -187,6 +193,8 @@ const MESSAGES: Record<ReplyLocale, Record<MsgKey, string>> = {
     modeJoint: "方式: 一緒（全ピックがある市場のみ）",
     modeIndependent: "方式: 別々（トークンごと）",
     filterOnly: "フィルター: {symbols} も含む市場のみ",
+    filterExclude: "フィルター: {symbols} なしの市場のみ",
+    filterMarkets: "対象市場: {markets}",
     demotePrefix: "重なる場合",
     marketsStake: "{count}市場 × {stake} pts = {total} pts",
     skipped: "条件外 {count}件スキップ",
@@ -239,6 +247,8 @@ const MESSAGES: Record<ReplyLocale, Record<MsgKey, string>> = {
     modeJoint: "方式: 一起（仅含全部选项的市场）",
     modeIndependent: "方式: 分开（按代币市场）",
     filterOnly: "筛选: 同时包含 {symbols} 的市场",
+    filterExclude: "筛选: 不含 {symbols} 的市场",
+    filterMarkets: "目标市场: {markets}",
     demotePrefix: "重叠时",
     marketsStake: "{count} 个市场 × {stake} pts = {total} pts",
     skipped: "跳过不符合 {count} 个",
@@ -290,6 +300,8 @@ const MESSAGES: Record<ReplyLocale, Record<MsgKey, string>> = {
     modeJoint: "Modo: juntos (solo mercados con todos)",
     modeIndependent: "Modo: separado (por token)",
     filterOnly: "Filtro: mercados que también incluyen {symbols}",
+    filterExclude: "Filtro: mercados sin {symbols}",
+    filterMarkets: "Mercados: {markets}",
     demotePrefix: "Si solapan",
     marketsStake: "{count} mercados × {stake} pts = {total} pts",
     skipped: "omitidos {count} sin coincidencia",
