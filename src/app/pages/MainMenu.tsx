@@ -35,14 +35,34 @@ export function MainMenu() {
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
-      {/* Token Legend */}
       <section className="bg-white rounded-lg border border-[#fed7aa] p-6 mb-6">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-lg text-[#9a3412]">Racers</h2>
           <div className="flex gap-2">
-            <Link to="/main-menu.html?category=crypto" className={`rounded-md border border-[#fed7aa] px-3 py-1.5 text-xs font-semibold ${activeCategory === "crypto" ? "bg-[#9a3412] text-white" : "bg-[#fff7ed] text-[#9a3412]"}`}>Crypto</Link>
-            <Link to="/main-menu.html?category=stocks" className={`rounded-md border border-[#fed7aa] px-3 py-1.5 text-xs font-semibold ${activeCategory === "stocks" ? "bg-[#9a3412] text-white" : "bg-[#fff7ed] text-[#9a3412]"}`}>Stocks</Link>
-            <Link to="/main-menu.html?category=rwa" className={`rounded-md border border-[#fed7aa] px-3 py-1.5 text-xs font-semibold ${activeCategory === "rwa" ? "bg-[#9a3412] text-white" : "bg-[#fff7ed] text-[#9a3412]"}`}>RWA</Link>
+            <Link
+              to="/main-menu.html?category=crypto"
+              className={`rounded-md border border-[#fed7aa] px-3 py-1.5 text-xs font-semibold ${
+                activeCategory === "crypto" ? "bg-[#9a3412] text-white" : "bg-[#fff7ed] text-[#9a3412]"
+              }`}
+            >
+              Crypto
+            </Link>
+            <Link
+              to="/main-menu.html?category=stocks"
+              className={`rounded-md border border-[#fed7aa] px-3 py-1.5 text-xs font-semibold ${
+                activeCategory === "stocks" ? "bg-[#9a3412] text-white" : "bg-[#fff7ed] text-[#9a3412]"
+              }`}
+            >
+              Stocks
+            </Link>
+            <Link
+              to="/main-menu.html?category=rwa"
+              className={`rounded-md border border-[#fed7aa] px-3 py-1.5 text-xs font-semibold ${
+                activeCategory === "rwa" ? "bg-[#9a3412] text-white" : "bg-[#fff7ed] text-[#9a3412]"
+              }`}
+            >
+              RWA
+            </Link>
           </div>
           {selectedRacers.length > 0 && (
             <button
@@ -71,10 +91,22 @@ export function MainMenu() {
                 <img src={token.image} alt={`${token.symbol} animal`} className="w-full h-full object-contain" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className={selectedRacerSet.has(token.letter) ? "text-sm text-white truncate" : "text-sm text-[#9a3412] truncate"}>
+                <div
+                  className={
+                    selectedRacerSet.has(token.letter)
+                      ? "text-sm text-white truncate"
+                      : "text-sm text-[#9a3412] truncate"
+                  }
+                >
                   {token.symbol}
                 </div>
-                <div className={selectedRacerSet.has(token.letter) ? "text-xs text-white/75 truncate" : "text-xs text-[#8a5a44] truncate"}>
+                <div
+                  className={
+                    selectedRacerSet.has(token.letter)
+                      ? "text-xs text-white/75 truncate"
+                      : "text-xs text-[#8a5a44] truncate"
+                  }
+                >
                   {token.name}
                 </div>
               </div>
@@ -101,7 +133,6 @@ export function MainMenu() {
         </div>
       </section>
 
-      {/* Market Grid */}
       <section className="bg-white rounded-lg border border-[#fed7aa] p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -129,7 +160,11 @@ export function MainMenu() {
                       className="flex min-h-11 items-center gap-2 rounded-md border border-[#fed7aa] bg-white px-3 py-2 text-sm font-semibold text-[#9a3412]"
                     >
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#fed7aa] bg-white">
-                        <img src={token?.image} alt={`${token?.symbol} animal`} className="h-full w-full object-contain" />
+                        <img
+                          src={token?.image}
+                          alt={`${token?.symbol} animal`}
+                          className="h-full w-full object-contain"
+                        />
                       </span>
                       <span>{token?.symbol}</span>
                     </span>

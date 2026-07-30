@@ -224,8 +224,10 @@ export default async function handler(req, res) {
     return res.status(200).json(result.audit);
   } catch (error) {
     console.error("Point reconciliation failed", error);
-    return res.status(500).json({
-      error: error instanceof Error ? error.message : "Could not reconcile points."
-    });
+    const message =
+      (error instanceof Error && error.message) ||
+      (error && typeof error === "object" && typeof error.message === "string" && error.message) ||
+      "Could not reconcile points.";
+    return res.status(500).json({ error: message });
   }
 }

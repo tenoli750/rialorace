@@ -1,4 +1,5 @@
 import { createBrowserRouter } from "react-router";
+import { AppLayout } from "./components/AppLayout";
 import { Root } from "./components/Root";
 import { Landing } from "./pages/Landing";
 import { PrecisionLanding } from "./pages/PrecisionLanding";
@@ -16,48 +17,52 @@ import { Profile } from "./pages/Profile";
 import { Shop } from "./pages/Shop";
 
 export const router = createBrowserRouter([
-  { path: "/", Component: Landing },
-  { path: "/landing", Component: Landing },
-  { path: "/landing.html", Component: Landing },
-  { path: "/precision-landing", Component: PrecisionLanding },
-  { path: "/precision-landing.html", Component: PrecisionLanding },
   {
-    path: "/",
-    Component: Root,
+    Component: AppLayout,
     children: [
-      { path: "main-menu.html", Component: MainMenu },
-      { path: "market", Component: LiveMarket },
-      { path: "market/:marketId", Component: LiveMarket },
-      { path: "markets/:marketId", Component: LiveMarket },
-      { path: "market.html", Component: LiveMarket },
-      { path: "market01-betting", Component: LiveMarket },
-      { path: "market01-betting.html", Component: LiveMarket },
-      { path: "market02-betting", Component: LiveMarket },
-      { path: "market02-betting.html", Component: LiveMarket },
-      { path: "betting", Component: LiveMarket },
-      { path: "betting/:marketId", Component: LiveMarket },
-      { path: "betting.html", Component: LiveMarket },
-      { path: "replay", Component: ReplayMenu },
-      { path: "replay-menu.html", Component: ReplayMenu },
-      { path: "replay/:marketId", Component: ReplayMarket },
-      { path: "market-replay.html", Component: ReplayMarket },
-      { path: "race-lotto", Component: RaceLotto },
-      { path: "lotto", Component: RaceLotto },
-      { path: "shop", Component: Shop },
-      { path: "shop.html", Component: Shop },
-      { path: "rankings", Component: Rankings },
-      { path: "community.html", Component: Rankings },
-      { path: "rewards", Component: Rewards },
-      { path: "rewards.html", Component: Rewards },
-      { path: "points", Component: Points },
-      { path: "points.html", Component: Points },
-      { path: "history", Component: History },
-      { path: "my-bets.html", Component: History },
-      { path: "login", Component: Login },
-      { path: "login.html", Component: Login },
-      { path: "profile", Component: Profile },
-      { path: "profile.html", Component: Profile },
-      { path: ":marketId", Component: LiveMarket },
-    ],
-  },
+      { path: "/", Component: Landing },
+      { path: "/landing", Component: Landing },
+      { path: "/landing.html", Component: Landing },
+      { path: "/precision-landing", Component: PrecisionLanding },
+      { path: "/precision-landing.html", Component: PrecisionLanding },
+      {
+        Component: Root,
+        children: [
+          { path: "main-menu.html", Component: MainMenu },
+          { path: "market", Component: LiveMarket },
+          { path: "market/:marketId", Component: LiveMarket },
+          { path: "markets/:marketId", Component: LiveMarket },
+          { path: "market.html", Component: LiveMarket },
+          { path: "market01-betting", Component: LiveMarket },
+          { path: "market01-betting.html", Component: LiveMarket },
+          { path: "market02-betting", Component: LiveMarket },
+          { path: "market02-betting.html", Component: LiveMarket },
+          { path: "betting", Component: LiveMarket },
+          { path: "betting/:marketId", Component: LiveMarket },
+          { path: "betting.html", Component: LiveMarket },
+          { path: "replay", Component: ReplayMenu },
+          { path: "replay-menu.html", Component: ReplayMenu },
+          { path: "replay/:marketId", Component: ReplayMarket },
+          { path: "market-replay.html", Component: ReplayMarket },
+          { path: "race-lotto", Component: RaceLotto },
+          { path: "lotto", Component: RaceLotto },
+          { path: "shop", Component: Shop },
+          { path: "shop.html", Component: Shop },
+          { path: "rankings", Component: Rankings },
+          { path: "community.html", Component: Rankings },
+          { path: "rewards", Component: Rewards },
+          { path: "rewards.html", Component: Rewards },
+          { path: "points", Component: Points },
+          { path: "points.html", Component: Points },
+          { path: "history", Component: History },
+          { path: "my-bets.html", Component: History },
+          { path: "login", Component: Login },
+          { path: "login.html", Component: Login },
+          { path: "profile", Component: Profile },
+          { path: "profile.html", Component: Profile },
+          { path: ":marketId", Component: LiveMarket }
+        ]
+      }
+    ]
+  }
 ]);

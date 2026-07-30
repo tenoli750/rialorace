@@ -81,6 +81,8 @@ async function handleApi(req, res) {
   const apiModules = {
     "/api/create-base-usdc-order": "../api/create-base-usdc-order.js",
     "/api/create-bet-record": "../api/create-bet-record.js",
+    "/api/parse-betting-command": "../api/parse-betting-command.js",
+    "/api/assistant-chat": "../api/assistant-chat.js",
     "/api/create-points-checkout": "../api/create-points-checkout.js",
     "/api/list-point-charge-history": "../api/list-point-charge-history.js",
     "/api/list-chat-pick-badges": "../api/list-chat-pick-badges.js",
