@@ -562,17 +562,80 @@ h1 {
 
 .viewport-standings-compact {
   position: absolute;
-  top: 24px;
-  left: 24px;
-  right: 24px;
+  top: 12px;
+  left: 12px;
+  right: 12px;
   z-index: 8;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 5px;
   background: transparent;
   border: 0;
   box-shadow: none;
   backdrop-filter: none;
+}
+
+.viewport-standings-compact .standing-slot {
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: 10px;
+  box-shadow: 0 6px 14px rgba(67, 20, 7, 0.18);
+}
+
+.viewport-standings-compact .standing-slot-head {
+  grid-template-columns: 19px minmax(0, 1fr);
+  gap: 5px;
+}
+
+.viewport-standings-compact .standing-rank {
+  width: 19px;
+  height: 19px;
+  border-radius: 6px;
+  font-size: 0.68rem;
+}
+
+.viewport-standings-compact .standing-dot,
+.viewport-standings-compact .standing-lap-badge {
+  width: 14px;
+  height: 14px;
+  font-size: 0.58rem;
+  border-width: 1px;
+}
+
+.viewport-standings-compact .standing-main {
+  gap: 2px;
+}
+
+.viewport-standings-compact .standing-symbol {
+  font-size: 0.68rem;
+}
+
+.viewport-standings-compact .standing-price {
+  font-size: 0.62rem;
+}
+
+.viewport-standings-compact .standing-time-block {
+  gap: 1px;
+}
+
+.viewport-standings-compact .standing-time-label {
+  font-size: 0.48rem;
+  letter-spacing: 0.08em;
+}
+
+.viewport-standings-compact .standing-time {
+  font-size: 0.62rem;
+}
+
+.viewport-standings-compact .standing-result-line {
+  gap: 5px;
+  margin-top: 0;
+  padding-top: 4px;
+  font-size: 0.52rem;
+}
+
+.viewport-standings-compact .standing-result-line strong {
+  font-size: 0.62rem;
 }
 
 .viewport-standings-head {

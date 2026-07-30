@@ -1,10 +1,10 @@
 import {
   BASE_METERS_PER_SECOND,
   COINS,
-  MAX_SPEED_FACTOR,
-  MIN_SPEED_FACTOR,
-  SPEED_MULTIPLIER,
   SPEED_SMOOTHING,
+  syncRacerSpeedFromChange,
+  getSpeedEffectPercentFromChangePercent,
+  normalizeChangePercent,
   STALE_CANDLE_MS,
   TARGET_DISTANCE_METERS,
   TRACK_LOOP_METERS
@@ -64,13 +64,12 @@ export class RaceEngine {
     this.state.notes = [];
 
     for (const racer of this.state.racers) {
-      racer.changePercent = 0;
       racer.racePercent = 0;
       racer.startPrice = null;
       racer.speedFactor = 1;
       racer.targetSpeedFactor = 1;
       racer.postFinishSpeedFactor = 1;
-      racer.lastSpeedEffectPercent = 0;
+      syncRacerSpeedFromChange(racer, 0, { reset: true });
       racer.distanceMeters = 0;
       racer.finishPlace = null;
       racer.finishedAtWallMs = 0;
@@ -121,9 +120,7 @@ export class RaceEngine {
       racer.price = startRow.price;
       racer.startPrice = startRow.price;
       racer.racePercent = 0;
-      racer.changePercent = 0;
-      racer.speedFactor = 1;
-      racer.targetSpeedFactor = 1;
+      syncRacerSpeedFromChange(racer, 0, { reset: true });
       racer.distanceMeters = 0;
       racer.finishPlace = null;
       racer.finishedAtWallMs = 0;
@@ -215,11 +212,12 @@ export class RaceEngine {
       }
 
       racer.price = snapshot.price;
-      racer.changePercent = snapshot.changePercent ?? 0;
       racer.speedFactor = snapshot.speedFactor ?? 1;
       racer.targetSpeedFactor = snapshot.targetSpeedFactor ?? racer.speedFactor;
       racer.postFinishSpeedFactor = snapshot.postFinishSpeedFactor ?? racer.postFinishSpeedFactor ?? racer.speedFactor;
-      racer.lastSpeedEffectPercent = snapshot.lastSpeedEffectPercent ?? racer.lastSpeedEffectPercent;
+      racer.changePercent = normalizeChangePercent(snapshot.changePercent ?? 0);
+      racer.lastSpeedEffectPercent = getSpeedEffectPercentFromChangePercent(racer.changePercent);
+      racer.displaySpeedFactor = racer.targetSpeedFactor;
       racer.distanceMeters = displayDistance;
       racer.finishPlace = snapshot.finishPlace ?? null;
       racer.finishedAtWallMs = snapshot.finishedAtWallMs ?? 0;
@@ -337,10 +335,8 @@ export class RaceEngine {
     for (const racer of this.state.racers) {
       racer.startPrice = Number.isFinite(racer.price) && racer.price > 0 ? racer.price : null;
       racer.racePercent = 0;
-      racer.speedFactor = 1;
-      racer.targetSpeedFactor = 1;
       racer.postFinishSpeedFactor = 1;
-      racer.lastSpeedEffectPercent = 0;
+      syncRacerSpeedFromChange(racer, 0, { reset: true });
     }
     this.addNote(
       `3D race started. Base speed is 1x, and each closed 5-second price move sets the next speed target.`
@@ -539,10 +535,8 @@ export class RaceEngine {
     if (!Number.isFinite(racer.startPrice) || racer.startPrice <= 0) {
       racer.startPrice = price;
       racer.racePercent = 0;
-      racer.changePercent = 0;
-      racer.speedFactor = 1;
-      racer.targetSpeedFactor = 1;
-      racer.lastSpeedEffectPercent = 0;
+      racer.postFinishSpeedFactor = 1;
+      syncRacerSpeedFromChange(racer, 0, { reset: true });
       racer.speedWindowStartPrice = price;
       racer.speedWindowStartAt = updatedAtWallMs;
       racer.lastCandleAt = updatedAtWallMs;
@@ -556,28 +550,14 @@ export class RaceEngine {
       racer.speedWindowStartPrice = price;
       racer.speedWindowStartAt = updatedAtWallMs;
       racer.changePercent = 0;
+      racer.lastSpeedEffectPercent = 0;
       racer.lastCandleAt = updatedAtWallMs;
       return;
     }
 
     if (updatedAtWallMs - racer.speedWindowStartAt >= 5_000) {
-      racer.changePercent = ((price - racer.speedWindowStartPrice) / racer.speedWindowStartPrice) * 100;
-      const projectedSpeedEffectPercent = racer.changePercent * SPEED_MULTIPLIER * 100;
-      if (activeRace) {
-        const previousTargetSpeedFactor = racer.targetSpeedFactor;
-        const nextTargetSpeedFactor = clamp(
-          previousTargetSpeedFactor * (1 + racer.changePercent * SPEED_MULTIPLIER),
-          MIN_SPEED_FACTOR,
-          MAX_SPEED_FACTOR
-        );
-        racer.targetSpeedFactor = nextTargetSpeedFactor;
-        racer.lastSpeedEffectPercent =
-          previousTargetSpeedFactor > 0
-            ? ((nextTargetSpeedFactor - previousTargetSpeedFactor) / previousTargetSpeedFactor) * 100
-            : 0;
-      } else {
-        racer.lastSpeedEffectPercent = projectedSpeedEffectPercent;
-      }
+      const changePercent = ((price - racer.speedWindowStartPrice) / racer.speedWindowStartPrice) * 100;
+      syncRacerSpeedFromChange(racer, changePercent);
       racer.speedWindowStartPrice = price;
       racer.speedWindowStartAt = updatedAtWallMs;
     }
@@ -645,6 +625,7 @@ function createRacer(coin) {
     startPrice: null,
     speedFactor: 1,
     targetSpeedFactor: 1,
+    displaySpeedFactor: 1,
     postFinishSpeedFactor: 1,
     lastSpeedEffectPercent: 0,
     distanceMeters: 0,

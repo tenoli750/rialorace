@@ -7,6 +7,87 @@ export const MIN_SPEED_FACTOR = 0.72;
 export const MAX_SPEED_FACTOR = 1.75;
 export const STALE_CANDLE_MS = 3_500;
 
+/** Round change % to the same 3dp the UI prints, so price % and speed effect stay in lockstep. */
+export function normalizeChangePercent(changePercent) {
+  const value = Number(changePercent);
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  const rounded = Math.round(value * 1000) / 1000;
+  return rounded === 0 ? 0 : rounded;
+}
+
+function clampSpeedFactor(value) {
+  return Math.min(MAX_SPEED_FACTOR, Math.max(MIN_SPEED_FACTOR, value));
+}
+
+/** Compound from the previous speed: previous * (1 + change% * multiplier). 0% keeps speed unchanged. */
+export function compoundSpeedFactor(previousSpeed, changePercent) {
+  const change = normalizeChangePercent(changePercent);
+  const previous = Number.isFinite(previousSpeed) && previousSpeed > 0 ? previousSpeed : 1;
+  return clampSpeedFactor(previous * (1 + change * SPEED_MULTIPLIER));
+}
+
+/** Keep the ×100 scale used on the speed effect label. */
+export function getSpeedEffectPercentFromChangePercent(changePercent) {
+  return normalizeChangePercent(changePercent) * SPEED_MULTIPLIER * 100;
+}
+
+/**
+ * Apply a closed candle to a racer.
+ * - changePercent drives the effect label (same sign/timing as price %)
+ * - speed compounds from the previous target (does not reset to 1 on 0%)
+ * - reset:true restores baseline 1x (race start / hard reset only)
+ */
+export function syncRacerSpeedFromChange(racer, changePercent, { reset = false } = {}) {
+  const change = normalizeChangePercent(changePercent);
+  if (!racer) {
+    return {
+      changePercent: change,
+      displaySpeedFactor: reset ? 1 : compoundSpeedFactor(1, change),
+      lastSpeedEffectPercent: getSpeedEffectPercentFromChangePercent(change)
+    };
+  }
+
+  racer.changePercent = change;
+  racer.lastSpeedEffectPercent = getSpeedEffectPercentFromChangePercent(change);
+
+  if (reset) {
+    racer.speedFactor = 1;
+    racer.targetSpeedFactor = 1;
+    racer.displaySpeedFactor = 1;
+    return {
+      changePercent: change,
+      displaySpeedFactor: 1,
+      lastSpeedEffectPercent: 0
+    };
+  }
+
+  const previous =
+    Number.isFinite(racer.targetSpeedFactor) && racer.targetSpeedFactor > 0
+      ? racer.targetSpeedFactor
+      : Number.isFinite(racer.displaySpeedFactor) && racer.displaySpeedFactor > 0
+        ? racer.displaySpeedFactor
+        : Number.isFinite(racer.speedFactor) && racer.speedFactor > 0
+          ? racer.speedFactor
+          : 1;
+  const next = compoundSpeedFactor(previous, change);
+  racer.targetSpeedFactor = next;
+  racer.displaySpeedFactor = next;
+  racer.speedFactor = next;
+
+  return {
+    changePercent: change,
+    displaySpeedFactor: next,
+    lastSpeedEffectPercent: racer.lastSpeedEffectPercent
+  };
+}
+
+/** @deprecated Use syncRacerSpeedFromChange. Kept as alias for older imports. */
+export function syncSpeedDisplayFromChangePercent(racer, changePercent, options) {
+  return syncRacerSpeedFromChange(racer, changePercent, options);
+}
+
 export const ALL_COINS = [
   { id: "BTC", symbol: "BTCUSDT", stream: "btcusdt@kline_1s", css: "#f2a900", three: 0xf2a900 },
   { id: "ETH", symbol: "ETHUSDT", stream: "ethusdt@kline_1s", css: "#576ee7", three: 0x576ee7 },
@@ -64,7 +145,14 @@ export const RACER_MODEL_LIBRARY = {
   donkey: { asset: "donkey.glb", headingOffset: -Math.PI / 2 },
   sloth: { asset: "sloth.glb", headingOffset: -Math.PI / 2, scaleMultiplier: 1.05, animationSpeedMultiplier: 2 },
   horse: { asset: "horse.glb", headingOffset: -Math.PI / 2 },
-  whiteHorse: { asset: "white-horse.glb", headingOffset: -Math.PI / 2 }
+  whiteHorse: { asset: "white-horse.glb", headingOffset: -Math.PI / 2 },
+  fox: { asset: "fox.glb", headingOffset: -Math.PI / 2 },
+  husky: { asset: "husky.glb", headingOffset: -Math.PI / 2 },
+  pig: { asset: "pig.glb", headingOffset: -Math.PI / 2 },
+  sheep: { asset: "sheep.glb", headingOffset: -Math.PI / 2, scaleMultiplier: 0.5 },
+  zebra: { asset: "zebra.glb", headingOffset: -Math.PI / 2 },
+  pug: { asset: "pug.glb", headingOffset: -Math.PI / 2, scaleMultiplier: 0.425 },
+  llama: { asset: "llama.glb", headingOffset: -Math.PI / 2 }
 };
 
 export const MARKET_MODEL_LINKS = {
@@ -86,15 +174,15 @@ export const MARKET_MODEL_LINKS = {
   },
   stocks: {
     CRCL: "bull",
-    COINBASE: "wolf",
-    GOOGLE: "stag",
-    IBM: "shibaInu",
-    META: "alpaca",
-    MSFT: "cow",
-    NVDA: "deer",
-    PLTR: "donkey",
-    TSLA: "horse",
-    SPCX: "whiteHorse"
+    COINBASE: "fox",
+    GOOGLE: "husky",
+    IBM: "pig",
+    META: "pug",
+    MSFT: "llama",
+    NVDA: "zebra",
+    PLTR: "sheep",
+    TSLA: "sloth",
+    SPCX: "wolf"
   }
 };
 

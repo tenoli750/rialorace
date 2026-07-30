@@ -1,4 +1,10 @@
-import { TARGET_DISTANCE_METERS, TRACK_LOOP_METERS, formatDisplaySymbol } from "./config.js";
+import {
+  TARGET_DISTANCE_METERS,
+  TRACK_LOOP_METERS,
+  formatDisplaySymbol,
+  getSpeedEffectPercentFromChangePercent,
+  normalizeChangePercent
+} from "./config.js";
 
 const COUNTDOWN_BEEP_URL = new URL("../assets/countdown-beep.mp3", import.meta.url).href;
 const ANIMAL_ICON_BASE_URL = new URL("../assets/icons/", import.meta.url);
@@ -488,7 +494,7 @@ export class BettingUI {
               <div class="standing-rank">${index + 1}</div>
               <div class="standing-main">
                 <div class="standing-symbol">${racer.id}</div>
-                <div class="standing-price ${getPolarityClass(racer.changePercent)}">${racer.price === null ? "Waiting..." : `$${formatPrice(racer.price)} (${formatSignedPercent(racer.changePercent)})`}</div>
+                <div class="standing-price ${getPolarityClass(normalizeChangePercent(racer.changePercent))}">${racer.price === null ? "Waiting..." : `$${formatPrice(racer.price)} (${formatSignedPercent(normalizeChangePercent(racer.changePercent))})`}</div>
                 ${buildStandingSpeedBlock(engine, racer)}
               </div>
             </div>
@@ -523,13 +529,13 @@ export class BettingUI {
       const betTags = getBetTags(this.betSelections, racer.id);
       card.card.classList.toggle("is-selected", isSelected);
       card.priceEl.textContent = racer.price === null ? "Waiting..." : `$${formatPrice(racer.price)}`;
-      card.changeEl.textContent = formatSignedPercent(racer.changePercent);
-      card.changeEl.className = `coin-value ${getPolarityClass(racer.changePercent)}`;
+      card.changeEl.textContent = formatSignedPercent(normalizeChangePercent(racer.changePercent));
+      card.changeEl.className = `coin-value ${getPolarityClass(normalizeChangePercent(racer.changePercent))}`;
       card.speedEl.textContent = formatSpeedWithPercent(
-        engine.getEffectiveSpeedFactor(racer),
-        racer.lastSpeedEffectPercent
+        getDisplayedSpeedFactor(engine, racer),
+        getSpeedEffectPercentFromChangePercent(racer.changePercent)
       );
-      card.speedEl.className = `coin-value ${getPolarityClass(racer.lastSpeedEffectPercent)}`;
+      card.speedEl.className = `coin-value ${getPolarityClass(getSpeedEffectPercentFromChangePercent(racer.changePercent))}`;
       card.lapEl.textContent = formatCompletedLaps(racer.distanceMeters);
       card.lapEl.setAttribute("aria-label", `${formatCompletedLaps(racer.distanceMeters)} laps completed`);
       card.distanceEl.textContent = formatMeters(racer.distanceMeters);
@@ -993,12 +999,25 @@ function formatSpeedWithPercent(speed, effectPercent = 0) {
 }
 
 function buildStandingSpeedBlock(engine, racer) {
+  const changePercent = normalizeChangePercent(racer.changePercent);
+  const speed = getDisplayedSpeedFactor(engine, racer);
+  const effectPercent = getSpeedEffectPercentFromChangePercent(changePercent);
   return `
     <div class="standing-time-block">
       <span class="standing-time-label">Speed</span>
-      <span class="standing-time ${getPolarityClass(racer.lastSpeedEffectPercent)}">${formatSpeedWithPercent(engine.getEffectiveSpeedFactor(racer), racer.lastSpeedEffectPercent)}</span>
+      <span class="standing-time ${getPolarityClass(effectPercent)}">${formatSpeedWithPercent(speed, effectPercent)}</span>
     </div>
   `;
+}
+
+function getDisplayedSpeedFactor(engine, racer) {
+  if (Number.isFinite(racer.displaySpeedFactor) && racer.displaySpeedFactor > 0) {
+    return racer.displaySpeedFactor;
+  }
+  if (Number.isFinite(racer.targetSpeedFactor) && racer.targetSpeedFactor > 0) {
+    return racer.targetSpeedFactor;
+  }
+  return engine.getEffectiveSpeedFactor(racer);
 }
 
 function buildStandingResultLine(engine, racer) {

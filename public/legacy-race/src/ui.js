@@ -1,4 +1,10 @@
-import { MAX_SPEED_FACTOR, MIN_SPEED_FACTOR, TARGET_DISTANCE_METERS, TRACK_LOOP_METERS, formatDisplaySymbol } from "./config.js";
+import {
+  TARGET_DISTANCE_METERS,
+  TRACK_LOOP_METERS,
+  formatDisplaySymbol,
+  getSpeedEffectPercentFromChangePercent,
+  normalizeChangePercent
+} from "./config.js";
 
 const COUNTDOWN_BEEP_URL = new URL("../assets/countdown-beep.mp3", import.meta.url).href;
 const ANIMAL_ICON_BASE_URL = new URL("../assets/icons/", import.meta.url);
@@ -299,17 +305,18 @@ export class RaceUI {
 
     this.dom.standings.innerHTML = ranking
       .map((racer, index) => {
+        const changePercent = normalizeChangePercent(racer.changePercent);
         const priceLabel =
           racer.price === null
             ? "Waiting..."
-            : `$${formatPrice(racer.price)} (${formatSignedPercent(racer.changePercent)})`;
+            : `$${formatPrice(racer.price)} (${formatSignedPercent(changePercent)})`;
         return `
           <div class="standing-slot">
             <div class="standing-slot-head">
               <div class="standing-rank">${index + 1}</div>
               <div class="standing-main">
                 <div class="standing-symbol">${racer.id}</div>
-                <div class="standing-price ${getPolarityClass(racer.changePercent)}">${priceLabel}</div>
+                <div class="standing-price ${getPolarityClass(changePercent)}">${priceLabel}</div>
                 ${buildStandingSpeedBlock(engine, racer)}
               </div>
             </div>
@@ -353,15 +360,13 @@ export class RaceUI {
       card.priceEl.textContent = racer.price === null ? "Waiting..." : `$${formatPrice(racer.price)}`;
       card.badgeEl.textContent = formatCompletedLaps(racer.distanceMeters);
       card.badgeEl.setAttribute("aria-label", `${formatCompletedLaps(racer.distanceMeters)} laps completed`);
-      card.changeEl.textContent = formatSignedPercent(racer.changePercent);
-      card.changeEl.className = `coin-value ${getPolarityClass(racer.changePercent)}`;
+      card.changeEl.textContent = formatSignedPercent(normalizeChangePercent(racer.changePercent));
+      card.changeEl.className = `coin-value ${getPolarityClass(normalizeChangePercent(racer.changePercent))}`;
       card.speedEl.textContent = formatSpeedWithPercent(
-        Number.isFinite(racer.displaySpeedFactor)
-          ? racer.displaySpeedFactor
-          : engine.getEffectiveSpeedFactor(racer),
-        racer.lastSpeedEffectPercent
+        getDisplayedSpeedFactor(engine, racer),
+        getSpeedEffectPercentFromChangePercent(racer.changePercent)
       );
-      card.speedEl.className = `coin-value ${getPolarityClass(racer.lastSpeedEffectPercent)}`;
+      card.speedEl.className = `coin-value ${getPolarityClass(getSpeedEffectPercentFromChangePercent(racer.changePercent))}`;
       card.distanceEl.textContent = formatMeters(racer.distanceMeters);
       card.samplesEl.textContent = String(racer.samples.length);
     });
@@ -524,15 +529,25 @@ function formatSpeedWithPercent(speed, effectPercent = 0) {
 }
 
 function buildStandingSpeedBlock(engine, racer) {
-  const speed = Number.isFinite(racer.displaySpeedFactor)
-    ? racer.displaySpeedFactor
-    : engine.getEffectiveSpeedFactor(racer);
+  const changePercent = normalizeChangePercent(racer.changePercent);
+  const speed = getDisplayedSpeedFactor(engine, racer);
+  const effectPercent = getSpeedEffectPercentFromChangePercent(changePercent);
   return `
     <div class="standing-time-block">
       <span class="standing-time-label">Speed</span>
-      <span class="standing-time ${getPolarityClass(racer.lastSpeedEffectPercent)}">${formatSpeedWithPercent(speed, racer.lastSpeedEffectPercent)}</span>
+      <span class="standing-time ${getPolarityClass(effectPercent)}">${formatSpeedWithPercent(speed, effectPercent)}</span>
     </div>
   `;
+}
+
+function getDisplayedSpeedFactor(engine, racer) {
+  if (Number.isFinite(racer.displaySpeedFactor) && racer.displaySpeedFactor > 0) {
+    return racer.displaySpeedFactor;
+  }
+  if (Number.isFinite(racer.targetSpeedFactor) && racer.targetSpeedFactor > 0) {
+    return racer.targetSpeedFactor;
+  }
+  return engine.getEffectiveSpeedFactor(racer);
 }
 
 function buildStandingResultLine(engine, racer) {

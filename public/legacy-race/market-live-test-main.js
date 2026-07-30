@@ -1,4 +1,4 @@
-import { FORMULA, SPEED_MULTIPLIER, getCoinsByIds, TARGET_DISTANCE_METERS } from "./src/config.js";
+import { FORMULA, getCoinsByIds, TARGET_DISTANCE_METERS, normalizeChangePercent, getSpeedEffectPercentFromChangePercent, compoundSpeedFactor } from "./src/config.js";
 import { SceneEditor } from "./src/editor.js";
 import { buildPlaceholderBallTuning } from "./src/marketSlots.js";
 import { getMarketById, getMarketSymbolIds, formatMarketSymbols, formatMarketTitle } from "./src/markets.js";
@@ -431,11 +431,13 @@ function applyLiveSeedFrame(frame) {
       continue;
     }
     racer.price = Number(row.price);
-    racer.changePercent = Number(row.change_percent ?? 0);
+    racer.postFinishSpeedFactor = Number(row.speed_factor ?? 1);
+    // Prefer backend speed when seeded; keep effect label locked to change %.
     racer.speedFactor = Number(row.speed_factor ?? 1);
     racer.targetSpeedFactor = Number(row.speed_factor ?? 1);
-    racer.postFinishSpeedFactor = Number(row.speed_factor ?? 1);
-    racer.lastSpeedEffectPercent = Number(row.change_percent ?? 0) * SPEED_MULTIPLIER * 100;
+    racer.displaySpeedFactor = Number(row.speed_factor ?? 1);
+    racer.changePercent = normalizeChangePercent(row.change_percent ?? 0);
+    racer.lastSpeedEffectPercent = getSpeedEffectPercentFromChangePercent(racer.changePercent);
     racer.distanceMeters = Number(row.cumulative_distance_meters ?? 0);
     racer.finishPlace = row.finish_place ? Number(row.finish_place) : null;
     racer.finishedAtWallMs = 0;
@@ -482,7 +484,6 @@ function applyLiveIntervalFrame(nowMs) {
         changePercent: Number(row.change_percent ?? 0),
         speedFactor: Number(row.speed_factor ?? 1),
         targetSpeedFactor: Number(row.speed_factor ?? 1),
-        lastSpeedEffectPercent: Number(row.change_percent ?? 0) * SPEED_MULTIPLIER * 100,
         distanceMeters: interpolatedDistance,
         finishPlace: row.finish_place ? Number(row.finish_place) : null,
         finishedAtWallMs: row.finished_at ? new Date(row.finished_at).getTime() : 0,
@@ -569,18 +570,19 @@ async function refreshLivePriceSamples() {
     racer.sampleKeys = new Set(samples.map((sample) => sample.closeTime));
 
     const latest = rows.at(-1);
-    const previous = rows.at(-2) ?? latest;
     if (latest) {
       racer.price = Number(latest.price);
-      racer.speedFactor = Number(latest.speed_factor ?? racer.speedFactor ?? 1);
-      racer.targetSpeedFactor = Number(latest.speed_factor ?? racer.targetSpeedFactor ?? 1);
-      racer.changePercent = Number(
-        latest.change_percent ??
-          (previous && Number(previous.price) > 0
-            ? ((Number(latest.price) - Number(previous.price)) / Number(previous.price)) * 100
-            : 0)
-      );
-      racer.lastSpeedEffectPercent = racer.changePercent * SPEED_MULTIPLIER * 100;
+      let speed = 1;
+      let latestChange = 0;
+      for (const sample of samples) {
+        latestChange = sample.changePercent;
+        speed = compoundSpeedFactor(speed, sample.changePercent);
+      }
+      racer.changePercent = normalizeChangePercent(latestChange);
+      racer.lastSpeedEffectPercent = getSpeedEffectPercentFromChangePercent(latestChange);
+      racer.targetSpeedFactor = speed;
+      racer.displaySpeedFactor = speed;
+      racer.speedFactor = speed;
     }
   }
 

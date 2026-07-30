@@ -1,4 +1,4 @@
-import { FORMULA, SPEED_MULTIPLIER, getCoinsByIds, TARGET_DISTANCE_METERS } from "./src/config.js";
+import { FORMULA, getCoinsByIds, TARGET_DISTANCE_METERS, compoundSpeedFactor, normalizeChangePercent, getSpeedEffectPercentFromChangePercent } from "./src/config.js";
 import { buildPlaceholderBallTuning } from "./src/marketSlots.js";
 import { getMarketById, getMarketSymbolIds, formatMarketSymbols, formatMarketTitle } from "./src/markets.js";
 import { RaceEngine } from "./src/raceEngine.js?v=11";
@@ -1424,24 +1424,32 @@ async function refreshLivePriceSamples() {
     racer.sampleKeys = new Set(samples.map((sample) => sample.closeTime));
 
     const latest = rows.at(-1);
-    const previous = rows.at(-2) ?? latest;
     if (latest) {
       racer.price = Number(latest.price);
-      racer.speedFactor = Number(latest.speed_factor ?? racer.speedFactor ?? 1);
-      racer.targetSpeedFactor = Number(latest.speed_factor ?? racer.targetSpeedFactor ?? 1);
-      racer.displaySpeedFactor = Number(latest.speed_factor ?? racer.speedFactor ?? 1);
-      racer.changePercent = Number(
-        latest.change_percent ??
-          (previous && Number(previous.price) > 0
-            ? ((Number(latest.price) - Number(previous.price)) / Number(previous.price)) * 100
-            : 0)
-      );
-      racer.lastSpeedEffectPercent = racer.changePercent * SPEED_MULTIPLIER * 100;
+      applyCompoundedSpeedFromSamples(racer, samples);
     }
   }
 
   engine.state.connectionStatus = "live";
   engine.state.connectionMessage = "Backend coin ticks live";
+}
+
+function applyCompoundedSpeedFromSamples(racer, samples) {
+  const raceStartMs = engine.state.raceStartedAtWallMs || 0;
+  let speed = 1;
+  let latestChange = 0;
+  for (const sample of samples) {
+    if (raceStartMs && sample.closeTime < raceStartMs) {
+      continue;
+    }
+    latestChange = sample.changePercent;
+    speed = compoundSpeedFactor(speed, sample.changePercent);
+  }
+  racer.changePercent = normalizeChangePercent(latestChange);
+  racer.lastSpeedEffectPercent = getSpeedEffectPercentFromChangePercent(latestChange);
+  racer.targetSpeedFactor = speed;
+  racer.displaySpeedFactor = speed;
+  racer.speedFactor = speed;
 }
 
 function applyCachedLivePriceSamples() {

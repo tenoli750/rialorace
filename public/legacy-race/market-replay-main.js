@@ -5,7 +5,8 @@ import {
   SPEED_MULTIPLIER,
   SPEED_SMOOTHING,
   TARGET_DISTANCE_METERS,
-  getCoinsByIds
+  getCoinsByIds,
+  syncRacerSpeedFromChange
 } from "./src/config.js";
 import { buildPlaceholderBallTuning } from "./src/marketSlots.js";
 import { getMarketById, getMarketSymbolIds, formatMarketSymbols, formatMarketTitle } from "./src/markets.js";
@@ -313,26 +314,19 @@ function applyReplayEvents(nowWallMs) {
       const racer = engine.state.racers.find((entry) => entry.id === row.symbol);
       if (!racer) continue;
 
-      const backendSpeedFactor = Number(row.speed_factor ?? 1);
       const backendChangePercent = Number(row.change_percent ?? 0);
-      const previousSpeedFactor = Number(racer.speedFactor ?? 1);
 
       racer.price = Number(row.price);
-      racer.changePercent = backendChangePercent;
-      racer.targetSpeedFactor = backendSpeedFactor;
-      racer.speedFactor = backendSpeedFactor;
-      racer.displaySpeedFactor = backendSpeedFactor;
-      racer.lastSpeedEffectPercent =
-        previousSpeedFactor > 0 ? ((backendSpeedFactor - previousSpeedFactor) / previousSpeedFactor) * 100 : 0;
+      syncRacerSpeedFromChange(racer, backendChangePercent);
       racer.lastCandleAt = event.applyAtWallMs;
 
       engine.recordSample(racer, {
         closeTime: event.applyAtWallMs,
         start: Number(row.previous_price),
         end: Number(row.price),
-        changePercent: backendChangePercent,
+        changePercent: racer.changePercent,
         racePercent: racer.racePercent,
-        speedFactor: backendSpeedFactor
+        speedFactor: racer.targetSpeedFactor
       });
     }
     replayNextEventIndex += 1;
