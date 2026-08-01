@@ -699,6 +699,11 @@ let raceStateSnapshotRecordBackoffUntil = 0;
 let lastRaceStateSnapshotBucketKey = "";
 
 async function maybeRecordRaceStateSnapshot() {
+  // Only the VPS recorder may write snapshots. Random viewer tabs were poisoning
+  // race_state_snapshots and making replay disagree with the official live race.
+  if (!RECORD_FRONTEND_RACE_CLOCK) {
+    return;
+  }
   if (!engine.state.raceStarted) {
     return;
   }
