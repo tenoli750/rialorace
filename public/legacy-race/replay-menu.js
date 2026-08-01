@@ -1,4 +1,4 @@
-import { getLoginSession } from "./src/supabaseClient.js?v=5";
+import { getLoginSession } from "./src/supabaseClient.js?v=8";
 import { MARKET_DEFINITIONS, expandMarketTokens, formatMarketSymbols, formatMarketTitle, getTokenLegendForCategory } from "./src/markets.js";
 
 const marketGrid = document.querySelector("#marketGrid");
@@ -69,7 +69,7 @@ function renderMarketGrid() {
     .map((market) => {
       const tokens = expandMarketTokens(market.letters, market.category);
       return `
-        <a class="main-menu-item is-link market-placeholder-card" href="./market-replay.html?id=${market.id}">
+        <a class="main-menu-item is-link market-placeholder-card" href="/legacy-race/market-replay.html?id=${market.id}">
           <span class="main-menu-label">${formatMarketTitle(market)}</span>
           <span class="market-card-copy">${formatMarketSymbols(market)}</span>
           <div class="market-token-row">

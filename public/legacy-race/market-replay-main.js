@@ -19,7 +19,7 @@ import { RaceUI } from "./src/ui.js?v=19";
 const params = new URLSearchParams(window.location.search);
 const MARKET_ID = params.get("id") ?? "market-03";
 const REQUESTED_REPLAY_STARTED_AT = params.get("race_started_at");
-const MARKET = getMarketById(MARKET_ID);
+const MARKET = getMarketById(MARKET_ID) ?? getMarketById("market-03");
 const MARKET_COINS = getCoinsByIds(getMarketSymbolIds(MARKET));
 const MARKET_SYMBOLS = formatMarketSymbols(MARKET);
 const REPLAY_HISTORY_LIMIT = 10;
@@ -175,7 +175,7 @@ async function bootstrapReplayHistory() {
     .select(
       "id, market_id, race_started_at, race_finished_at, compared_finish_elapsed_ms, first_place, second_place, third_place, fourth_place, created_at"
     )
-    .eq("market_id", MARKET_ID)
+    .eq("market_id", MARKET.id)
     .order("race_started_at", { ascending: false })
     .limit(REPLAY_HISTORY_LIMIT);
 
@@ -201,14 +201,15 @@ async function bootstrapReplayHistory() {
 }
 
 function renderReplayHistory() {
-  const root = document.querySelector("#replayHistoryList");
+  const root = document.querySelector("#replayHistory") ?? document.querySelector("#replayHistoryList");
   if (!root) return;
 
   root.innerHTML = replayHistory
-    .map((entry) => {
-      const active = selectedReplayResult?.id === entry.id ? "is-active" : "";
+    .map((entry, index) => {
+      const active = selectedReplayResult?.id === entry.id;
       return `
-        <button class="ghost-button replay-history-item ${active}" type="button" data-replay-id="${entry.id}">
+        <button class="note-row${active ? " is-active" : ""}" type="button" data-replay-id="${entry.id}">
+          <span class="note-stamp">Race ${index + 1}</span>
           <span class="replay-history-copy">
             <span>${formatReplayStart(entry.race_started_at)} KST</span>
             <span>1.${entry.first_place} ${formatBackendFinishTime(entry, entry.first_place)} 2.${entry.second_place} ${formatBackendFinishTime(entry, entry.second_place)} 3.${entry.third_place} ${formatBackendFinishTime(entry, entry.third_place)} 4.${entry.fourth_place} ${formatBackendFinishTime(entry, entry.fourth_place)}</span>
