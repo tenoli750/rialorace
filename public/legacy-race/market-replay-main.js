@@ -28,6 +28,10 @@ const LIVE_PREP_DURATION_MS = 10_000;
 const REPLAY_PREP_MS = LIVE_PREP_DURATION_MS;
 const REPLAY_COUNTDOWN_MS = 3_000;
 const RACE_INTERVAL_MS = 5 * 60 * 1000;
+// Live: seed the prep-end price (visible-5s), start every racer at 1x, then apply the
+// visible-start tick's change% as the first speed update after one 5s bucket.
+const TICK_INTERVAL_MS = 5_000;
+const FIRST_SPEED_CHANGE_DELAY_MS = TICK_INTERVAL_MS;
 const marketCoinIds = MARKET_COINS.map((coin) => coin.id);
 const marketSlotTuning = buildPlaceholderBallTuning(marketCoinIds);
 
@@ -95,7 +99,7 @@ applyPageCopy();
 applyFormulaTooltip();
 engine.reset();
 engine.addNote(
-  `${formatMarketTitle(MARKET)} replay re-simulates coin_ticks_5s with the same 10s prep window as live.`
+  `${formatMarketTitle(MARKET)} replay: 10s prep, seed visible-5s price, run 5s at 1x, then first speed from visible-start tick.`
 );
 void updateAccountLink();
 void bootstrapReplayHistory();
@@ -140,12 +144,12 @@ function applyPageCopy() {
   document.querySelector("title").textContent = `Binance Ring Rally ${formatMarketTitle(MARKET)} Replay`;
   document.querySelector("#replayTitle").textContent = `${formatMarketTitle(MARKET)} Replay`;
   document.querySelector("#replayCopy").textContent =
-    "Replays coin_ticks_5s with live timing: 10s prep, then ticks from visible start.";
+    "Replays coin_ticks_5s like live: seed prep price, start at 1x for 5s, then apply visible-start change%.";
   document.querySelector("#hubLabel").textContent = `${formatMarketTitle(MARKET)} Replay`;
   document.querySelector("#hubLabelSecondary").textContent = `${formatMarketTitle(MARKET)} Replay`;
   document.querySelector("#hubTitle").textContent = `${MARKET_SYMBOLS} DB price replay`;
   document.querySelector("#hubCopy").textContent =
-    "Same DB and same window as live: race_started_at is prep start; speed compounding begins at race_started_at + 10s.";
+    "Prep 10s → store price at visible-5s → race starts at 1x → first speed change is the visible-start tick after ~5s.";
   document.querySelector("#detailHeading").textContent = `${MARKET_COINS[0].id} Replay Detail`;
   document.querySelector("#detailSubtitle").textContent =
     "Click a coin card to inspect backend 5-second price samples.";
@@ -250,7 +254,7 @@ async function loadReplay(replayResult) {
   applySeedPrices(timeline.seedPrices);
   applyBackendSamplesToRacers(timeline.sampleFrames);
   engine.addNote(
-    `Loaded ${replayEvents.length} live-aligned tick frames for ${formatReplayStart(replayResult.race_started_at)} KST (prep ${REPLAY_PREP_MS / 1000}s, then visible-start ticks).`
+    `Loaded ${replayEvents.length} tick frames for ${formatReplayStart(replayResult.race_started_at)} KST (seed visible-5s, 1x for ${FIRST_SPEED_CHANGE_DELAY_MS / 1000}s, then visible-start change%).`
   );
   renderReplayHistory();
 }
@@ -258,6 +262,8 @@ async function loadReplay(replayResult) {
 async function fetchLiveAlignedTickTimeline(raceStartedAt) {
   const backendStartedAtMs = new Date(raceStartedAt).getTime();
   const visibleStartedAtMs = backendStartedAtMs + LIVE_PREP_DURATION_MS;
+  // Live stores the prep-end / pre-race price (visible start - 5s), e.g. 12:15:05.
+  const seedBucketAtMs = visibleStartedAtMs - TICK_INTERVAL_MS;
   const sampleStartAt = new Date(backendStartedAtMs).toISOString();
   const raceEndsAt = new Date(backendStartedAtMs + RACE_INTERVAL_MS).toISOString();
 
@@ -292,7 +298,7 @@ async function fetchLiveAlignedTickTimeline(raceStartedAt) {
     return { ok: false, events: [], seedPrices: null, sampleFrames: [], message: "No complete 5s tick frames for this race." };
   }
 
-  // Live rule: speed compounding starts at visible race start (backend + 10s prep).
+  // First speed-affecting candle is the visible-start bucket (e.g. 12:15:10 change vs 12:15:05).
   const playbackFrames = frames.filter((frame) => frame.bucketAtMs >= visibleStartedAtMs);
   if (!playbackFrames.length) {
     return {
@@ -305,11 +311,18 @@ async function fetchLiveAlignedTickTimeline(raceStartedAt) {
   }
 
   const seedSource =
-    frames.find((frame) => frame.bucketAtMs >= backendStartedAtMs) ?? frames[0];
+    frames.find((frame) => frame.bucketAtMs === seedBucketAtMs) ??
+    frames.find((frame) => frame.bucketAtMs >= seedBucketAtMs && frame.bucketAtMs < visibleStartedAtMs) ??
+    frames.find((frame) => frame.bucketAtMs >= backendStartedAtMs) ??
+    frames[0];
   const seedPrices = Object.fromEntries(seedSource.rows.map((row) => [row.symbol, Number(row.price)]));
 
+  // Delay each race tick by one bucket so racers run ~5s at 1x before the visible-start change% hits.
   const events = playbackFrames.map((frame) => ({
-    applyAtWallMs: replayLocalRaceStartedAtMs + (frame.bucketAtMs - visibleStartedAtMs),
+    applyAtWallMs:
+      replayLocalRaceStartedAtMs +
+      (frame.bucketAtMs - visibleStartedAtMs) +
+      FIRST_SPEED_CHANGE_DELAY_MS,
     rows: frame.rows.map((row) => ({
       symbol: row.symbol,
       price: Number(row.price),
