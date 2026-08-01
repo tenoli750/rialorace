@@ -42,15 +42,6 @@ function normalizeMarketId(value: string | null | undefined) {
 }
 
 function getLegacyMarketUrl(marketId: string) {
-  if (marketId.startsWith("stock-market-")) {
-    return `/legacy-race/market.html?id=${marketId}&embed=viewport`;
-  }
-  if (marketId === "market-01") {
-    return "/legacy-race/market01-betting.html?id=market-01&embed=viewport";
-  }
-  if (marketId === "market-02") {
-    return "/legacy-race/market02-betting.html?id=market-02&embed=viewport";
-  }
   return `/legacy-race/market.html?id=${marketId}&embed=viewport`;
 }
 

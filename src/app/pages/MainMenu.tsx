@@ -5,9 +5,6 @@ import { getMarketsByCategory } from "../data/markets";
 import { getTokenByLetter, getTokensByCategory, type MarketCategory } from "../data/tokens";
 
 function getMarketHref(marketId: string) {
-  if (marketId.startsWith("stock-market-")) return `/market.html?id=${marketId}`;
-  if (marketId === "market-01") return "/market01-betting.html?id=market-01";
-  if (marketId === "market-02") return "/market02-betting.html?id=market-02";
   return `/market.html?id=${marketId}`;
 }
 

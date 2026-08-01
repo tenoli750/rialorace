@@ -19,7 +19,7 @@ Environment:
   RACE_BROWSER_RELOAD_MS   Periodic page reload interval. Default: 21600000
   RACE_BROWSER_CHECK_MS    Health check interval. Default: 30000
   RACE_BROWSER_OPEN_CONCURRENCY
-                           Number of market pages to open at once. Default: 20
+                           Number of market pages to open at once. Default: 2
   RACE_BROWSER_VIEWPORT_WIDTH
                            Browser viewport width. Default: 960
   RACE_BROWSER_VIEWPORT_HEIGHT
@@ -51,7 +51,7 @@ const markets = (process.env.RACE_BROWSER_MARKETS || DEFAULT_MARKETS.join(","))
 const headless = process.env.RACE_BROWSER_HEADLESS !== "false";
 const reloadMs = readPositiveInt(process.env.RACE_BROWSER_RELOAD_MS, 6 * 60 * 60 * 1000);
 const checkMs = readPositiveInt(process.env.RACE_BROWSER_CHECK_MS, 30 * 1000);
-const openConcurrency = Math.max(1, Math.floor(readPositiveInt(process.env.RACE_BROWSER_OPEN_CONCURRENCY, 20)));
+const openConcurrency = Math.max(1, Math.floor(readPositiveInt(process.env.RACE_BROWSER_OPEN_CONCURRENCY, 2)));
 const viewportWidth = Math.floor(readPositiveInt(process.env.RACE_BROWSER_VIEWPORT_WIDTH, 960));
 const viewportHeight = Math.floor(readPositiveInt(process.env.RACE_BROWSER_VIEWPORT_HEIGHT, 720));
 const browserTimeZone = process.env.RACE_BROWSER_TIME_ZONE || "Asia/Seoul";
@@ -62,6 +62,13 @@ const supabasePublishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || "";
 const officialResultToken = process.env.RACE_OFFICIAL_RESULT_TOKEN || "";
 const officialResolverVersion = process.env.RACE_BROWSER_OFFICIAL_RESOLVER_VERSION || "vps-frontend-v1";
 const officialResolvedBy = process.env.RACE_BROWSER_OFFICIAL_RESOLVED_BY || "vps-browser";
+const RACE_INTERVAL_MS = 5 * 60 * 1000;
+const STALE_OFFICIAL_RESULT_RELOAD_MS = RACE_INTERVAL_MS + 90_000;
+const PAGE_RELOAD_COOLDOWN_MS = 60_000;
+const NETWORK_ERROR_WINDOW_MS = 90_000;
+const NETWORK_ERROR_RELOAD_THRESHOLD = 2;
+const SAFE_RELOAD_WINDOW_START_MS = 3 * 60 * 1000;
+const SAFE_RELOAD_WINDOW_END_MS = RACE_INTERVAL_MS - 20_000;
 
 let shuttingDown = false;
 let officialConfigWarningLogged = false;
@@ -96,13 +103,9 @@ function readPositiveInt(value, fallback) {
 }
 
 function getMarketUrl(marketId) {
-  const path =
-    marketId === "market-01"
-      ? "/legacy-race/market01-betting.html"
-      : marketId === "market-02"
-        ? "/legacy-race/market02-betting.html"
-        : "/legacy-race/market.html";
-  return `${baseUrl}${path}?id=${encodeURIComponent(marketId)}&vps=1`;
+  // All markets (including 01/02) use the shared live runtime so official
+  // finish recording and replay history stay on the same path.
+  return `${baseUrl}/legacy-race/market.html?id=${encodeURIComponent(marketId)}&vps=1`;
 }
 
 async function loadPlaywright() {
@@ -116,24 +119,45 @@ async function loadPlaywright() {
   }
 }
 
-async function openMarketPage(context, marketId) {
+async function openMarketPage(browser, marketId) {
+  const context = await browser.newContext({
+    viewport: { width: viewportWidth, height: viewportHeight },
+    deviceScaleFactor: 1,
+    timezoneId: browserTimeZone
+  });
   const page = await context.newPage();
   const url = getMarketUrl(marketId);
+  const entry = {
+    marketId,
+    context,
+    page,
+    url,
+    openedAt: Date.now(),
+    reloadedAt: Date.now(),
+    needsReload: false,
+    reloadReason: "",
+    networkErrorCount: 0,
+    lastNetworkErrorAt: 0
+  };
   page.setDefaultNavigationTimeout(15_000);
 
   page.on("console", (message) => {
     if (!["error", "warning"].includes(message.type())) return;
-    console.log(`[${marketId}] console ${message.type()}: ${message.text()}`);
+    const text = message.text();
+    console.log(`[${marketId}] console ${message.type()}: ${text}`);
+    trackConsoleHealth(entry, text);
   });
   page.on("pageerror", (error) => {
     console.log(`[${marketId}] page error: ${error.message}`);
+    markEntryForReload(entry, `page error: ${error.message}`);
   });
   page.on("crash", () => {
     console.log(`[${marketId}] page crashed`);
+    markEntryForReload(entry, "page crashed");
   });
 
   await gotoWithRetry(page, url, marketId);
-  return { marketId, page, url, openedAt: Date.now(), reloadedAt: Date.now() };
+  return entry;
 }
 
 async function gotoWithRetry(page, url, marketId) {
@@ -165,19 +189,83 @@ async function keepAlive(entry) {
 
   await maybeRecordOfficialResult(entry);
 
+  if (
+    entry.needsReload &&
+    Date.now() - entry.reloadedAt >= PAGE_RELOAD_COOLDOWN_MS &&
+    canReloadEntryNow(entry)
+  ) {
+    await reloadMarketPage(entry, entry.reloadReason || "health flag");
+    return true;
+  }
+
   if (Date.now() - entry.reloadedAt >= reloadMs) {
-    try {
-      await entry.page.reload({ waitUntil: "domcontentloaded" });
-      entry.reloadedAt = Date.now();
-      console.log(`[${entry.marketId}] reloaded`);
-    } catch (error) {
-      console.log(`[${entry.marketId}] reload failed: ${error instanceof Error ? error.message : String(error)}`);
-      await gotoWithRetry(entry.page, entry.url, entry.marketId);
-      entry.reloadedAt = Date.now();
-    }
+    await reloadMarketPage(entry, "scheduled");
   }
 
   return true;
+}
+
+async function reloadMarketPage(entry, reason) {
+  try {
+    await entry.page.reload({ waitUntil: "domcontentloaded" });
+    entry.reloadedAt = Date.now();
+    entry.needsReload = false;
+    entry.reloadReason = "";
+    entry.networkErrorCount = 0;
+    console.log(`[${entry.marketId}] reloaded (${reason})`);
+  } catch (error) {
+    console.log(`[${entry.marketId}] reload failed (${reason}): ${error instanceof Error ? error.message : String(error)}`);
+    await gotoWithRetry(entry.page, entry.url, entry.marketId);
+    entry.reloadedAt = Date.now();
+    entry.needsReload = false;
+    entry.reloadReason = "";
+    entry.networkErrorCount = 0;
+  }
+}
+
+async function closeMarketEntry(entry) {
+  try {
+    await entry.context?.close();
+  } catch {
+    // The browser may already have closed the context after a page crash.
+  }
+}
+
+function trackConsoleHealth(entry, text) {
+  if (!isRecoverableNetworkConsole(text)) {
+    return;
+  }
+
+  const now = Date.now();
+  entry.networkErrorCount = now - entry.lastNetworkErrorAt > NETWORK_ERROR_WINDOW_MS ? 1 : entry.networkErrorCount + 1;
+  entry.lastNetworkErrorAt = now;
+
+  if (entry.networkErrorCount >= NETWORK_ERROR_RELOAD_THRESHOLD) {
+    markEntryForReload(entry, text);
+  }
+}
+
+function isRecoverableNetworkConsole(text) {
+  return (
+    text.includes("ERR_NETWORK_CHANGED") ||
+    text.includes("Failed to fetch") ||
+    text.includes("Load failed") ||
+    text.includes("Lock broken by another request")
+  );
+}
+
+function markEntryForReload(entry, reason) {
+  entry.needsReload = true;
+  entry.reloadReason = reason;
+}
+
+function canReloadEntryNow(entry) {
+  if (!entry.reloadReason.includes("ERR_NETWORK_CHANGED") && !entry.reloadReason.includes("Failed to fetch")) {
+    return true;
+  }
+
+  const intervalElapsedMs = ((Date.now() % RACE_INTERVAL_MS) + RACE_INTERVAL_MS) % RACE_INTERVAL_MS;
+  return intervalElapsedMs >= SAFE_RELOAD_WINDOW_START_MS && intervalElapsedMs <= SAFE_RELOAD_WINDOW_END_MS;
 }
 
 function wait(ms) {
@@ -225,6 +313,15 @@ async function maybeRecordOfficialResult(entry) {
     return;
   }
 
+  const normalizedRaceStartedAtMs = normalizeRaceStartedAtMs(Date.parse(result.raceStartedAt));
+  if (
+    Number.isFinite(normalizedRaceStartedAtMs) &&
+    Date.now() - normalizedRaceStartedAtMs > STALE_OFFICIAL_RESULT_RELOAD_MS
+  ) {
+    markEntryForReload(entry, `stale official result ${result.raceStartedAt}`);
+    return;
+  }
+
   await saveOfficialResult(result);
 }
 
@@ -235,7 +332,7 @@ async function saveOfficialResult(result) {
   }
 
   const key = `${payload.market_id}:${payload.race_started_at}`;
-  const signature = JSON.stringify(payload);
+  const signature = buildOfficialResultSignature(payload);
   if (officialResultSignatures.get(key) === signature) {
     return;
   }
@@ -275,6 +372,19 @@ async function saveOfficialResult(result) {
       payload.fourth_place
     ].join(" > ")}`
   );
+}
+
+function buildOfficialResultSignature(payload) {
+  return JSON.stringify({
+    market_id: payload.market_id,
+    race_started_at: payload.race_started_at,
+    race_finished_at: payload.race_finished_at,
+    first_place: payload.first_place,
+    second_place: payload.second_place,
+    third_place: payload.third_place,
+    fourth_place: payload.fourth_place,
+    compared_finish_elapsed_ms: payload.compared_finish_elapsed_ms
+  });
 }
 
 async function maybeRecordOfficialResultsFromFinishState() {
@@ -373,7 +483,7 @@ function normalizeRaceStartedAtMs(timestampMs) {
   if (!Number.isFinite(timestampMs)) {
     return null;
   }
-  return Math.floor(timestampMs / (5 * 60 * 1000)) * 5 * 60 * 1000;
+  return Math.floor(timestampMs / RACE_INTERVAL_MS) * RACE_INTERVAL_MS;
 }
 
 async function requestSupabaseRpc(functionName, body) {
@@ -426,13 +536,7 @@ async function main() {
       "--mute-audio"
     ]
   });
-  const context = await browser.newContext({
-    viewport: { width: viewportWidth, height: viewportHeight },
-    deviceScaleFactor: 1,
-    timezoneId: browserTimeZone
-  });
-
-  const entries = await mapWithConcurrency(markets, openConcurrency, (marketId) => openMarketPage(context, marketId));
+  const entries = await mapWithConcurrency(markets, openConcurrency, (marketId) => openMarketPage(browser, marketId));
 
   console.log(`[race-browser] watching ${entries.length} markets from ${baseUrl}`);
 
@@ -448,10 +552,15 @@ async function main() {
       entries.map(async (entry) => {
         try {
           const alive = await keepAlive(entry);
-          return alive ? entry : await openMarketPage(context, entry.marketId);
+          if (alive) {
+            return entry;
+          }
+          await closeMarketEntry(entry);
+          return openMarketPage(browser, entry.marketId);
         } catch (error) {
           console.log(`[${entry.marketId}] check failed: ${error instanceof Error ? error.message : String(error)}`);
-          return openMarketPage(context, entry.marketId);
+          await closeMarketEntry(entry);
+          return openMarketPage(browser, entry.marketId);
         }
       })
     );
