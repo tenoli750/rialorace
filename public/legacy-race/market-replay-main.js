@@ -5,7 +5,6 @@ import {
   SPEED_MULTIPLIER,
   SPEED_SMOOTHING,
   TARGET_DISTANCE_METERS,
-  BASE_METERS_PER_SECOND,
   getCoinsByIds,
   syncRacerSpeedFromChange
 } from "./src/config.js";
@@ -24,9 +23,10 @@ const MARKET = getMarketById(MARKET_ID);
 const MARKET_COINS = getCoinsByIds(getMarketSymbolIds(MARKET));
 const MARKET_SYMBOLS = formatMarketSymbols(MARKET);
 const REPLAY_HISTORY_LIMIT = 10;
-const REPLAY_PREP_MS = 5000;
-const REPLAY_COUNTDOWN_MS = 3000;
+// Match live RaceEngine prep (10s). race_started_at is backend/prep start; visible race is +10s.
 const LIVE_PREP_DURATION_MS = 10_000;
+const REPLAY_PREP_MS = LIVE_PREP_DURATION_MS;
+const REPLAY_COUNTDOWN_MS = 3_000;
 const RACE_INTERVAL_MS = 5 * 60 * 1000;
 const marketCoinIds = MARKET_COINS.map((coin) => coin.id);
 const marketSlotTuning = buildPlaceholderBallTuning(marketCoinIds);
@@ -51,11 +51,9 @@ let replayHistory = [];
 let replaySessionStartedAtMs = 0;
 let replayLocalRaceStartedAtMs = 0;
 let replayOriginalVisibleStartedAtMs = 0;
-let replayPriceEvents = [];
-let replayNextPriceEventIndex = 0;
+let replayEvents = [];
+let replayNextEventIndex = 0;
 let replayOfficialResultApplied = false;
-let replayFinishOrder = [];
-let replayComparedElapsedMs = {};
 
 ui = new RaceUI({
   root: document,
@@ -97,7 +95,7 @@ applyPageCopy();
 applyFormulaTooltip();
 engine.reset();
 engine.addNote(
-  `${formatMarketTitle(MARKET)} replay: official finish times drive place/distance; live-aligned 5s ticks drive price and speed labels.`
+  `${formatMarketTitle(MARKET)} replay re-simulates coin_ticks_5s with the same 10s prep window as live.`
 );
 void updateAccountLink();
 void bootstrapReplayHistory();
@@ -111,10 +109,7 @@ function frame(now) {
   const wallNowMs = Date.now();
 
   if (selectedReplayResult && engine.state.raceStarted) {
-    // Smooth every-frame distance from official times (fixes choppy 200ms scrub jumps).
-    applyOfficialDistances(wallNowMs);
-    // Price / change% / speed labels from the same visible-start tick window live uses.
-    applyReplayPriceEvents(wallNowMs);
+    applyReplayEvents(wallNowMs);
   }
 
   engine.step(deltaSeconds, wallNowMs);
@@ -145,15 +140,15 @@ function applyPageCopy() {
   document.querySelector("title").textContent = `Binance Ring Rally ${formatMarketTitle(MARKET)} Replay`;
   document.querySelector("#replayTitle").textContent = `${formatMarketTitle(MARKET)} Replay`;
   document.querySelector("#replayCopy").textContent =
-    "Official finish times set place order; backend 5s prices fill price, change, and speed.";
+    "Replays coin_ticks_5s with live timing: 10s prep, then ticks from visible start.";
   document.querySelector("#hubLabel").textContent = `${formatMarketTitle(MARKET)} Replay`;
   document.querySelector("#hubLabelSecondary").textContent = `${formatMarketTitle(MARKET)} Replay`;
-  document.querySelector("#hubTitle").textContent = `${MARKET_SYMBOLS} official + price replay`;
+  document.querySelector("#hubTitle").textContent = `${MARKET_SYMBOLS} DB price replay`;
   document.querySelector("#hubCopy").textContent =
-    "Track order follows market_results_v2. Cards show coin_ticks_5s from the live visible-start window (race_started_at + 10s).";
+    "Same DB and same window as live: race_started_at is prep start; speed compounding begins at race_started_at + 10s.";
   document.querySelector("#detailHeading").textContent = `${MARKET_COINS[0].id} Replay Detail`;
   document.querySelector("#detailSubtitle").textContent =
-    "Click a coin card to inspect official finish timing and 5s price samples.";
+    "Click a coin card to inspect backend 5-second price samples.";
   document.querySelector("#leaderValue").textContent = `${MARKET_COINS[0].id} 0.0m`;
 }
 
@@ -230,40 +225,33 @@ function renderReplayHistory() {
 async function loadReplay(replayResult) {
   selectedReplayResult = replayResult;
   const backendStartedAtMs = new Date(replayResult.race_started_at).getTime();
+  // Live visible start = backend race_started_at + 10s prep.
   replayOriginalVisibleStartedAtMs = backendStartedAtMs + LIVE_PREP_DURATION_MS;
   replaySessionStartedAtMs = Date.now();
   replayLocalRaceStartedAtMs = replaySessionStartedAtMs + REPLAY_PREP_MS;
-  replayNextPriceEventIndex = 0;
+  replayNextEventIndex = 0;
   replayOfficialResultApplied = false;
-  replayFinishOrder = getReplayFinishOrder(replayResult);
-  replayComparedElapsedMs = replayResult.compared_finish_elapsed_ms ?? {};
   renderer.stopCameraAnimation(false);
   engine.reset();
   engine.state.prepDurationMs = REPLAY_PREP_MS;
   engine.state.finalCountdownDurationMs = REPLAY_COUNTDOWN_MS;
-  // Distances are driven externally every frame; keep step() from also advancing them.
-  engine.state.externalSnapshotMode = true;
+  engine.state.externalSnapshotMode = false;
   engine.startPrepAt(replaySessionStartedAtMs);
 
-  const tickTimeline = await fetchLiveAlignedTickTimeline(replayResult.race_started_at);
-  replayPriceEvents = tickTimeline.events;
-  if (tickTimeline.seedPrices) {
-    applySeedPrices(tickTimeline.seedPrices);
+  const timeline = await fetchLiveAlignedTickTimeline(replayResult.race_started_at);
+  if (!timeline.ok) {
+    replayEvents = [];
+    engine.addNote(timeline.message);
+    renderReplayHistory();
+    return;
   }
 
-  const orderLabel = replayFinishOrder.join(" > ") || "unknown";
-  if (!getMaxOfficialFinishElapsedMs(replayResult)) {
-    engine.addNote("Official finish times missing; cannot scrub distances.");
-  } else if (tickTimeline.ok) {
-    engine.addNote(
-      `Official scrub + ${replayPriceEvents.length} price frames for ${formatReplayStart(replayResult.race_started_at)} KST (${orderLabel}).`
-    );
-  } else {
-    engine.addNote(
-      `Official scrub ready (${orderLabel}). ${tickTimeline.message || "Price ticks unavailable."}`
-    );
-  }
-
+  replayEvents = timeline.events;
+  applySeedPrices(timeline.seedPrices);
+  applyBackendSamplesToRacers(timeline.sampleFrames);
+  engine.addNote(
+    `Loaded ${replayEvents.length} live-aligned tick frames for ${formatReplayStart(replayResult.race_started_at)} KST (prep ${REPLAY_PREP_MS / 1000}s, then visible-start ticks).`
+  );
   renderReplayHistory();
 }
 
@@ -282,7 +270,7 @@ async function fetchLiveAlignedTickTimeline(raceStartedAt) {
     .order("bucket_at", { ascending: true });
 
   if (error) {
-    return { ok: false, events: [], seedPrices: null, message: "Backend 5-second prices could not be loaded." };
+    return { ok: false, events: [], seedPrices: null, sampleFrames: [], message: "Backend 5-second prices could not be loaded." };
   }
 
   const rowsByBucket = new Map();
@@ -301,22 +289,23 @@ async function fetchLiveAlignedTickTimeline(raceStartedAt) {
     .sort((left, right) => left.bucketAtMs - right.bucketAtMs);
 
   if (!frames.length) {
-    return { ok: false, events: [], seedPrices: null, message: "No complete 5s tick frames for this race." };
+    return { ok: false, events: [], seedPrices: null, sampleFrames: [], message: "No complete 5s tick frames for this race." };
   }
 
-  // Same rule as live: only ticks at/after visible race start feed speed/price during the race.
+  // Live rule: speed compounding starts at visible race start (backend + 10s prep).
   const playbackFrames = frames.filter((frame) => frame.bucketAtMs >= visibleStartedAtMs);
   if (!playbackFrames.length) {
     return {
       ok: false,
       events: [],
       seedPrices: null,
+      sampleFrames: frames,
       message: "No 5s ticks at/after visible race start (race_started_at + 10s)."
     };
   }
 
   const seedSource =
-    frames.find((frame) => frame.bucketAtMs >= visibleStartedAtMs - LIVE_PREP_DURATION_MS) ?? frames[0];
+    frames.find((frame) => frame.bucketAtMs >= backendStartedAtMs) ?? frames[0];
   const seedPrices = Object.fromEntries(seedSource.rows.map((row) => [row.symbol, Number(row.price)]));
 
   const events = playbackFrames.map((frame) => ({
@@ -330,82 +319,53 @@ async function fetchLiveAlignedTickTimeline(raceStartedAt) {
     }))
   }));
 
-  return { ok: true, events, seedPrices, message: "" };
+  return { ok: true, events, seedPrices, sampleFrames: frames, message: "" };
 }
 
 function applySeedPrices(seedPrices) {
+  if (!seedPrices) return;
   for (const racer of engine.state.racers) {
     const price = seedPrices[racer.id];
     if (!Number.isFinite(price)) continue;
     racer.price = price;
     racer.speedWindowStartPrice = price;
     racer.speedWindowStartAt = replayLocalRaceStartedAtMs;
+    syncRacerSpeedFromChange(racer, 0, { reset: true });
   }
 }
 
-function applyOfficialDistances(nowWallMs) {
-  if (!selectedReplayResult || !engine.state.raceStarted) {
-    return;
-  }
-
-  const maxElapsed = getMaxOfficialFinishElapsedMs(selectedReplayResult);
-  if (maxElapsed <= 0 || replayFinishOrder.length !== marketCoinIds.length) {
-    return;
-  }
-
-  engine.state.externalSnapshotMode = true;
-  engine.state.prepStarted = true;
-  engine.state.raceStartedAtWallMs = replayLocalRaceStartedAtMs;
-
-  const elapsedMs = Math.max(0, nowWallMs - replayLocalRaceStartedAtMs);
-
+function applyBackendSamplesToRacers(sampleFrames) {
   for (const racer of engine.state.racers) {
-    const officialElapsed = Number(replayComparedElapsedMs[racer.id]);
-    const safeElapsed = officialElapsed > 0 ? officialElapsed : maxElapsed;
-    const finishIndex = replayFinishOrder.indexOf(racer.id);
-    const finished = elapsedMs >= safeElapsed;
+    racer.samples = [];
+    racer.sampleKeys = new Set();
+  }
 
-    if (finished) {
-      const runoutSeconds = (elapsedMs - safeElapsed) / 1000;
-      racer.distanceMeters = Math.min(
-        TARGET_DISTANCE_METERS + BASE_METERS_PER_SECOND * Math.max(1, runoutSeconds),
-        TARGET_DISTANCE_METERS + 50
-      );
-      racer.finishPlace = finishIndex >= 0 ? finishIndex + 1 : null;
-      racer.finishedAtWallMs = replayLocalRaceStartedAtMs + safeElapsed;
-    } else {
-      racer.distanceMeters = TARGET_DISTANCE_METERS * Math.min(1, elapsedMs / safeElapsed);
-      racer.finishPlace = null;
-      racer.finishedAtWallMs = 0;
+  for (const frame of sampleFrames) {
+    const localCloseTime =
+      replayLocalRaceStartedAtMs + Math.max(0, frame.bucketAtMs - replayOriginalVisibleStartedAtMs);
+    for (const row of frame.rows) {
+      const racer = engine.state.racers.find((entry) => entry.id === row.symbol);
+      if (!racer) continue;
+      const start = Number(row.previous_price ?? row.price);
+      const end = Number(row.price);
+      const changePercent = Number(row.change_percent ?? 0);
+      engine.recordSample(racer, {
+        closeTime: localCloseTime,
+        start,
+        end,
+        changePercent,
+        racePercent: 0,
+        speedFactor: Number(row.speed_factor ?? 1)
+      });
     }
   }
-
-  const finishedCount = engine.state.racers.filter((racer) => Number.isInteger(racer.finishPlace)).length;
-  if (finishedCount === engine.state.racers.length) {
-    engine.state.finishOrder = [...replayFinishOrder];
-    engine.state.winnerId = replayFinishOrder[0] ?? null;
-    engine.state.raceFinished = true;
-    engine.state.visualRaceComplete = true;
-    engine.state.raceFinishedAtWallMs = replayLocalRaceStartedAtMs + maxElapsed;
-  } else {
-    engine.state.finishOrder = [...engine.state.racers]
-      .filter((racer) => Number.isInteger(racer.finishPlace))
-      .sort((left, right) => left.finishPlace - right.finishPlace)
-      .map((racer) => racer.id);
-    engine.state.winnerId = null;
-    engine.state.raceFinished = false;
-    engine.state.visualRaceComplete = false;
-  }
 }
 
-function applyReplayPriceEvents(nowWallMs) {
-  if (!replayPriceEvents.length) return;
+function applyReplayEvents(nowWallMs) {
+  if (!replayEvents.length) return;
 
-  while (
-    replayNextPriceEventIndex < replayPriceEvents.length &&
-    replayPriceEvents[replayNextPriceEventIndex].applyAtWallMs <= nowWallMs
-  ) {
-    const event = replayPriceEvents[replayNextPriceEventIndex];
+  while (replayNextEventIndex < replayEvents.length && replayEvents[replayNextEventIndex].applyAtWallMs <= nowWallMs) {
+    const event = replayEvents[replayNextEventIndex];
     for (const row of event.rows) {
       const racer = engine.state.racers.find((entry) => entry.id === row.symbol);
       if (!racer) continue;
@@ -423,7 +383,7 @@ function applyReplayPriceEvents(nowWallMs) {
         speedFactor: racer.targetSpeedFactor
       });
     }
-    replayNextPriceEventIndex += 1;
+    replayNextEventIndex += 1;
   }
 }
 
@@ -432,23 +392,24 @@ function maybeApplyOfficialReplayResult(nowWallMs) {
     return;
   }
 
-  const maxOfficialElapsedMs = getMaxOfficialFinishElapsedMs(selectedReplayResult);
-  if (replayFinishOrder.length !== marketCoinIds.length || maxOfficialElapsedMs <= 0) {
+  // Wait until local sim finished so place order comes from DB re-sim first.
+  if (!engine.state.raceFinished) {
     return;
   }
 
-  if (nowWallMs < replayLocalRaceStartedAtMs + maxOfficialElapsedMs) {
+  const maxOfficialElapsedMs = getMaxOfficialFinishElapsedMs(selectedReplayResult);
+  const finishOrder = getReplayFinishOrder(selectedReplayResult);
+  if (finishOrder.length !== marketCoinIds.length || maxOfficialElapsedMs <= 0) {
     return;
   }
 
   engine.applyOfficialFinishOrder(
-    replayFinishOrder,
+    finishOrder,
     replayLocalRaceStartedAtMs + maxOfficialElapsedMs,
-    replayComparedElapsedMs
+    selectedReplayResult.compared_finish_elapsed_ms ?? {}
   );
-  engine.state.externalSnapshotMode = true;
   replayOfficialResultApplied = true;
-  engine.addNote(`Official finish locked: ${replayFinishOrder.join(" > ")}.`);
+  engine.addNote("Finish clock synced to backend official result times.");
 }
 
 function getReplayFinishOrder(entry) {
