@@ -4,7 +4,7 @@ import { getMarketById, getMarketSymbolIds, formatMarketSymbols, formatMarketTit
 import { RaceEngine } from "./src/raceEngine.js?v=11";
 import { RaceAudioController } from "./src/raceAudio.js";
 import { ThreeRaceRenderer } from "./src/renderer.js?v=24";
-import { getLoginSession, supabase } from "./src/supabaseClient.js?v=5";
+import { getLoginSession, supabase } from "./src/supabaseClient.js?v=8";
 import { BettingUI } from "./src/bettingUi.js?v=29";
 import { createBetRecord, fetchCurrentRaceBets, fetchPastRaceBets, initializeBettingProfile } from "./src/supabaseBettingStore.js?v=14";
 
@@ -50,6 +50,7 @@ let nextPrepStartAtMs = null;
 let officialServerOffsetMs = 0;
 let raceClockTimer = null;
 let liveSampleTimer = null;
+let raceStateSnapshotTimer = null;
 let oddsRefreshTimer = null;
 let prepStartedForScheduledRace = false;
 let livePriceSamplesBySymbol = new Map();
@@ -226,6 +227,10 @@ window.addEventListener("beforeunload", () => {
   if (liveSampleTimer) {
     window.clearInterval(liveSampleTimer);
     liveSampleTimer = null;
+  }
+  if (raceStateSnapshotTimer) {
+    window.clearInterval(raceStateSnapshotTimer);
+    raceStateSnapshotTimer = null;
   }
   if (oddsRefreshTimer) {
     window.clearInterval(oddsRefreshTimer);
@@ -689,6 +694,65 @@ async function recordFrontendRaceClock(snapshot) {
   }
 }
 
+let raceStateSnapshotRecordInFlight = false;
+let raceStateSnapshotRecordBackoffUntil = 0;
+let lastRaceStateSnapshotBucketKey = "";
+
+async function maybeRecordRaceStateSnapshot() {
+  if (!engine.state.raceStarted) {
+    return;
+  }
+  if (raceStateSnapshotRecordInFlight || Date.now() < raceStateSnapshotRecordBackoffUntil) {
+    return;
+  }
+
+  const { backendRaceStartAtMs, visibleRaceStartAtMs } = getFrontendFinishRaceParts();
+  if (!Number.isFinite(backendRaceStartAtMs) || !Number.isFinite(visibleRaceStartAtMs)) {
+    return;
+  }
+
+  const nowMs = getOfficialNowMs();
+  const bucketAtMs = Math.floor(nowMs / RACE_CLOCK_POLL_MS) * RACE_CLOCK_POLL_MS;
+  const bucketKey = `${backendRaceStartAtMs}:${bucketAtMs}`;
+  if (bucketKey === lastRaceStateSnapshotBucketKey) {
+    return;
+  }
+
+  const snapshots = engine.state.racers.map((racer) => ({
+    symbol: racer.id,
+    price: Number.isFinite(racer.price) ? racer.price : null,
+    speed_factor: Number(racer.speedFactor ?? 1),
+    target_speed_factor: Number(racer.targetSpeedFactor ?? racer.speedFactor ?? 1),
+    distance_meters: Number(racer.distanceMeters ?? 0),
+    change_percent: Number(racer.changePercent ?? 0),
+    speed_effect_percent: Number(racer.lastSpeedEffectPercent ?? 0),
+    finish_place: Number.isInteger(racer.finishPlace) ? racer.finishPlace : null,
+    finished_at: racer.finishedAtWallMs ? new Date(racer.finishedAtWallMs).toISOString() : null
+  }));
+
+  raceStateSnapshotRecordInFlight = true;
+  try {
+    const { error } = await supabase.rpc("record_race_state_snapshots", {
+      requested_market_id: MARKET_ID,
+      requested_race_started_at: toIsoOrNull(backendRaceStartAtMs),
+      requested_bucket_at: toIsoOrNull(bucketAtMs),
+      requested_source_label: FRONTEND_CLOCK_SOURCE_LABEL,
+      requested_snapshots: snapshots
+    });
+    if (error) {
+      raceStateSnapshotRecordBackoffUntil = Date.now() + 60_000;
+      console.warn("Race state snapshot record failed.", error.message);
+    } else {
+      lastRaceStateSnapshotBucketKey = bucketKey;
+    }
+  } catch (error) {
+    raceStateSnapshotRecordBackoffUntil = Date.now() + 60_000;
+    console.warn("Race state snapshot record failed.", error instanceof Error ? error.message : String(error));
+  } finally {
+    raceStateSnapshotRecordInFlight = false;
+  }
+}
+
 function getFrontendFinishRaceParts() {
   const engineVisibleRaceStartAtMs =
     Number.isFinite(engine.state.raceStartedAtWallMs) && engine.state.raceStartedAtWallMs > 0
@@ -1008,6 +1072,9 @@ async function bootstrapOfficialRaceState() {
   raceClockTimer = window.setInterval(syncOfficialRaceClock, RACE_CLOCK_POLL_MS);
   liveSampleTimer = window.setInterval(refreshLivePriceSamples, RACE_CLOCK_POLL_MS);
   oddsRefreshTimer = window.setInterval(refreshBettingOdds, ODDS_REFRESH_MS);
+  raceStateSnapshotTimer = window.setInterval(() => {
+    void maybeRecordRaceStateSnapshot();
+  }, RACE_CLOCK_POLL_MS);
 }
 
 async function refreshVisiblePageState() {

@@ -5,16 +5,16 @@ import {
   SPEED_MULTIPLIER,
   SPEED_SMOOTHING,
   TARGET_DISTANCE_METERS,
-  getCoinsByIds,
-  syncRacerSpeedFromChange
+  BASE_METERS_PER_SECOND,
+  getCoinsByIds
 } from "./src/config.js";
 import { buildPlaceholderBallTuning } from "./src/marketSlots.js";
 import { getMarketById, getMarketSymbolIds, formatMarketSymbols, formatMarketTitle } from "./src/markets.js";
-import { RaceEngine } from "./src/raceEngine.js?v=9";
+import { RaceEngine } from "./src/raceEngine.js?v=12";
 import { RaceAudioController } from "./src/raceAudio.js";
-import { ThreeRaceRenderer } from "./src/renderer.js?v=24";
-import { getLoginSession, supabase } from "./src/supabaseClient.js?v=5";
-import { RaceUI } from "./src/ui.js?v=18";
+import { ThreeRaceRenderer } from "./src/renderer.js?v=25";
+import { getLoginSession, supabase } from "./src/supabaseClient.js?v=8";
+import { RaceUI } from "./src/ui.js?v=19";
 
 const params = new URLSearchParams(window.location.search);
 const MARKET_ID = params.get("id") ?? "market-03";
@@ -25,7 +25,6 @@ const MARKET_SYMBOLS = formatMarketSymbols(MARKET);
 const REPLAY_HISTORY_LIMIT = 10;
 const REPLAY_PREP_MS = 5000;
 const REPLAY_COUNTDOWN_MS = 3000;
-const RACE_INTERVAL_MS = 5 * 60 * 1000;
 const marketCoinIds = MARKET_COINS.map((coin) => coin.id);
 const marketSlotTuning = buildPlaceholderBallTuning(marketCoinIds);
 
@@ -46,12 +45,15 @@ const renderer = new ThreeRaceRenderer({
 let ui;
 let selectedReplayResult = null;
 let replayHistory = [];
-let replaySeedFrame = null;
-let replayEvents = [];
 let replaySessionStartedAtMs = 0;
 let replayLocalRaceStartedAtMs = 0;
-let replayNextEventIndex = 0;
+let replayOriginalBackendStartedAtMs = 0;
+let replayOriginalVisibleStartedAtMs = 0;
+let replayFrames = [];
+let replayNextFrameIndex = 0;
+let replayMode = "none"; // snapshot | official-scrub | none
 let replayOfficialResultApplied = false;
+let lastAppliedSnapshotKey = null;
 
 ui = new RaceUI({
   root: document,
@@ -92,7 +94,7 @@ renderer.setTuning({
 applyPageCopy();
 applyFormulaTooltip();
 engine.reset();
-engine.addNote(`${formatMarketTitle(MARKET)} replay uses backend 5-second prices and local simulation only.`);
+engine.addNote(`${formatMarketTitle(MARKET)} replay uses recorded race state snapshots when available.`);
 void updateAccountLink();
 void bootstrapReplayHistory();
 
@@ -105,9 +107,10 @@ function frame(now) {
   const wallNowMs = Date.now();
 
   if (selectedReplayResult && engine.state.raceStarted) {
-    applyReplayEvents(wallNowMs);
+    applyReplayTimeline(wallNowMs);
   }
 
+  // Snapshot / scrub modes drive distances directly; engine.step is a no-op in externalSnapshotMode.
   engine.step(deltaSeconds, wallNowMs);
   maybeApplyOfficialReplayResult(wallNowMs);
 
@@ -136,15 +139,15 @@ function applyPageCopy() {
   document.querySelector("title").textContent = `Binance Ring Rally ${formatMarketTitle(MARKET)} Replay`;
   document.querySelector("#replayTitle").textContent = `${formatMarketTitle(MARKET)} Replay`;
   document.querySelector("#replayCopy").textContent =
-    "Replay backend 5-second prices and simulate movement locally.";
+    "Replay recorded race state snapshots so the track matches the official finish order.";
   document.querySelector("#hubLabel").textContent = `${formatMarketTitle(MARKET)} Replay`;
   document.querySelector("#hubLabelSecondary").textContent = `${formatMarketTitle(MARKET)} Replay`;
-  document.querySelector("#hubTitle").textContent = `${MARKET_SYMBOLS} backend price replay`;
+  document.querySelector("#hubTitle").textContent = `${MARKET_SYMBOLS} race snapshot replay`;
   document.querySelector("#hubCopy").textContent =
-    "This page replays backend 5-second price history and lets the frontend simulate the race locally.";
+    "This page plays back race_state_snapshots from the live race. If snapshots are missing, it scrubs distances from official finish times.";
   document.querySelector("#detailHeading").textContent = `${MARKET_COINS[0].id} Replay Detail`;
   document.querySelector("#detailSubtitle").textContent =
-    "Click a coin card to inspect backend 5-second price samples.";
+    "Click a coin card to inspect replay samples from recorded race state.";
   document.querySelector("#leaderValue").textContent = `${MARKET_COINS[0].id} 0.0m`;
 }
 
@@ -164,23 +167,22 @@ function applyFormulaTooltip() {
 async function bootstrapReplayHistory() {
   const { data, error } = await supabase
     .from("market_results_v2")
-    .select("id, market_id, race_started_at, race_finished_at, compared_finish_elapsed_ms, first_place, second_place, third_place, fourth_place, created_at")
+    .select(
+      "id, market_id, race_started_at, race_finished_at, compared_finish_elapsed_ms, first_place, second_place, third_place, fourth_place, created_at"
+    )
     .eq("market_id", MARKET_ID)
     .order("race_started_at", { ascending: false })
     .limit(REPLAY_HISTORY_LIMIT);
 
   if (error) {
-    engine.addNote("Race history could not be loaded from market results. Falling back to coin ticks.");
+    engine.addNote("Race history could not be loaded from market results.");
+    return;
   }
 
   replayHistory = (data ?? []).map((entry) => ({ ...entry }));
   if (!replayHistory.length) {
-    const fallbackHistory = await buildReplayHistoryFromCoinTicks();
-    if (!fallbackHistory.ok) {
-      engine.addNote(fallbackHistory.message);
-      return;
-    }
-    replayHistory = fallbackHistory.results;
+    engine.addNote("No official race results found for this market.");
+    return;
   }
 
   renderReplayHistory();
@@ -193,56 +195,15 @@ async function bootstrapReplayHistory() {
   }
 }
 
-async function buildReplayHistoryFromCoinTicks() {
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const primarySymbol = MARKET_COINS[0]?.id ?? "SOL";
-  const { data, error } = await supabase
-    .from("coin_ticks_5s")
-    .select("bucket_at")
-    .eq("symbol", primarySymbol)
-    .gte("bucket_at", since)
-    .order("bucket_at", { ascending: false })
-    .limit(500);
-
-  if (error) {
-    return { ok: false, results: [], message: "Backend coin ticks could not be loaded." };
-  }
-
-  const seen = new Set();
-  const results = [];
-  for (const row of data ?? []) {
-    const bucketAtMs = new Date(row.bucket_at).getTime();
-    const boundaryMs = Math.floor(bucketAtMs / RACE_INTERVAL_MS) * RACE_INTERVAL_MS;
-    const key = new Date(boundaryMs).toISOString();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    results.push({
-      id: `tick-${key}`,
-      market_id: MARKET_ID,
-      race_started_at: key,
-      race_finished_at: key,
-      first_place: "—",
-      second_place: "—",
-      third_place: "—",
-      fourth_place: "—",
-      created_at: key
-    });
-    if (results.length >= REPLAY_HISTORY_LIMIT) break;
-  }
-
-  return results.length
-    ? { ok: true, results, message: "Replay history loaded from backend coin ticks." }
-    : { ok: false, results: [], message: "No backend coin ticks found for replay history." };
-}
-
 function renderReplayHistory() {
-  const root = document.querySelector("#replayHistory");
+  const root = document.querySelector("#replayHistoryList");
+  if (!root) return;
+
   root.innerHTML = replayHistory
-    .map((entry, index) => {
-      const active = selectedReplayResult?.id === entry.id;
+    .map((entry) => {
+      const active = selectedReplayResult?.id === entry.id ? "is-active" : "";
       return `
-        <button class="note-row${active ? " is-active" : ""}" type="button" data-replay-id="${entry.id}">
-          <span class="note-stamp">Game ${index + 1}</span>
+        <button class="ghost-button replay-history-item ${active}" type="button" data-replay-id="${entry.id}">
           <span class="replay-history-copy">
             <span>${formatReplayStart(entry.race_started_at)} KST</span>
             <span>1.${entry.first_place} ${formatBackendFinishTime(entry, entry.first_place)} 2.${entry.second_place} ${formatBackendFinishTime(entry, entry.second_place)} 3.${entry.third_place} ${formatBackendFinishTime(entry, entry.third_place)} 4.${entry.fourth_place} ${formatBackendFinishTime(entry, entry.fourth_place)}</span>
@@ -262,98 +223,62 @@ function renderReplayHistory() {
 
 async function loadReplay(replayResult) {
   selectedReplayResult = replayResult;
-  const replayData = await fetchPriceTickTimeline(replayResult.race_started_at);
-  if (!replayData.ok) {
-    engine.addNote(replayData.message);
-    return;
-  }
-
-  replaySeedFrame = replayData.seedFrame;
+  replayOriginalBackendStartedAtMs = new Date(replayResult.race_started_at).getTime();
+  replayOriginalVisibleStartedAtMs = replayOriginalBackendStartedAtMs + engine.state.prepDurationMs;
   replaySessionStartedAtMs = Date.now();
   replayLocalRaceStartedAtMs = replaySessionStartedAtMs + REPLAY_PREP_MS;
-  replayEvents = buildReplayEvents(replayData.playbackFrames, new Date(replayResult.race_started_at).getTime());
-  replayNextEventIndex = 0;
+  replayNextFrameIndex = 0;
   replayOfficialResultApplied = false;
+  lastAppliedSnapshotKey = null;
   renderer.stopCameraAnimation(false);
   engine.reset();
   engine.state.prepDurationMs = REPLAY_PREP_MS;
   engine.state.finalCountdownDurationMs = REPLAY_COUNTDOWN_MS;
   engine.startPrepAt(replaySessionStartedAtMs);
-  applySeedFrame(replaySeedFrame);
-  applyBackendSamplesToRacers(replayData.sampleFrames);
-  engine.addNote(`Loaded backend price replay for ${formatReplayStart(replayResult.race_started_at)} KST.`);
+
+  const snapshotTimeline = await fetchRaceStateSnapshotTimeline(replayResult.race_started_at);
+  if (snapshotTimeline.ok && snapshotTimeline.frames.length) {
+    replayMode = "snapshot";
+    replayFrames = snapshotTimeline.frames;
+    engine.addNote(
+      `Loaded ${snapshotTimeline.frames.length} race state snapshot frames for ${formatReplayStart(replayResult.race_started_at)} KST.`
+    );
+  } else {
+    replayMode = "official-scrub";
+    replayFrames = buildOfficialScrubFrames(replayResult);
+    engine.addNote(
+      snapshotTimeline.message ||
+        "No race_state_snapshots found. Scrubbing track distances from official finish times so order matches the result."
+    );
+  }
+
+  // Seed zero distances until race starts.
+  applyReplayFrameAt(null, replaySessionStartedAtMs);
   renderReplayHistory();
 }
 
-function applySeedFrame(seedFrame) {
-  if (!seedFrame) return;
-  const rowsBySymbol = new Map(seedFrame.rows.map((row) => [row.symbol, row]));
-  for (const racer of engine.state.racers) {
-    const row = rowsBySymbol.get(racer.id);
-    if (!row) continue;
-    racer.price = Number(row.price);
-    racer.changePercent = 0;
-    racer.speedFactor = 1;
-    racer.targetSpeedFactor = 1;
-    racer.displaySpeedFactor = 1;
-    racer.postFinishSpeedFactor = 1;
-    racer.lastSpeedEffectPercent = 0;
-    racer.distanceMeters = 0;
-    racer.finishPlace = null;
-    racer.finishedAtWallMs = 0;
-    racer.speedWindowStartPrice = Number(row.price);
-    racer.speedWindowStartAt = replayLocalRaceStartedAtMs;
-  }
-}
-
-function applyReplayEvents(nowWallMs) {
-  if (!replayEvents.length) return;
-  while (replayNextEventIndex < replayEvents.length && replayEvents[replayNextEventIndex].applyAtWallMs <= nowWallMs) {
-    const event = replayEvents[replayNextEventIndex];
-    for (const row of event.rows) {
-      const racer = engine.state.racers.find((entry) => entry.id === row.symbol);
-      if (!racer) continue;
-
-      const backendChangePercent = Number(row.change_percent ?? 0);
-
-      racer.price = Number(row.price);
-      syncRacerSpeedFromChange(racer, backendChangePercent);
-      racer.lastCandleAt = event.applyAtWallMs;
-
-      engine.recordSample(racer, {
-        closeTime: event.applyAtWallMs,
-        start: Number(row.previous_price),
-        end: Number(row.price),
-        changePercent: racer.changePercent,
-        racePercent: racer.racePercent,
-        speedFactor: racer.targetSpeedFactor
-      });
-    }
-    replayNextEventIndex += 1;
-  }
-}
-
-async function fetchPriceTickTimeline(raceStartedAt) {
-  const raceStartedAtMs = new Date(raceStartedAt).getTime();
-  const sampleStartAt = new Date(raceStartedAtMs).toISOString();
-  const raceEndsAt = new Date(raceStartedAtMs + RACE_INTERVAL_MS).toISOString();
+async function fetchRaceStateSnapshotTimeline(raceStartedAt) {
   const { data, error } = await supabase
-    .from("coin_ticks_5s")
-    .select("symbol, price, previous_price, change_percent, speed_factor, bucket_at")
-    .in("symbol", MARKET_COINS.map((coin) => coin.id))
-    .gte("bucket_at", sampleStartAt)
-    .lt("bucket_at", raceEndsAt)
-    .order("bucket_at", { ascending: true });
+    .from("race_state_snapshots")
+    .select(
+      "symbol, price, bucket_at, speed_factor, target_speed_factor, distance_meters, change_percent, speed_effect_percent, finish_place, finished_at"
+    )
+    .eq("market_id", MARKET_ID)
+    .eq("race_started_at", raceStartedAt)
+    .in("symbol", marketCoinIds)
+    .order("bucket_at", { ascending: true })
+    .limit(5000);
 
   if (error) {
-    return { ok: false, seedFrame: null, ticks: [], message: "Backend 5-second prices could not be loaded." };
+    return { ok: false, frames: [], message: "Race state snapshots could not be loaded." };
   }
 
   const rowsByBucket = new Map();
   for (const row of data ?? []) {
-    const bucketRows = rowsByBucket.get(row.bucket_at) ?? [];
-    bucketRows.push(row);
-    rowsByBucket.set(row.bucket_at, bucketRows);
+    const key = row.bucket_at;
+    const rows = rowsByBucket.get(key) ?? [];
+    rows.push(row);
+    rowsByBucket.set(key, rows);
   }
 
   const frames = [...rowsByBucket.entries()]
@@ -361,48 +286,163 @@ async function fetchPriceTickTimeline(raceStartedAt) {
       bucketAtMs: new Date(bucketAt).getTime(),
       rows
     }))
-    .filter((frame) => frame.rows.length === MARKET_COINS.length)
-    .sort((a, b) => a.bucketAtMs - b.bucketAtMs);
+    .filter((frame) => marketCoinIds.every((id) => frame.rows.some((row) => row.symbol === id)))
+    .sort((left, right) => left.bucketAtMs - right.bucketAtMs);
 
   if (!frames.length) {
-    return { ok: false, seedFrame: null, ticks: [], message: "No backend 5-second price frames found for this race." };
+    return { ok: false, frames: [], message: "No complete race_state_snapshots frames for this race." };
   }
 
-  const seedSourceFrame = frames[0];
-  const playbackFrames = frames.filter((frame) => frame.bucketAtMs >= raceStartedAtMs);
-  if (!playbackFrames.length) {
-    return { ok: false, seedFrame: null, ticks: [], message: "No backend playback frames found for this race." };
-  }
-
-  const seedFrame = {
-    rows: seedSourceFrame.rows.map((row) => ({
-      symbol: row.symbol,
-      price: Number(row.price)
-    }))
-  };
-
-  return { ok: true, seedFrame, sampleFrames: frames, playbackFrames };
+  return { ok: true, frames, message: "" };
 }
 
-function buildReplayEvents(playbackFrames, raceStartedAtMs) {
-  return playbackFrames.map((frame) => ({
-    applyAtWallMs: replayLocalRaceStartedAtMs + (frame.bucketAtMs - raceStartedAtMs),
-    rows: frame.rows.map((row) => ({
-      symbol: row.symbol,
-      price: Number(row.price),
-      previous_price: Number(row.previous_price ?? row.price),
-      change_percent: Number(row.change_percent ?? 0),
-      speed_factor: Number(row.speed_factor ?? 1)
-    }))
-  }));
+function buildOfficialScrubFrames(replayResult) {
+  const compared = replayResult?.compared_finish_elapsed_ms ?? {};
+  const maxElapsed = Math.max(
+    0,
+    ...Object.values(compared)
+      .map(Number)
+      .filter((value) => value > 0)
+  );
+  if (maxElapsed <= 0) {
+    return [];
+  }
+
+  const stepMs = 250;
+  const frames = [];
+  for (let elapsedMs = 0; elapsedMs <= maxElapsed + 4000; elapsedMs += stepMs) {
+    const bucketAtMs = replayOriginalVisibleStartedAtMs + elapsedMs;
+    frames.push({
+      bucketAtMs,
+      rows: marketCoinIds.map((symbol) => {
+        const officialElapsed = Number(compared[symbol]);
+        const safeElapsed = officialElapsed > 0 ? officialElapsed : maxElapsed;
+        const progress = Math.min(1, Math.max(0, elapsedMs / safeElapsed));
+        const finished = elapsedMs >= safeElapsed;
+        const runoutSeconds = finished ? (elapsedMs - safeElapsed) / 1000 : 0;
+        const distanceMeters = finished
+          ? Math.min(
+              TARGET_DISTANCE_METERS + BASE_METERS_PER_SECOND * Math.max(1, runoutSeconds),
+              TARGET_DISTANCE_METERS + 50
+            )
+          : TARGET_DISTANCE_METERS * progress;
+        return {
+          symbol,
+          price: null,
+          speed_factor: 1,
+          target_speed_factor: 1,
+          distance_meters: distanceMeters,
+          change_percent: 0,
+          speed_effect_percent: 0,
+          finish_place: finished ? getReplayFinishOrder(replayResult).indexOf(symbol) + 1 : null,
+          finished_at: finished
+            ? new Date(replayOriginalVisibleStartedAtMs + safeElapsed).toISOString()
+            : null
+        };
+      })
+    });
+  }
+  return frames;
+}
+
+function applyReplayTimeline(nowWallMs) {
+  if (!engine.state.raceStarted || !replayFrames.length) {
+    return;
+  }
+
+  while (
+    replayNextFrameIndex < replayFrames.length &&
+    getLocalApplyAtMs(replayFrames[replayNextFrameIndex].bucketAtMs) <= nowWallMs
+  ) {
+    applyReplayFrameAt(replayFrames[replayNextFrameIndex], nowWallMs);
+    replayNextFrameIndex += 1;
+  }
+
+  // Keep showing latest frame while waiting between buckets.
+  if (replayNextFrameIndex > 0) {
+    const latest = replayFrames[Math.min(replayNextFrameIndex - 1, replayFrames.length - 1)];
+    if (latest && lastAppliedSnapshotKey !== `${latest.bucketAtMs}`) {
+      applyReplayFrameAt(latest, nowWallMs);
+    }
+  }
+}
+
+function getLocalApplyAtMs(bucketAtMs) {
+  // Snapshots recorded after visible race start map 1:1 onto local race start.
+  const sourceStartMs =
+    replayMode === "snapshot"
+      ? Math.max(replayOriginalVisibleStartedAtMs, replayFrames[0]?.bucketAtMs ?? replayOriginalVisibleStartedAtMs)
+      : replayOriginalVisibleStartedAtMs;
+  return replayLocalRaceStartedAtMs + Math.max(0, bucketAtMs - sourceStartMs);
+}
+
+function applyReplayFrameAt(frame, nowWallMs) {
+  if (!frame) {
+    for (const racer of engine.state.racers) {
+      racer.distanceMeters = 0;
+      racer.finishPlace = null;
+      racer.finishedAtWallMs = 0;
+    }
+    return;
+  }
+
+  const snapshotKey = String(frame.bucketAtMs);
+  if (snapshotKey === lastAppliedSnapshotKey) {
+    return;
+  }
+  lastAppliedSnapshotKey = snapshotKey;
+
+  const racers = frame.rows.map((row) => {
+    const originalFinishedAtMs = row.finished_at ? new Date(row.finished_at).getTime() : 0;
+    const localFinishedAtMs =
+      originalFinishedAtMs > 0
+        ? replayLocalRaceStartedAtMs + Math.max(0, originalFinishedAtMs - replayOriginalVisibleStartedAtMs)
+        : 0;
+    return {
+      id: row.symbol,
+      price: row.price == null ? null : Number(row.price),
+      changePercent: Number(row.change_percent ?? 0),
+      speedFactor: Number(row.speed_factor ?? 1),
+      targetSpeedFactor: Number(row.target_speed_factor ?? row.speed_factor ?? 1),
+      lastSpeedEffectPercent: Number(row.speed_effect_percent ?? 0),
+      distanceMeters: Number(row.distance_meters ?? 0),
+      finishPlace: row.finish_place ? Number(row.finish_place) : null,
+      finishedAtWallMs: localFinishedAtMs,
+      snapshotAtWallMs: nowWallMs
+    };
+  });
+
+  engine.applyOfficialSnapshotState({
+    prepStartedAtWallMs: replaySessionStartedAtMs,
+    raceStartedAtWallMs: replayLocalRaceStartedAtMs,
+    snapshotAtWallMs: nowWallMs,
+    racers
+  });
+
+  // Keep sample strip useful for the detail panel.
+  for (const racer of engine.state.racers) {
+    const row = frame.rows.find((entry) => entry.symbol === racer.id);
+    if (!row) continue;
+    const sample = {
+      closeTime: getLocalApplyAtMs(frame.bucketAtMs),
+      start: Number(racer.price ?? row.price ?? 0),
+      end: Number(row.price ?? racer.price ?? 0),
+      changePercent: Number(row.change_percent ?? 0),
+      racePercent: 0,
+      speedFactor: Number(row.speed_factor ?? 1),
+      remainingDistanceMeters: Math.max(0, TARGET_DISTANCE_METERS - Number(row.distance_meters ?? 0))
+    };
+    if (!racer.sampleKeys) racer.sampleKeys = new Set();
+    if (!racer.samples) racer.samples = [];
+    if (!racer.sampleKeys.has(sample.closeTime)) {
+      racer.samples.push(sample);
+      racer.sampleKeys.add(sample.closeTime);
+    }
+  }
 }
 
 function maybeApplyOfficialReplayResult(nowWallMs) {
   if (replayOfficialResultApplied || !selectedReplayResult || !engine.state.raceStarted) {
-    return;
-  }
-
-  if (!engine.state.raceFinished) {
     return;
   }
 
@@ -412,9 +452,14 @@ function maybeApplyOfficialReplayResult(nowWallMs) {
     return;
   }
 
+  const officialRaceFinishedAtWallMs = replayLocalRaceStartedAtMs + maxOfficialElapsedMs;
+  if (nowWallMs < officialRaceFinishedAtWallMs) {
+    return;
+  }
+
   engine.applyOfficialFinishOrder(
     finishOrder,
-    replayLocalRaceStartedAtMs + maxOfficialElapsedMs,
+    officialRaceFinishedAtWallMs,
     selectedReplayResult.compared_finish_elapsed_ms ?? {}
   );
   replayOfficialResultApplied = true;
@@ -449,31 +494,6 @@ function formatReplayStart(timestamp) {
     hour12: false,
     timeZone: "Asia/Seoul"
   }).format(new Date(timestamp));
-}
-
-function applyBackendSamplesToRacers(sampleFrames) {
-  const samplesBySymbol = new Map(MARKET_COINS.map((coin) => [coin.id, []]));
-
-  for (const frame of sampleFrames) {
-    const previousBySymbol = new Map(frame.rows.map((row) => [row.symbol, row]));
-    for (const row of frame.rows) {
-      const start = Number(row.previous_price ?? previousBySymbol.get(row.symbol)?.price ?? row.price);
-      const end = Number(row.price);
-      samplesBySymbol.get(row.symbol)?.push({
-        closeTime: frame.bucketAtMs,
-        start,
-        end,
-        changePercent: Number(row.change_percent ?? 0),
-        racePercent: 0,
-        speedFactor: Number(row.speed_factor ?? 1)
-      });
-    }
-  }
-
-  for (const racer of engine.state.racers) {
-    racer.samples = samplesBySymbol.get(racer.id) ?? [];
-    racer.sampleKeys = new Set(racer.samples.map((sample) => sample.closeTime));
-  }
 }
 
 async function updateAccountLink() {

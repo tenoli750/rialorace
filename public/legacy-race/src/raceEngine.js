@@ -216,7 +216,9 @@ export class RaceEngine {
       racer.targetSpeedFactor = snapshot.targetSpeedFactor ?? racer.speedFactor;
       racer.postFinishSpeedFactor = snapshot.postFinishSpeedFactor ?? racer.postFinishSpeedFactor ?? racer.speedFactor;
       racer.changePercent = normalizeChangePercent(snapshot.changePercent ?? 0);
-      racer.lastSpeedEffectPercent = getSpeedEffectPercentFromChangePercent(racer.changePercent);
+      racer.lastSpeedEffectPercent = Number.isFinite(snapshot.lastSpeedEffectPercent)
+        ? Number(snapshot.lastSpeedEffectPercent)
+        : getSpeedEffectPercentFromChangePercent(racer.changePercent);
       racer.displaySpeedFactor = racer.targetSpeedFactor;
       racer.distanceMeters = displayDistance;
       racer.finishPlace = snapshot.finishPlace ?? null;
