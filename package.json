@@ -9,7 +9,8 @@
     "dev:stripe": "npm run build && node scripts/local-stripe-server.js",
     "prices:worker": "node scripts/price-history-worker.js",
     "prices:once": "node scripts/price-history-worker.js --once",
-    "race:browser": "node scripts/vps-race-browser.js"
+    "race:browser": "node scripts/vps-race-browser.js",
+    "slot:worker": "node scripts/vps-slot-worker.mjs"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

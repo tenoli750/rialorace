@@ -1,6 +1,5 @@
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router";
 import { getMarketsByCategory } from "../data/markets";
 import { getTokenByLetter, getTokensByCategory, type MarketCategory } from "../data/tokens";
 
@@ -27,93 +26,144 @@ export function ReplayMenu() {
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
-      {/* Token Legend */}
-      <section className="bg-white rounded-lg border border-[#fed7aa] p-6 mb-6">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-lg text-[#9a3412]">Racers</h2>
+    <div className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold tracking-[0.04em] text-[#f2f3f4]">Replay</h1>
+        <p className="mt-1 text-sm text-[#8f949b]">Filter tracks and rewatch finished races.</p>
+      </div>
+
+      <section className="mb-6 rounded-[14px] border border-white/10 bg-[linear-gradient(160deg,rgba(17,19,21,.72),rgba(8,9,10,.8))] p-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="flex items-center gap-2 text-lg tracking-[0.05em] text-[#f2f3f4]">
+            <span className="inline-block h-[7px] w-[7px] rounded-full bg-[#ff7a00]" />
+            Racers
+          </h2>
           <div className="flex gap-2">
-            <Link to="/replay-menu.html?category=crypto" className={`rounded-md border border-[#fed7aa] px-3 py-1.5 text-xs font-semibold ${activeCategory === "crypto" ? "bg-[#9a3412] text-white" : "bg-[#fff7ed] text-[#9a3412]"}`}>Crypto</Link>
-            <Link to="/replay-menu.html?category=stocks" className={`rounded-md border border-[#fed7aa] px-3 py-1.5 text-xs font-semibold ${activeCategory === "stocks" ? "bg-[#9a3412] text-white" : "bg-[#fff7ed] text-[#9a3412]"}`}>Stocks</Link>
-            <Link to="/replay-menu.html?category=rwa" className={`rounded-md border border-[#fed7aa] px-3 py-1.5 text-xs font-semibold ${activeCategory === "rwa" ? "bg-[#9a3412] text-white" : "bg-[#fff7ed] text-[#9a3412]"}`}>RWA</Link>
+            {(["crypto", "stocks", "rwa"] as MarketCategory[]).map((category) => (
+              <Link
+                key={category}
+                to={`/replay-menu.html?category=${category}`}
+                className={`rounded-[8px] border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.04em] ${
+                  activeCategory === category
+                    ? "border-[#ff7a00] bg-[#ff7a00] text-[#060708]"
+                    : "border-white/10 bg-[#111315] text-[#aeb1b5] hover:border-[rgba(255,122,0,.55)] hover:text-[#f2f3f4]"
+                }`}
+              >
+                {category}
+              </Link>
+            ))}
           </div>
           {selectedRacers.length > 0 && (
             <button
               type="button"
               onClick={() => setSelectedRacers([])}
-              className="rounded-md border border-[#fed7aa] bg-[#fff7ed] px-3 py-1.5 text-xs font-semibold text-[#9a3412] transition-colors hover:border-[#9a3412] hover:bg-[#ffedd5]"
+              className="rounded-[8px] border border-white/10 bg-[#111315] px-3 py-1.5 text-xs font-semibold text-[#aeb1b5] hover:border-[rgba(255,122,0,.55)] hover:text-[#f2f3f4]"
             >
               Clear
             </button>
           )}
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-          {activeTokens.map((token) => (
-            <button
-              type="button"
-              key={token.id}
-              onClick={() => toggleRacer(token.letter)}
-              aria-pressed={selectedRacerSet.has(token.letter)}
-              className={`flex cursor-pointer items-center gap-3 rounded-md border p-3 text-left transition-all hover:-translate-y-0.5 hover:border-[#9a3412] hover:shadow-sm ${
-                selectedRacerSet.has(token.letter)
-                  ? "border-[#9a3412] bg-[#9a3412] text-white shadow-sm"
-                  : "border-[#fed7aa] bg-[#fff7ed]"
-              }`}
-            >
-              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-white border border-[#fed7aa] flex items-center justify-center overflow-hidden">
-                <img src={token.image} alt={`${token.symbol} animal`} className="w-full h-full object-contain" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className={selectedRacerSet.has(token.letter) ? "text-sm text-white truncate" : "text-sm text-[#9a3412] truncate"}>
-                  {token.symbol}
-                </div>
-                <div className={selectedRacerSet.has(token.letter) ? "text-xs text-white/75 truncate" : "text-xs text-[#8a5a44] truncate"}>
-                  {token.name}
-                </div>
-              </div>
-            </button>
-          ))}
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+          {activeCategory === "rwa" ? (
+            <div className="col-span-full rounded-[11px] border border-dashed border-[rgba(255,122,0,.35)] bg-[#0d0f11] px-6 py-10 text-center">
+              <p className="text-xl font-semibold tracking-[0.04em] text-[#f2f3f4]">Coming Soon</p>
+              <p className="mt-2 text-sm text-[#8f949b]">RWA racers are not available yet.</p>
+            </div>
+          ) : (
+            activeTokens.map((token) => {
+            const selected = selectedRacerSet.has(token.letter);
+            return (
+              <button
+                type="button"
+                key={token.id}
+                onClick={() => toggleRacer(token.letter)}
+                aria-pressed={selected}
+                className={`flex cursor-pointer items-center gap-3 rounded-[11px] border p-3 text-left transition-all hover:-translate-y-0.5 ${
+                  selected
+                    ? "border-[#ff7a00] bg-[rgba(255,122,0,.16)] text-[#f2f3f4]"
+                    : "border-white/10 bg-[#111315] text-[#f2f3f4] hover:border-[rgba(255,122,0,.55)]"
+                }`}
+              >
+                <span className="h-12 w-12 overflow-hidden rounded-full border border-white/10 bg-[#090a0b]">
+                  <img
+                    src={token.image}
+                    onError={(e) => {
+                      e.currentTarget.src = `/assets/coin-logos/${token.id}.svg`;
+                    }}
+                    alt={`${token.symbol} animal`}
+                    className="h-full w-full object-contain"
+                  />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <strong className="block truncate text-sm uppercase">{token.symbol}</strong>
+                  <small className="block truncate text-xs text-[#8f949b]">{token.name}</small>
+                </span>
+              </button>
+            );
+          })
+          )}
         </div>
       </section>
 
-      {/* Market Grid */}
-      <section className="bg-white rounded-lg border border-[#fed7aa] p-6">
+      <section className="rounded-[14px] border border-white/10 bg-[linear-gradient(160deg,rgba(17,19,21,.72),rgba(8,9,10,.8))] p-6">
         <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg text-[#9a3412]">Tracks</h2>
-          </div>
-          <span className="px-3 py-1 bg-[#ffedd5] text-xs text-[#9a3412] rounded-md">
+          <h2 className="flex items-center gap-2 text-lg tracking-[0.05em] text-[#f2f3f4]">
+            <span className="inline-block h-[7px] w-[7px] rounded-full bg-[#ff7a00]" />
+            Tracks
+          </h2>
+          <span className="rounded-[8px] border border-white/10 bg-[#111315] px-3 py-1 font-mono text-xs text-[#ff7a00]">
             {visibleMarkets.length} Tracks
           </span>
         </div>
 
-        <div id="marketGrid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {visibleMarkets.map((market) => (
-            <Link
-              key={market.id}
-              to={`/market-replay.html?id=${market.id}`}
-              className="grid min-h-[199px] content-start gap-3 rounded-lg border border-[#fdba74] bg-[#fff7ed] p-4 text-left no-underline transition-all hover:-translate-y-0.5 hover:border-[#9a3412] hover:shadow-sm"
-            >
-              <span className="text-base font-semibold text-[#9a3412]">{market.name}</span>
-              <div className="grid grid-cols-2 gap-3">
-                {market.tokenLetters.map((letter) => {
-                  const token = getTokenByLetter(letter, activeCategory);
-                  return (
-                    <span
-                      key={letter}
-                      className="flex min-h-11 items-center gap-2 rounded-md border border-[#fed7aa] bg-white px-3 py-2 text-sm font-semibold text-[#9a3412]"
-                    >
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#fed7aa] bg-white">
-                        <img src={token?.image} alt={`${token?.symbol} animal`} className="h-full w-full object-contain" />
+        {activeCategory === "rwa" ? (
+          <div className="rounded-[11px] border border-dashed border-[rgba(255,122,0,.35)] bg-[#111315] px-6 py-16 text-center">
+            <p className="font-mono text-xs uppercase tracking-[0.18em] text-[#ff7a00]">RWA</p>
+            <p className="mt-3 text-2xl font-semibold tracking-[0.04em] text-[#f2f3f4]">Coming Soon</p>
+            <p className="mt-2 text-sm text-[#8f949b]">RWA race tracks are not open yet.</p>
+          </div>
+        ) : visibleMarkets.length === 0 ? (
+          <div className="rounded-[11px] border border-dashed border-white/15 bg-[#111315] p-6 text-sm text-[#8f949b]">
+            No tracks match the current filter.
+          </div>
+        ) : (
+          <div id="marketGrid" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {visibleMarkets.map((market) => (
+              <Link
+                key={market.id}
+                to={`/market-replay.html?id=${market.id}`}
+                className="grid min-h-[199px] content-start gap-3 rounded-[11px] border border-white/10 bg-[#111315] p-4 no-underline transition-all hover:-translate-y-0.5 hover:border-[rgba(255,122,0,.55)]"
+              >
+                <span className="font-mono text-xs text-[#ff7a00]">{String(market.number).padStart(2, "0")}</span>
+                <strong className="text-base font-medium text-[#f2f3f4]">{market.name}</strong>
+                <div className="grid grid-cols-2 gap-3">
+                  {market.tokenLetters.map((letter) => {
+                    const token = getTokenByLetter(letter, activeCategory);
+                    return (
+                      <span
+                        key={letter}
+                        className="flex min-h-11 items-center gap-2 rounded-[7px] border border-white/10 bg-[#0d0f11] px-3 py-2 text-sm font-semibold text-[#f2f3f4]"
+                      >
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[#090a0b]">
+                          <img
+                            src={token?.image}
+                            onError={(e) => {
+                              if (token) e.currentTarget.src = `/assets/coin-logos/${token.id}.svg`;
+                            }}
+                            alt={`${token?.symbol} animal`}
+                            className="h-full w-full object-contain"
+                          />
+                        </span>
+                        <span>{token?.symbol}</span>
                       </span>
-                      <span>{token?.symbol}</span>
-                    </span>
-                  );
-                })}
-              </div>
-            </Link>
-          ))}
-        </div>
+                    );
+                  })}
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

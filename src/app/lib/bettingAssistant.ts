@@ -12,6 +12,43 @@ import {
   withHelp,
   type ReplyLocale
 } from "./bettingAssistantI18n";
+import {
+  answerRulesTip,
+  answerSlotBetsList,
+  answerSlotClock,
+  getSlotClock,
+  normalizeAssistantNavigatePath,
+  parseLocalLotto,
+  parseLocalNavigate,
+  parseLocalRulesQuery,
+  parseLocalSlotBet,
+  parseLocalSlotBetsQuery,
+  parseLocalSlotClockQuery,
+  type LottoIntent,
+  type NavigateIntent,
+  type QueryIntent,
+  type QueryTopic,
+  type SlotBetIntent
+} from "./assistantIntents";
+import { listSlotBets } from "./slotBets";
+
+export type {
+  LottoIntent,
+  NavigateIntent,
+  QueryIntent,
+  QueryTopic,
+  SlotBetIntent,
+  SlotRoundPreference,
+  LottoAssistantMode
+} from "./assistantIntents";
+export {
+  buildRandomLottoPicks,
+  formatAssistantRoundLabel,
+  formatLottoPicks,
+  getSlotClock,
+  resolveSlotBettingRoundId,
+  validateSlotStake
+} from "./assistantIntents";
 
 const RACE_INTERVAL_MS = 5 * 60 * 1000;
 const DEFAULT_STAKE = 100;
@@ -102,22 +139,95 @@ const PLACE_WORD: Record<BetPlace, RegExp> = {
   third: /(?:\b3rd\b|\bthird\b|3\s*등|삼등)/i
 };
 
+export type AssistantResult =
+  | { ok: true; kind: "chat"; reply: string; locale: ReplyLocale }
+  | { ok: true; kind: "bet"; intent: BettingIntent }
+  | { ok: true; kind: "slot_bet"; intent: SlotBetIntent; locale: ReplyLocale }
+  | { ok: true; kind: "lotto"; intent: LottoIntent; locale: ReplyLocale }
+  | { ok: true; kind: "navigate"; intent: NavigateIntent; locale: ReplyLocale }
+  | { ok: true; kind: "query"; intent: QueryIntent; reply: string; locale: ReplyLocale }
+  | { ok: false; message: string };
+
 export async function askAssistant(
   rawInput: string,
   options: {
     pagePath?: string;
     loggedIn?: boolean;
     pointsBalance?: number | null;
+    openSlotBets?: Array<Record<string, unknown>>;
+    recentSlotBets?: Array<Record<string, unknown>>;
+    slotClock?: Record<string, unknown> | null;
+    lottoRound?: Record<string, unknown> | null;
   } = {}
-): Promise<
-  | { ok: true; kind: "chat"; reply: string; locale: ReplyLocale }
-  | { ok: true; kind: "bet"; intent: BettingIntent }
-  | { ok: false; message: string }
-> {
+): Promise<AssistantResult> {
   const command = rawInput.trim();
   const locale = detectReplyLocale(command);
   if (!command) {
     return { ok: false, message: withHelp(locale, "emptyCommand") };
+  }
+
+  // --- Local fast paths (deterministic NL) ---
+  // Read-only queries before money intents.
+  const localRules = parseLocalRulesQuery(command);
+  if (localRules) {
+    return {
+      ok: true,
+      kind: "query",
+      intent: localRules,
+      reply: answerRulesTip(locale),
+      locale
+    };
+  }
+
+  const localClock = parseLocalSlotClockQuery(command);
+  if (localClock) {
+    return {
+      ok: true,
+      kind: "query",
+      intent: localClock,
+      reply: answerSlotClock(locale),
+      locale
+    };
+  }
+
+  const localSlotBets = parseLocalSlotBetsQuery(command);
+  if (localSlotBets && !/\d{1,7}/.test(command)) {
+    if (!options.loggedIn) {
+      return { ok: true, kind: "chat", reply: msg(locale, "loginRequired"), locale };
+    }
+    try {
+      const rows = await listSlotBets(40);
+      return {
+        ok: true,
+        kind: "query",
+        intent: localSlotBets,
+        reply: answerSlotBetsList(locale, rows),
+        locale
+      };
+    } catch {
+      return {
+        ok: true,
+        kind: "chat",
+        reply: locale === "ko" ? "슬롯 베팅을 불러오지 못했어요." : "Could not load slot bets.",
+        locale
+      };
+    }
+  }
+
+  // Slot/lotto money intents before navigate so "슬롯 100점" is never treated as open-slot.
+  const localSlotBet = parseLocalSlotBet(command);
+  if (localSlotBet) {
+    return { ok: true, kind: "slot_bet", intent: localSlotBet, locale };
+  }
+
+  const localLotto = parseLocalLotto(command);
+  if (localLotto) {
+    return { ok: true, kind: "lotto", intent: localLotto, locale };
+  }
+
+  const localNav = parseLocalNavigate(command);
+  if (localNav) {
+    return { ok: true, kind: "navigate", intent: localNav, locale };
   }
 
   const balanceReply = answerBalanceQuestion(command, locale, {
@@ -169,8 +279,26 @@ export async function askAssistant(
       "Prefer exact catalog symbols and market names.",
       "COIN/Coinbase => COINBASE, GOOG/Google => GOOGLE.",
       "Commands like 'DOGE 1st Nightfall Chase' are bets on that named market.",
-      "Commands like 'DOGE 1st on markets without BTC' use excludeAlso: ['BTC']."
+      "Commands like 'DOGE 1st on markets without BTC' use excludeAlso: ['BTC'].",
+      "Slot stake commands use kind slot_bet. Navigate uses kind navigate."
     ]
+  };
+
+  const clock = getSlotClock();
+  const session = {
+    loggedIn: Boolean(options.loggedIn),
+    pointsBalance:
+      options.pointsBalance != null && Number.isFinite(Number(options.pointsBalance))
+        ? Number(options.pointsBalance)
+        : null,
+    openSlotBets: options.openSlotBets,
+    recentSlotBets: options.recentSlotBets,
+    slotClock: options.slotClock ?? {
+      roundLabel: clock.roundLabel,
+      phase: clock.phase,
+      remainingMs: clock.remainingMs
+    },
+    lottoRound: options.lottoRound ?? null
   };
 
   try {
@@ -182,13 +310,7 @@ export async function askAssistant(
         catalog,
         replyLanguage: locale,
         pagePath: options.pagePath || null,
-        session: {
-          loggedIn: Boolean(options.loggedIn),
-          pointsBalance:
-            options.pointsBalance != null && Number.isFinite(Number(options.pointsBalance))
-              ? Number(options.pointsBalance)
-              : null
-        }
+        session
       })
     });
     const payload = await response.json().catch(() => null);
@@ -196,40 +318,219 @@ export async function askAssistant(
       const message =
         (payload && typeof payload.error === "string" && payload.error) ||
         msg(locale, "parseFailed");
-      // Betting-shaped fallback for resilience
-      const fallback = parseBettingIntent(command);
-      if (fallback.ok) return { ok: true, kind: "bet", intent: fallback.intent };
+      const fallback = fallbackLocalOrBet(command, locale);
+      if (fallback) return fallback;
       return { ok: false, message };
     }
 
-    if (payload?.kind === "chat" && typeof payload.reply === "string") {
-      const fallback = parseBettingIntent(command);
-      if (fallback.ok) {
-        return { ok: true, kind: "bet", intent: fallback.intent };
-      }
-      return { ok: true, kind: "chat", reply: payload.reply.trim(), locale };
-    }
+    const mapped = await mapAssistantPayload(payload, command, locale, options);
+    if (mapped) return mapped;
 
-    const intentPayload = payload?.intent ?? payload;
-    const normalized = normalizeLlmIntent(intentPayload, command, locale);
-    if (!normalized.ok) {
-      const fallback = parseBettingIntent(command);
-      if (fallback.ok) return { ok: true, kind: "bet", intent: fallback.intent };
-      // Soft-fail into chat-style message when available
-      if (typeof intentPayload?.message === "string") {
-        return { ok: true, kind: "chat", reply: intentPayload.message, locale };
-      }
-      return normalized;
-    }
-    return { ok: true, kind: "bet", intent: normalized.intent };
+    const fallback = fallbackLocalOrBet(command, locale);
+    if (fallback) return fallback;
+    return { ok: true, kind: "chat", reply: msg(locale, "notABet"), locale };
   } catch (error) {
-    const fallback = parseBettingIntent(command);
-    if (fallback.ok) return { ok: true, kind: "bet", intent: fallback.intent };
+    const fallback = fallbackLocalOrBet(command, locale);
+    if (fallback) return fallback;
     return {
       ok: false,
       message: error instanceof Error ? error.message : msg(locale, "parseFailed")
     };
   }
+}
+
+function fallbackLocalOrBet(command: string, locale: ReplyLocale): AssistantResult | null {
+  const slot = parseLocalSlotBet(command);
+  if (slot) return { ok: true, kind: "slot_bet", intent: slot, locale };
+  const lotto = parseLocalLotto(command);
+  if (lotto) return { ok: true, kind: "lotto", intent: lotto, locale };
+  const nav = parseLocalNavigate(command);
+  if (nav) return { ok: true, kind: "navigate", intent: nav, locale };
+  const rules = parseLocalRulesQuery(command);
+  if (rules) {
+    return { ok: true, kind: "query", intent: rules, reply: answerRulesTip(locale), locale };
+  }
+  const bet = parseBettingIntent(command);
+  if (bet.ok) return { ok: true, kind: "bet", intent: bet.intent };
+  return null;
+}
+
+async function mapAssistantPayload(
+  payload: any,
+  command: string,
+  locale: ReplyLocale,
+  options: {
+    loggedIn?: boolean;
+    pointsBalance?: number | null;
+  }
+): Promise<AssistantResult | null> {
+  const kind = String(payload?.kind || "").toLowerCase();
+
+  if (kind === "navigate") {
+    const path = normalizeAssistantNavigatePath(payload.path);
+    if (path) return { ok: true, kind: "navigate", intent: { path }, locale };
+  }
+
+  if (kind === "slot_bet") {
+    const stake = Math.floor(Number(payload.stake ?? 100));
+    return {
+      ok: true,
+      kind: "slot_bet",
+      intent: {
+        stake: Number.isFinite(stake) && stake >= 10 ? stake : 100,
+        roundPreference: payload.roundPreference === "next" ? "next" : "current_wait",
+        explanation: typeof payload.explanation === "string" ? payload.explanation : null
+      },
+      locale
+    };
+  }
+
+  if (kind === "lotto") {
+    const modeRaw = String(payload.mode || "buy_random").toLowerCase();
+    const mode =
+      modeRaw === "help_picks" || modeRaw === "status" ? modeRaw : "buy_random";
+    return {
+      ok: true,
+      kind: "lotto",
+      intent: {
+        mode,
+        roundId: payload.roundId ? String(payload.roundId) : null,
+        explanation: typeof payload.explanation === "string" ? payload.explanation : null
+      },
+      locale
+    };
+  }
+
+  if (kind === "query") {
+    const topicRaw = String(payload.topic || "rules").toLowerCase() as QueryTopic;
+    const topic: QueryTopic = (
+      ["slot_bets", "points", "pnl", "slot_clock", "lotto", "rules"] as QueryTopic[]
+    ).includes(topicRaw)
+      ? topicRaw
+      : "rules";
+
+    if (topic === "rules") {
+      return {
+        ok: true,
+        kind: "query",
+        intent: { topic, reply: payload.reply },
+        reply: typeof payload.reply === "string" && payload.reply.trim()
+          ? payload.reply.trim()
+          : answerRulesTip(locale),
+        locale
+      };
+    }
+    if (topic === "slot_clock") {
+      return {
+        ok: true,
+        kind: "query",
+        intent: { topic },
+        reply:
+          typeof payload.reply === "string" && payload.reply.trim()
+            ? payload.reply.trim()
+            : answerSlotClock(locale),
+        locale
+      };
+    }
+    if (topic === "slot_bets") {
+      if (!options.loggedIn) {
+        return { ok: true, kind: "chat", reply: msg(locale, "loginRequired"), locale };
+      }
+      try {
+        const rows = await listSlotBets(40);
+        return {
+          ok: true,
+          kind: "query",
+          intent: { topic },
+          reply:
+            typeof payload.reply === "string" && payload.reply.trim()
+              ? payload.reply.trim()
+              : answerSlotBetsList(locale, rows),
+          locale
+        };
+      } catch {
+        return {
+          ok: true,
+          kind: "chat",
+          reply: locale === "ko" ? "슬롯 베팅을 불러오지 못했어요." : "Could not load slot bets.",
+          locale
+        };
+      }
+    }
+    if (topic === "points") {
+      const balanceReply = answerBalanceQuestion("my points balance", locale, {
+        loggedIn: Boolean(options.loggedIn),
+        pointsBalance: options.pointsBalance ?? null
+      });
+      return {
+        ok: true,
+        kind: "chat",
+        reply:
+          (typeof payload.reply === "string" && payload.reply.trim()) ||
+          balanceReply ||
+          msg(locale, "balanceUnknown"),
+        locale
+      };
+    }
+    if (topic === "pnl") {
+      if (!options.loggedIn) {
+        return { ok: true, kind: "chat", reply: msg(locale, "loginRequired"), locale };
+      }
+      try {
+        return {
+          ok: true,
+          kind: "query",
+          intent: { topic },
+          reply:
+            (typeof payload.reply === "string" && payload.reply.trim()) ||
+            (await answerPnlQuestion(locale)),
+          locale
+        };
+      } catch {
+        return { ok: true, kind: "chat", reply: msg(locale, "pnlLoadFailed"), locale };
+      }
+    }
+    if (topic === "lotto") {
+      return {
+        ok: true,
+        kind: "lotto",
+        intent: { mode: "status" },
+        locale
+      };
+    }
+  }
+
+  if (kind === "chat" && typeof payload.reply === "string") {
+    const betFallback = parseBettingIntent(command);
+    if (betFallback.ok) return { ok: true, kind: "bet", intent: betFallback.intent };
+    return { ok: true, kind: "chat", reply: payload.reply.trim(), locale };
+  }
+
+  if (kind === "bet" || (!kind && (payload?.intent || Array.isArray(payload?.picks)))) {
+    const intentPayload = payload?.intent ?? payload;
+    const normalized = normalizeLlmIntent(intentPayload, command, locale);
+    if (!normalized.ok) {
+      const fallback = parseBettingIntent(command);
+      if (fallback.ok) return { ok: true, kind: "bet", intent: fallback.intent };
+      if (typeof intentPayload?.message === "string") {
+        return { ok: true, kind: "chat", reply: intentPayload.message, locale };
+      }
+      return { ok: false, message: normalized.message };
+    }
+    return { ok: true, kind: "bet", intent: normalized.intent };
+  }
+
+  return null;
+}
+
+export async function parseBettingIntentWithLlm(
+  rawInput: string
+): Promise<{ ok: true; intent: BettingIntent } | { ok: false; message: string }> {
+  const result = await askAssistant(rawInput);
+  if (!result.ok) return result;
+  if (result.kind === "bet") return { ok: true, intent: result.intent };
+  if (result.kind === "chat") return { ok: false, message: result.reply };
+  return { ok: false, message: msg(detectReplyLocale(rawInput), "notABet") };
 }
 
 function answerBalanceQuestion(
@@ -319,15 +620,6 @@ async function answerPnlQuestion(locale: ReplyLocale): Promise<string> {
   if (roundedNet > 0) return msg(locale, "pnlWinning", vars);
   if (roundedNet < 0) return msg(locale, "pnlLosing", vars);
   return msg(locale, "pnlEven", vars);
-}
-
-export async function parseBettingIntentWithLlm(
-  rawInput: string
-): Promise<{ ok: true; intent: BettingIntent } | { ok: false; message: string }> {
-  const result = await askAssistant(rawInput);
-  if (!result.ok) return result;
-  if (result.kind === "bet") return { ok: true, intent: result.intent };
-  return { ok: false, message: result.reply };
 }
 
 function normalizeLlmIntent(

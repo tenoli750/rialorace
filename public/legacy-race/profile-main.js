@@ -1,4 +1,4 @@
-import { getLoginSession, signOutLoginSession } from "./src/supabaseClient.js?v=5";
+import { getLoginSession, signOutLoginSession } from "./src/supabaseClient.js?v=8";
 
 const idEl = document.querySelector("#profileId");
 const pointsEl = document.querySelector("#profilePoints");

@@ -112,24 +112,6 @@ export function MainMenu() {
         </div>
       </section>
 
-      <section className="mb-6 rounded-lg border border-[#fed7aa] bg-white p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-3xl">
-            <span className="text-xs uppercase tracking-wide text-[#8a5a44]">Race-Lotto</span>
-            <h2 className="mt-1 text-xl font-semibold text-[#9a3412]">Perfect 6 Jackpot</h2>
-            <p className="mt-2 text-sm text-[#8a5a44]">
-              Twice-daily 10:00 and 22:00 KST draws across six token matchups.
-            </p>
-          </div>
-          <Link
-            to="/race-lotto"
-            className="flex h-12 w-full items-center justify-center rounded-md bg-[#9a3412] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#7c2d12] lg:w-[260px]"
-          >
-            Open Lotto
-          </Link>
-        </div>
-      </section>
-
       <section className="bg-white rounded-lg border border-[#fed7aa] p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -140,37 +122,45 @@ export function MainMenu() {
           </span>
         </div>
 
-        <div id="marketGrid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {visibleMarkets.map((market) => (
-            <Link
-              key={market.id}
-              to={getMarketHref(market.id)}
-              className="grid min-h-[199px] content-start gap-3 rounded-lg border border-[#fdba74] bg-[#fff7ed] p-4 text-left no-underline transition-all hover:-translate-y-0.5 hover:border-[#9a3412] hover:shadow-sm"
-            >
-              <span className="text-base font-semibold text-[#9a3412]">{market.name}</span>
-              <div className="grid grid-cols-2 gap-3">
-                {market.tokenLetters.map((letter) => {
-                  const token = getTokenByLetter(letter, activeCategory);
-                  return (
-                    <span
-                      key={letter}
-                      className="flex min-h-11 items-center gap-2 rounded-md border border-[#fed7aa] bg-white px-3 py-2 text-sm font-semibold text-[#9a3412]"
-                    >
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#fed7aa] bg-white">
-                        <img
-                          src={token?.image}
-                          alt={`${token?.symbol} animal`}
-                          className="h-full w-full object-contain"
-                        />
+        {visibleMarkets.length === 0 ? (
+          <div className="rounded-md border border-dashed border-[#fdba74] bg-[#fff7ed] p-6 text-sm text-[#8a5a44]">
+            {activeCategory === "rwa"
+              ? "RWA race tracks are not listed yet."
+              : "No tracks match the current filter."}
+          </div>
+        ) : (
+          <div id="marketGrid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {visibleMarkets.map((market) => (
+              <Link
+                key={market.id}
+                to={getMarketHref(market.id)}
+                className="grid min-h-[199px] content-start gap-3 rounded-lg border border-[#fdba74] bg-[#fff7ed] p-4 text-left no-underline transition-all hover:-translate-y-0.5 hover:border-[#9a3412] hover:shadow-sm"
+              >
+                <span className="text-base font-semibold text-[#9a3412]">{market.name}</span>
+                <div className="grid grid-cols-2 gap-3">
+                  {market.tokenLetters.map((letter) => {
+                    const token = getTokenByLetter(letter, activeCategory);
+                    return (
+                      <span
+                        key={letter}
+                        className="flex min-h-11 items-center gap-2 rounded-md border border-[#fed7aa] bg-white px-3 py-2 text-sm font-semibold text-[#9a3412]"
+                      >
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#fed7aa] bg-white">
+                          <img
+                            src={token?.image}
+                            alt={`${token?.symbol} animal`}
+                            className="h-full w-full object-contain"
+                          />
+                        </span>
+                        <span>{token?.symbol}</span>
                       </span>
-                      <span>{token?.symbol}</span>
-                    </span>
-                  );
-                })}
-              </div>
-            </Link>
-          ))}
-        </div>
+                    );
+                  })}
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

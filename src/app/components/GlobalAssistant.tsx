@@ -1,19 +1,29 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
 import {
   askAssistant,
   buildBettingPreview,
   buildClarification,
+  buildRandomLottoPicks,
   executeBatchBets,
+  formatAssistantRoundLabel,
+  formatLottoPicks,
+  getSlotClock,
   isBettingCancel,
   isBettingConfirm,
   needsPlacementClarification,
   resolveClarificationReply,
+  resolveSlotBettingRoundId,
+  validateSlotStake,
   type BettingClarification,
-  type BettingPreview
+  type BettingPreview,
+  type LottoIntent,
+  type SlotBetIntent
 } from "../lib/bettingAssistant";
 import { detectReplyLocale, msg, type ReplyLocale } from "../lib/bettingAssistantI18n";
+import { createSlotBet, listSlotBets } from "../lib/slotBets";
+import { createRaceLottoTicket, getRaceLottoDashboard, type RaceLottoRound } from "../lib/raceLotto";
 
 type ChatRole = "user" | "assistant";
 
@@ -23,15 +33,33 @@ type ChatMessage = {
   text: string;
 };
 
+type PendingSlot = {
+  intent: SlotBetIntent;
+  roundId: number;
+  roundLabel: string;
+  closesLabel: string;
+  locale: ReplyLocale;
+};
+
+type PendingLotto = {
+  intent: LottoIntent;
+  round: RaceLottoRound;
+  picks: Record<string, string>;
+  locale: ReplyLocale;
+};
+
 export function GlobalAssistant() {
   const { user, points, setPointsBalance, refreshSession } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
   const [chatLocale, setChatLocale] = useState<ReplyLocale>("en");
   const [pendingPreview, setPendingPreview] = useState<BettingPreview | null>(null);
   const [pendingClarification, setPendingClarification] = useState<BettingClarification | null>(null);
+  const [pendingSlot, setPendingSlot] = useState<PendingSlot | null>(null);
+  const [pendingLotto, setPendingLotto] = useState<PendingLotto | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
@@ -46,7 +74,15 @@ export function GlobalAssistant() {
     const list = chatListRef.current;
     if (!list) return;
     list.scrollTop = list.scrollHeight;
-  }, [chatMessages.length, pendingPreview, pendingClarification, chatBusy, open]);
+  }, [
+    chatMessages.length,
+    pendingPreview,
+    pendingClarification,
+    pendingSlot,
+    pendingLotto,
+    chatBusy,
+    open
+  ]);
 
   useEffect(() => {
     if (!open) return;
@@ -61,10 +97,17 @@ export function GlobalAssistant() {
     ]);
   };
 
+  const clearMoneyPending = () => {
+    setPendingPreview(null);
+    setPendingClarification(null);
+    setPendingSlot(null);
+    setPendingLotto(null);
+  };
+
   const showPreview = (preview: BettingPreview) => {
     const locale = preview.intent.locale || chatLocale || "en";
     setChatLocale(locale);
-    setPendingClarification(null);
+    clearMoneyPending();
     setPendingPreview(preview);
     pushMessage(
       "assistant",
@@ -80,6 +123,193 @@ export function GlobalAssistant() {
       return;
     }
     showPreview(previewResult.preview);
+  };
+
+  const showSlotPreview = (intent: SlotBetIntent, locale: ReplyLocale) => {
+    const stakeError = validateSlotStake(intent.stake, locale);
+    if (stakeError) {
+      pushMessage("assistant", stakeError);
+      return;
+    }
+    if (intent.stake > points) {
+      pushMessage(
+        "assistant",
+        msg(locale, "insufficientBalance", { need: intent.stake, have: points })
+      );
+      return;
+    }
+    const roundId = resolveSlotBettingRoundId(intent.roundPreference);
+    const clock = getSlotClock();
+    const closesSec = Math.max(1, Math.ceil((clock.bettingClosesAt - Date.now()) / 1000));
+    const roundLabel = formatAssistantRoundLabel(roundId);
+    clearMoneyPending();
+    setPendingSlot({
+      intent,
+      roundId,
+      roundLabel,
+      closesLabel: `${closesSec}s`,
+      locale
+    });
+    pushMessage(
+      "assistant",
+      msg(locale, "slotPreviewHint", {
+        stake: intent.stake,
+        round: roundLabel,
+        closes: `${closesSec}s`
+      })
+    );
+  };
+
+  const handleConfirmSlot = async (pending: PendingSlot) => {
+    const locale = pending.locale;
+    setChatBusy(true);
+    setPendingSlot(null);
+    const progressId = `${Date.now()}-slot`;
+    setChatMessages((messages) => [
+      ...messages,
+      { id: progressId, role: "assistant", text: msg(locale, "slotPlacing") }
+    ]);
+    try {
+      const result = await createSlotBet(pending.intent.stake, pending.roundId);
+      if (Number.isFinite(result.pointsBalance)) {
+        setPointsBalance(result.pointsBalance);
+      } else {
+        await refreshSession();
+      }
+      setChatMessages((messages) =>
+        messages.map((entry) =>
+          entry.id === progressId
+            ? {
+                ...entry,
+                text: msg(locale, "slotPlaced", {
+                  stake: result.bet.stake,
+                  round: formatAssistantRoundLabel(result.bet.roundId),
+                  points: Math.round(result.pointsBalance).toLocaleString()
+                })
+              }
+            : entry
+        )
+      );
+    } catch (error) {
+      setChatMessages((messages) =>
+        messages.map((entry) =>
+          entry.id === progressId
+            ? {
+                ...entry,
+                text: error instanceof Error ? error.message : msg(locale, "batchFailedGeneric")
+              }
+            : entry
+        )
+      );
+    } finally {
+      setChatBusy(false);
+    }
+  };
+
+  const showLottoPreview = async (intent: LottoIntent, locale: ReplyLocale) => {
+    try {
+      const dash = await getRaceLottoDashboard();
+      if (Number.isFinite(dash.pointsBalance)) {
+        setPointsBalance(Number(dash.pointsBalance));
+      }
+      const openRound =
+        dash.rounds.find((round) => round.status === "open") ||
+        dash.rounds.find((round) => String(round.status).toLowerCase() === "open") ||
+        null;
+      if (!openRound) {
+        pushMessage("assistant", msg(locale, "lottoNoRound"));
+        return;
+      }
+      if (intent.mode === "status") {
+        pushMessage(
+          "assistant",
+          locale === "ko"
+            ? `로또 ${openRound.draw_name} · 상태 ${openRound.status} · 티켓 ${openRound.ticket_price_points} pts · 잭팟 ${(openRound.current_jackpot_points ?? 0).toLocaleString()} pts`
+            : `Lotto ${openRound.draw_name} · ${openRound.status} · ticket ${openRound.ticket_price_points} pts · jackpot ${(openRound.current_jackpot_points ?? 0).toLocaleString()} pts`
+        );
+        return;
+      }
+      const picks = buildRandomLottoPicks(openRound);
+      if (!picks) {
+        pushMessage("assistant", msg(locale, "lottoNoRound"));
+        return;
+      }
+      if (intent.mode === "help_picks") {
+        pushMessage(
+          "assistant",
+          locale === "ko"
+            ? `추천 랜덤픽: ${formatLottoPicks(picks)}\n원하면 "로또 티켓 사줘"라고 말해 주세요.`
+            : `Suggested random picks: ${formatLottoPicks(picks)}\nSay "buy lotto ticket" to purchase.`
+        );
+        return;
+      }
+      const price = Number(openRound.ticket_price_points ?? 100);
+      if (price > points) {
+        pushMessage(
+          "assistant",
+          msg(locale, "insufficientBalance", { need: price, have: points })
+        );
+        return;
+      }
+      clearMoneyPending();
+      setPendingLotto({ intent, round: openRound, picks, locale });
+      pushMessage(
+        "assistant",
+        msg(locale, "lottoPreviewHint", {
+          picks: formatLottoPicks(picks),
+          price
+        })
+      );
+    } catch (error) {
+      pushMessage(
+        "assistant",
+        error instanceof Error ? error.message : msg(locale, "batchFailedGeneric")
+      );
+    }
+  };
+
+  const handleConfirmLotto = async (pending: PendingLotto) => {
+    const locale = pending.locale;
+    setChatBusy(true);
+    setPendingLotto(null);
+    const progressId = `${Date.now()}-lotto`;
+    setChatMessages((messages) => [
+      ...messages,
+      { id: progressId, role: "assistant", text: msg(locale, "lottoPlacing") }
+    ]);
+    try {
+      const result = await createRaceLottoTicket(pending.round.id, pending.picks);
+      if (Number.isFinite(result?.points_balance)) {
+        setPointsBalance(Number(result.points_balance));
+      } else {
+        await refreshSession();
+      }
+      setChatMessages((messages) =>
+        messages.map((entry) =>
+          entry.id === progressId
+            ? {
+                ...entry,
+                text: msg(locale, "lottoPlaced", {
+                  points: Math.round(Number(result?.points_balance ?? points)).toLocaleString()
+                })
+              }
+            : entry
+        )
+      );
+    } catch (error) {
+      setChatMessages((messages) =>
+        messages.map((entry) =>
+          entry.id === progressId
+            ? {
+                ...entry,
+                text: error instanceof Error ? error.message : msg(locale, "batchFailedGeneric")
+              }
+            : entry
+        )
+      );
+    } finally {
+      setChatBusy(false);
+    }
   };
 
   const handleConfirmPreview = async (preview: BettingPreview) => {
@@ -146,15 +376,25 @@ export function GlobalAssistant() {
       return;
     }
 
-    if (pendingPreview) {
+    if (pendingPreview || pendingSlot || pendingLotto) {
       if (isBettingCancel(message)) {
-        setPendingPreview(null);
+        clearMoneyPending();
         pushMessage("assistant", msg(locale, "cancelled"));
         return;
       }
       if (isBettingConfirm(message)) {
-        await handleConfirmPreview(pendingPreview);
-        return;
+        if (pendingPreview) {
+          await handleConfirmPreview(pendingPreview);
+          return;
+        }
+        if (pendingSlot) {
+          await handleConfirmSlot(pendingSlot);
+          return;
+        }
+        if (pendingLotto) {
+          await handleConfirmLotto(pendingLotto);
+          return;
+        }
       }
       pushMessage("assistant", msg(locale, "previewPendingHint"));
       return;
@@ -172,22 +412,77 @@ export function GlobalAssistant() {
       );
     };
     try {
+      let openSlotBets: Array<Record<string, unknown>> | undefined;
+      let recentSlotBets: Array<Record<string, unknown>> | undefined;
+      if (user) {
+        try {
+          const rows = await listSlotBets(20);
+          recentSlotBets = rows.map((bet) => ({
+            roundId: bet.roundId,
+            stake: bet.stake,
+            status: bet.status,
+            payout: bet.payout
+          }));
+          openSlotBets = recentSlotBets.filter((bet) => bet.status === "open");
+        } catch {
+          // optional session enrichment
+        }
+      }
+
+      const clock = getSlotClock();
       const result = await askAssistant(message, {
         pagePath: `${location.pathname}${location.search}`,
         loggedIn: Boolean(user),
-        pointsBalance: points
+        pointsBalance: points,
+        openSlotBets,
+        recentSlotBets,
+        slotClock: {
+          roundLabel: clock.roundLabel,
+          phase: clock.phase,
+          remainingMs: clock.remainingMs
+        }
       });
       if (!result.ok) {
         replaceThinking(result.message);
         return;
       }
 
-      if (result.kind === "chat") {
+      if (result.kind === "chat" || result.kind === "query") {
         setChatLocale(result.locale);
-        replaceThinking(result.reply);
+        replaceThinking(result.kind === "query" ? result.reply : result.reply);
         return;
       }
 
+      if (result.kind === "navigate") {
+        setChatLocale(result.locale);
+        replaceThinking(msg(result.locale, "navigating", { path: result.intent.path }));
+        navigate(result.intent.path);
+        return;
+      }
+
+      if (result.kind === "slot_bet") {
+        setChatLocale(result.locale);
+        if (!user) {
+          replaceThinking(msg(result.locale, "loginRequired"));
+          return;
+        }
+        setChatMessages((messages) => messages.filter((entry) => entry.id !== thinkingId));
+        showSlotPreview(result.intent, result.locale);
+        return;
+      }
+
+      if (result.kind === "lotto") {
+        setChatLocale(result.locale);
+        if (!user && result.intent.mode !== "status") {
+          replaceThinking(msg(result.locale, "loginRequired"));
+          return;
+        }
+        setChatMessages((messages) => messages.filter((entry) => entry.id !== thinkingId));
+        await showLottoPreview(result.intent, result.locale);
+        return;
+      }
+
+      // race bet
       if (!user) {
         replaceThinking(msg(result.intent.locale || locale, "loginRequired"));
         return;
@@ -209,38 +504,44 @@ export function GlobalAssistant() {
     }
   };
 
+  const hasPendingAction = Boolean(
+    pendingClarification || pendingPreview || pendingSlot || pendingLotto
+  );
+
   return (
     <div className="pointer-events-none fixed bottom-5 right-5 z-[80] flex flex-col items-end gap-3">
       {open && (
-        <div className="pointer-events-auto flex h-[min(70vh,520px)] w-[min(92vw,380px)] flex-col overflow-hidden rounded-2xl border border-[#fed7aa] bg-white shadow-[0_18px_50px_rgba(154,52,18,0.22)]">
-          <div className="flex items-center justify-between gap-3 border-b border-[#fed7aa] bg-[#fff7ed] px-4 py-3">
+        <div className="pointer-events-auto flex h-[min(70vh,520px)] w-[min(92vw,380px)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0d0f11] shadow-[0_18px_50px_rgba(0,0,0,0.55)]">
+          <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-[#111315] px-4 py-3">
             <div className="min-w-0">
-              <p className="text-xs uppercase tracking-wide text-[#8a5a44]">Rialo Assistant</p>
-              <h2 className="truncate text-sm font-semibold text-[#9a3412]">Ask anything · place bets</h2>
+              <p className="text-xs uppercase tracking-wide text-[#8f949b]">Rialo Assistant</p>
+              <h2 className="truncate text-sm font-semibold text-[#f2f3f4]">
+                Ask · navigate · race/slot/lotto
+              </h2>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <span className="rounded-md bg-[#ffedd5] px-2 py-1 text-[11px] text-[#9a3412]">
+              <span className="rounded-md bg-[#111315] px-2 py-1 text-[11px] text-[#ff7a00]">
                 {user ? `${points.toLocaleString()} pts` : "Guest"}
               </span>
               <button
                 type="button"
                 aria-label="Close assistant"
                 onClick={() => setOpen(false)}
-                className="rounded-md border border-[#fed7aa] bg-white px-2 py-1 text-sm text-[#9a3412] hover:bg-[#ffedd5]"
+                className="rounded-md border border-white/10 bg-[#0d0f11] px-2 py-1 text-sm text-[#f2f3f4] hover:bg-[rgba(255,122,0,0.16)]"
               >
                 ✕
               </button>
             </div>
           </div>
 
-          <div ref={chatListRef} className="flex-1 space-y-3 overflow-y-auto bg-[#fff7ed]/90] p-3">
+          <div ref={chatListRef} className="flex-1 space-y-3 overflow-y-auto bg-[#060708]/90 p-3">
             {chatMessages.map((entry) => (
               <div
                 key={entry.id}
                 className={`max-w-[92%] whitespace-pre-wrap rounded-xl px-3 py-2 text-sm ${
                   entry.role === "user"
-                    ? "ml-auto bg-[#9a3412] text-white"
-                    : "border border-[#fed7aa] bg-white text-[#9a3412]"
+                    ? "ml-auto bg-[#ff7a00] text-[#060708]"
+                    : "border border-white/10 bg-[#111315] text-[#f2f3f4]"
                 }`}
               >
                 {entry.text}
@@ -248,8 +549,8 @@ export function GlobalAssistant() {
             ))}
           </div>
 
-          {(pendingClarification || pendingPreview) && (
-            <div className="flex flex-wrap gap-2 border-t border-[#fed7aa] bg-white px-3 py-2">
+          {hasPendingAction && (
+            <div className="flex flex-wrap gap-2 border-t border-white/10 bg-[#0d0f11] px-3 py-2">
               {pendingClarification?.options.map((option) => (
                 <button
                   key={option.id}
@@ -271,7 +572,7 @@ export function GlobalAssistant() {
                     }
                     tryBuildPreview(resolved.intent);
                   }}
-                  className="rounded-md bg-[#9a3412] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                  className="rounded-md bg-[#ff7a00] px-3 py-1.5 text-xs font-semibold text-[#060708] disabled:opacity-50"
                 >
                   {option.label}
                 </button>
@@ -281,39 +582,58 @@ export function GlobalAssistant() {
                   type="button"
                   disabled={chatBusy}
                   onClick={() => void handleConfirmPreview(pendingPreview)}
-                  className="rounded-md bg-[#9a3412] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                  className="rounded-md bg-[#ff7a00] px-3 py-1.5 text-xs font-semibold text-[#060708] disabled:opacity-50"
                 >
-                  Confirm · Place bets
+                  {msg(chatLocale, "confirmAction")} · Place bets
+                </button>
+              )}
+              {pendingSlot && (
+                <button
+                  type="button"
+                  disabled={chatBusy}
+                  onClick={() => void handleConfirmSlot(pendingSlot)}
+                  className="rounded-md bg-[#ff7a00] px-3 py-1.5 text-xs font-semibold text-[#060708] disabled:opacity-50"
+                >
+                  {msg(chatLocale, "confirmAction")} · Slot
+                </button>
+              )}
+              {pendingLotto && (
+                <button
+                  type="button"
+                  disabled={chatBusy}
+                  onClick={() => void handleConfirmLotto(pendingLotto)}
+                  className="rounded-md bg-[#ff7a00] px-3 py-1.5 text-xs font-semibold text-[#060708] disabled:opacity-50"
+                >
+                  {msg(chatLocale, "confirmAction")} · Lotto
                 </button>
               )}
               <button
                 type="button"
                 disabled={chatBusy}
                 onClick={() => {
-                  setPendingClarification(null);
-                  setPendingPreview(null);
+                  clearMoneyPending();
                   pushMessage("assistant", msg(chatLocale, "cancelled"));
                 }}
-                className="rounded-md border border-[#fed7aa] bg-white px-3 py-1.5 text-xs font-semibold text-[#9a3412] disabled:opacity-50"
+                className="rounded-md border border-white/10 bg-[#111315] px-3 py-1.5 text-xs font-semibold text-[#f2f3f4] disabled:opacity-50"
               >
-                Cancel
+                {msg(chatLocale, "cancelAction")}
               </button>
             </div>
           )}
 
-          <form onSubmit={handleChatSubmit} className="flex gap-2 border-t border-[#fed7aa] bg-white p-3">
+          <form onSubmit={handleChatSubmit} className="flex gap-2 border-t border-white/10 bg-[#0d0f11] p-3">
             <input
               ref={inputRef}
               value={chatInput}
               onChange={(event) => setChatInput(event.target.value)}
               disabled={chatBusy}
-              placeholder="Ask or bet… e.g. ETH 1st on all markets"
-              className="min-w-0 flex-1 rounded-md border border-[#fed7aa] bg-[#fff7ed] px-3 py-2 text-sm text-[#9a3412] outline-none focus:border-[#9a3412] disabled:opacity-50"
+              placeholder='Ask… "슬롯 100점" / "open lotto" / "ETH 1st"'
+              className="min-w-0 flex-1 rounded-md border border-white/10 bg-[#111315] px-3 py-2 text-sm text-[#f2f3f4] outline-none focus:border-[#ff7a00] disabled:opacity-50"
             />
             <button
               type="submit"
               disabled={chatBusy || !chatInput.trim()}
-              className="rounded-md bg-[#9a3412] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="rounded-md bg-[#ff7a00] px-3 py-2 text-sm font-semibold text-[#060708] disabled:opacity-50"
             >
               Send
             </button>
@@ -325,7 +645,7 @@ export function GlobalAssistant() {
         type="button"
         aria-label={open ? "Close assistant" : "Open assistant"}
         onClick={() => setOpen((value) => !value)}
-        className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full border border-[#fed7aa] bg-[#9a3412] text-white shadow-[0_12px_30px_rgba(154,52,18,0.35)] transition hover:scale-105 hover:bg-[#7c2d12]"
+        className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full border border-white/10 bg-[#ff7a00] text-[#060708] shadow-[0_12px_30px_rgba(255,122,0,0.35)] transition hover:scale-105 hover:bg-[#e56f00]"
       >
         {open ? (
           <span className="text-lg leading-none">✕</span>

@@ -1,4 +1,4 @@
-import { getLoginSession } from "./src/supabaseClient.js?v=5";
+import { getLoginSession } from "./src/supabaseClient.js?v=8";
 import { MARKET_DEFINITIONS, expandMarketTokens, formatMarketSymbols, formatMarketTitle, getTokenLegendForCategory } from "./src/markets.js";
 
 const marketGrid = document.querySelector("#marketGrid");

@@ -144,6 +144,7 @@ export const RACER_MODEL_LIBRARY = {
   deer: { asset: "deer.glb", headingOffset: -Math.PI / 2 },
   donkey: { asset: "donkey.glb", headingOffset: -Math.PI / 2 },
   sloth: { asset: "sloth.glb", headingOffset: -Math.PI / 2, scaleMultiplier: 1.05, animationSpeedMultiplier: 2 },
+  animeGirl: { asset: "doge-anime-girl.glb", headingOffset: 0, scaleMultiplier: 0.72, animationSpeedMultiplier: 1.15 },
   horse: { asset: "horse.glb", headingOffset: -Math.PI / 2 },
   whiteHorse: { asset: "white-horse.glb", headingOffset: -Math.PI / 2 },
   fox: { asset: "fox.glb", headingOffset: -Math.PI / 2 },

@@ -2,7 +2,16 @@ import { getLoginSessionToken, supabase } from "./supabase";
 
 export const SHOP_ITEM_ID_ADA_SLOTH = "ada_sloth";
 export const SHOP_MODEL_KEY_SLOTH = "sloth";
+export const SHOP_ITEM_ID_DOGE_ANIME = "doge_anime_girl";
+export const SHOP_MODEL_KEY_ANIME_GIRL = "animeGirl";
 export const SHOP_EQUIPMENT_STORAGE_KEY = "rialo-race-racer-equipment-v1";
+export const SHOP_PURCHASES_STORAGE_KEY = "rialo-race-racer-purchases-v1";
+export const SHOP_POINTS_STORAGE_KEY = "rialo-race-racer-shop-points-v1";
+
+const DEFAULT_LOCAL_SHOP_POINTS = 10000;
+const FORCE_LOCAL_SHOP =
+  import.meta.env.VITE_RACER_SHOP_LOCAL_ONLY === "true" ||
+  import.meta.env.VITE_LOCAL_RACER_SHOP === "true";
 
 export const ADA_SLOTH_SHOP_ITEM = {
   id: SHOP_ITEM_ID_ADA_SLOTH,
@@ -11,6 +20,31 @@ export const ADA_SLOTH_SHOP_ITEM = {
   modelKey: SHOP_MODEL_KEY_SLOTH,
   pricePoints: 5000,
   assetUrl: "/legacy-race/assets/sloth.glb"
+};
+
+export const DOGE_ANIME_SHOP_ITEM = {
+  id: SHOP_ITEM_ID_DOGE_ANIME,
+  name: "Anime Girl Racer",
+  tokenSymbol: "DOGE",
+  modelKey: SHOP_MODEL_KEY_ANIME_GIRL,
+  pricePoints: 5000,
+  assetUrl: "/legacy-race/assets/doge-anime-girl.glb"
+};
+
+export const SHOP_CATALOG = [ADA_SLOTH_SHOP_ITEM, DOGE_ANIME_SHOP_ITEM] as const;
+
+const MODEL_KEY_BY_ITEM_ID: Record<string, string> = {
+  [SHOP_ITEM_ID_ADA_SLOTH]: SHOP_MODEL_KEY_SLOTH,
+  [SHOP_MODEL_KEY_SLOTH]: SHOP_MODEL_KEY_SLOTH,
+  [SHOP_ITEM_ID_DOGE_ANIME]: SHOP_MODEL_KEY_ANIME_GIRL,
+  [SHOP_MODEL_KEY_ANIME_GIRL]: SHOP_MODEL_KEY_ANIME_GIRL
+};
+
+const TOKEN_BY_ITEM_ID: Record<string, string> = {
+  [SHOP_ITEM_ID_ADA_SLOTH]: "ADA",
+  [SHOP_MODEL_KEY_SLOTH]: "ADA",
+  [SHOP_ITEM_ID_DOGE_ANIME]: "DOGE",
+  [SHOP_MODEL_KEY_ANIME_GIRL]: "DOGE"
 };
 
 export interface RacerShopItem {
@@ -64,13 +98,18 @@ function normalizeObject(value: unknown): Record<string, string> {
   );
 }
 
-function toError(error: unknown, fallback: string) {
-  if (error instanceof Error) return error;
-  if (typeof error === "object" && error !== null) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === "string" && message.trim()) return new Error(message);
-  }
-  return new Error(fallback);
+function fallbackItems(equipment: Record<string, string>): RacerShopItem[] {
+  const purchases = readLocalRacerPurchases();
+  return SHOP_CATALOG.map((item) => ({
+    id: item.id,
+    name: item.name,
+    token_symbol: item.tokenSymbol,
+    model_key: item.modelKey,
+    price_points: item.pricePoints,
+    asset_url: item.assetUrl,
+    purchased: purchases.includes(item.id),
+    equipped: equipment[item.tokenSymbol] === item.modelKey || equipment[item.tokenSymbol] === item.id
+  }));
 }
 
 export function readLocalRacerEquipment() {
@@ -83,89 +122,216 @@ export function writeLocalRacerEquipment(equipment: Record<string, string>) {
   localStorage.setItem(SHOP_EQUIPMENT_STORAGE_KEY, JSON.stringify(equipment));
 }
 
+export function readLocalRacerPurchases() {
+  if (typeof localStorage === "undefined") return [] as string[];
+  return Array.from(
+    new Set(
+      normalizeArray<string>(localStorage.getItem(SHOP_PURCHASES_STORAGE_KEY)).filter((itemId) => {
+        return SHOP_CATALOG.some((item) => item.id === itemId);
+      })
+    )
+  );
+}
+
+function writeLocalRacerPurchases(purchases: string[]) {
+  if (typeof localStorage === "undefined") return;
+  localStorage.setItem(SHOP_PURCHASES_STORAGE_KEY, JSON.stringify(Array.from(new Set(purchases))));
+}
+
+function readLocalShopPoints(seedPoints?: number | null) {
+  if (typeof localStorage === "undefined") {
+    return Number.isFinite(Number(seedPoints)) ? Number(seedPoints) : DEFAULT_LOCAL_SHOP_POINTS;
+  }
+
+  const savedValue = localStorage.getItem(SHOP_POINTS_STORAGE_KEY);
+  const saved = Number(savedValue);
+  if (savedValue !== null && Number.isFinite(saved)) return saved;
+
+  const seed = Number(seedPoints);
+  const initial = Number.isFinite(seed) && seed >= DEFAULT_LOCAL_SHOP_POINTS ? seed : DEFAULT_LOCAL_SHOP_POINTS;
+  localStorage.setItem(SHOP_POINTS_STORAGE_KEY, String(initial));
+  return initial;
+}
+
+function writeLocalShopPoints(points: number) {
+  if (typeof localStorage === "undefined") return;
+  localStorage.setItem(SHOP_POINTS_STORAGE_KEY, String(Math.max(0, Math.floor(points))));
+}
+
 export function applyShopEquipmentToLocalStorage(equipment: Record<string, string>) {
   const nextEquipment: Record<string, string> = {};
-  if (equipment.ADA === SHOP_ITEM_ID_ADA_SLOTH || equipment.ADA === SHOP_MODEL_KEY_SLOTH) {
-    nextEquipment.ADA = SHOP_MODEL_KEY_SLOTH;
+  for (const [token, itemId] of Object.entries(equipment)) {
+    const modelKey = MODEL_KEY_BY_ITEM_ID[itemId];
+    if (modelKey) {
+      nextEquipment[token] = modelKey;
+    }
   }
   writeLocalRacerEquipment(nextEquipment);
 }
 
-export async function getRacerShopState() {
-  const sessionToken = getLoginSessionToken();
-  if (!sessionToken) {
-    return {
-      items: [
-        {
-          id: ADA_SLOTH_SHOP_ITEM.id,
-          name: ADA_SLOTH_SHOP_ITEM.name,
-          token_symbol: ADA_SLOTH_SHOP_ITEM.tokenSymbol,
-          model_key: ADA_SLOTH_SHOP_ITEM.modelKey,
-          price_points: ADA_SLOTH_SHOP_ITEM.pricePoints,
-          asset_url: ADA_SLOTH_SHOP_ITEM.assetUrl,
-          purchased: false,
-          equipped: readLocalRacerEquipment().ADA === SHOP_MODEL_KEY_SLOTH
-        }
-      ],
-      equipment: readLocalRacerEquipment(),
-      pointsBalance: null
-    } satisfies RacerShopState;
+function getLocalRacerShopState(seedPoints?: number | null) {
+  const equipment = readLocalRacerEquipment();
+  return {
+    items: fallbackItems(equipment),
+    equipment,
+    pointsBalance: readLocalShopPoints(seedPoints)
+  } satisfies RacerShopState;
+}
+
+function findCatalogItem(itemId: string) {
+  return SHOP_CATALOG.find((item) => item.id === itemId || item.modelKey === itemId) ?? null;
+}
+
+function buyLocalRacerShopItem(itemId: string, seedPoints?: number | null) {
+  const item = findCatalogItem(itemId);
+  if (!item) throw new Error("Shop item not found.");
+
+  const purchases = readLocalRacerPurchases();
+  const alreadyPurchased = purchases.includes(item.id);
+  const currentPoints = readLocalShopPoints(seedPoints);
+  let nextPoints = currentPoints;
+
+  if (!alreadyPurchased) {
+    if (currentPoints < item.pricePoints) throw new Error("Not enough points.");
+    nextPoints = currentPoints - item.pricePoints;
+    writeLocalRacerPurchases([...purchases, item.id]);
+    writeLocalShopPoints(nextPoints);
   }
 
-  const { data, error } = await supabase.rpc("get_racer_shop_state", {
-    requested_session_token: sessionToken
-  });
-  if (error) throw toError(error, "Shop could not be loaded. Apply supabase/racer_shop.sql first.");
+  const equipment = readLocalRacerEquipment();
+  return {
+    purchased_item_id: item.id,
+    points_balance: nextPoints,
+    purchased: true,
+    equipped: equipment[item.tokenSymbol] === item.modelKey || equipment[item.tokenSymbol] === item.id
+  };
+}
 
-  const row = firstRow<any>(data);
-  const equipment = normalizeObject(row?.equipment);
-  applyShopEquipmentToLocalStorage(equipment);
+function equipLocalRacerShopItem(itemId: string | null, tokenSymbol?: string) {
+  const cleanToken = tokenSymbol?.trim().toUpperCase();
+  if (!cleanToken) throw new Error("Unknown racer token.");
+
+  const equipment = readLocalRacerEquipment();
+  if (!itemId || itemId === "default") {
+    delete equipment[cleanToken];
+    writeLocalRacerEquipment(equipment);
+    return { equipment };
+  }
+
+  const item = findCatalogItem(itemId);
+  if (!item) throw new Error("Shop item not found.");
+  if (item.tokenSymbol !== cleanToken) throw new Error(`This shop item can only be equipped on ${item.tokenSymbol}.`);
+  if (!readLocalRacerPurchases().includes(item.id)) throw new Error("Buy this model before equipping it.");
+
+  equipment[cleanToken] = item.modelKey;
+  writeLocalRacerEquipment(equipment);
+  return { equipment };
+}
+
+function shouldUseLocalShop(sessionToken: string | null) {
+  return FORCE_LOCAL_SHOP || !sessionToken;
+}
+
+function mergeRemoteShopState(row: any) {
+  const remoteEquipment = normalizeObject(row?.equipment);
+  applyShopEquipmentToLocalStorage(remoteEquipment);
+
+  const equipment = readLocalRacerEquipment();
+  const localPurchases = readLocalRacerPurchases();
+  const remoteItems = normalizeArray<RacerShopItem>(row?.items);
+  const remotePurchasedIds = remoteItems.filter((item) => item.purchased).map((item) => item.id);
+  const purchases = Array.from(new Set([...localPurchases, ...remotePurchasedIds]));
+  writeLocalRacerPurchases(purchases);
+
+  const items = SHOP_CATALOG.map((catalogItem) => {
+    const remoteItem = remoteItems.find((item) => item.id === catalogItem.id);
+    const purchased = Boolean(remoteItem?.purchased) || purchases.includes(catalogItem.id);
+    const equipped =
+      Boolean(remoteItem?.equipped) ||
+      equipment[catalogItem.tokenSymbol] === catalogItem.modelKey ||
+      equipment[catalogItem.tokenSymbol] === catalogItem.id;
+
+    return {
+      id: catalogItem.id,
+      name: remoteItem?.name ?? catalogItem.name,
+      token_symbol: remoteItem?.token_symbol ?? catalogItem.tokenSymbol,
+      model_key: remoteItem?.model_key ?? catalogItem.modelKey,
+      price_points: Number(remoteItem?.price_points ?? catalogItem.pricePoints),
+      asset_url: remoteItem?.asset_url ?? catalogItem.assetUrl,
+      purchased,
+      equipped
+    };
+  });
 
   return {
-    items: normalizeArray<RacerShopItem>(row?.items),
+    items,
     equipment,
     pointsBalance: Number.isFinite(Number(row?.points_balance)) ? Number(row.points_balance) : null
   } satisfies RacerShopState;
 }
 
-export async function buyRacerShopItem(itemId = SHOP_ITEM_ID_ADA_SLOTH) {
+export async function getRacerShopState(seedPoints?: number | null) {
   const sessionToken = getLoginSessionToken();
-  if (!sessionToken) throw new Error("Login required before buying shop items.");
+  if (shouldUseLocalShop(sessionToken)) return getLocalRacerShopState(seedPoints);
+
+  const { data, error } = await supabase.rpc("get_racer_shop_state", {
+    requested_session_token: sessionToken
+  });
+  if (error) return getLocalRacerShopState(seedPoints);
+
+  const row = firstRow<any>(data);
+  return mergeRemoteShopState(row);
+}
+
+export async function buyRacerShopItem(itemId: string, seedPoints?: number | null) {
+  const sessionToken = getLoginSessionToken();
+  if (shouldUseLocalShop(sessionToken)) return buyLocalRacerShopItem(itemId, seedPoints);
 
   const { data, error } = await supabase.rpc("buy_racer_shop_item", {
     requested_session_token: sessionToken,
     requested_item_id: itemId
   });
-  if (error) throw toError(error, "Shop purchase failed.");
-  return firstRow<{ purchased_item_id: string; points_balance: number; purchased: boolean; equipped: boolean }>(data);
+  if (error) return buyLocalRacerShopItem(itemId, seedPoints);
+  const row = firstRow<{ purchased_item_id: string; points_balance: number; purchased: boolean; equipped: boolean }>(data);
+  const item = findCatalogItem(row?.purchased_item_id ?? itemId);
+  if (item) writeLocalRacerPurchases([...readLocalRacerPurchases(), item.id]);
+  return row;
 }
 
-export async function equipRacerShopItem(itemId = SHOP_ITEM_ID_ADA_SLOTH) {
+export async function equipRacerShopItem(itemId: string, tokenSymbol?: string) {
   const sessionToken = getLoginSessionToken();
-  if (!sessionToken) throw new Error("Login required before equipping shop items.");
+
+  const resolvedToken = tokenSymbol ?? TOKEN_BY_ITEM_ID[itemId];
+  if (!resolvedToken) throw new Error("Unknown shop item.");
+  if (shouldUseLocalShop(sessionToken)) return equipLocalRacerShopItem(itemId, resolvedToken);
 
   const { data, error } = await supabase.rpc("equip_racer_shop_item", {
     requested_session_token: sessionToken,
-    requested_token_symbol: "ADA",
+    requested_token_symbol: resolvedToken,
     requested_item_id: itemId
   });
-  if (error) throw toError(error, "Shop item could not be equipped.");
+  if (error) return equipLocalRacerShopItem(itemId, resolvedToken);
   const row = firstRow<{ equipment: Record<string, string> }>(data);
   applyShopEquipmentToLocalStorage(normalizeObject(row?.equipment));
   return row;
 }
 
-export async function unequipAdaShopItem() {
+export async function unequipRacerShopItem(tokenSymbol: string) {
   const sessionToken = getLoginSessionToken();
-  if (!sessionToken) throw new Error("Login required before changing shop items.");
+  if (shouldUseLocalShop(sessionToken)) return equipLocalRacerShopItem(null, tokenSymbol);
 
   const { data, error } = await supabase.rpc("equip_racer_shop_item", {
     requested_session_token: sessionToken,
-    requested_token_symbol: "ADA",
+    requested_token_symbol: tokenSymbol,
     requested_item_id: null
   });
-  if (error) throw toError(error, "Shop item could not be changed.");
+  if (error) return equipLocalRacerShopItem(null, tokenSymbol);
   const row = firstRow<{ equipment: Record<string, string> }>(data);
   applyShopEquipmentToLocalStorage(normalizeObject(row?.equipment));
   return row;
+}
+
+/** @deprecated Use unequipRacerShopItem("ADA") */
+export async function unequipAdaShopItem() {
+  return unequipRacerShopItem("ADA");
 }

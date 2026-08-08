@@ -1,4 +1,4 @@
-import { getLoginSession, supabase } from "./src/supabaseClient.js?v=5";
+import { getLoginSession, supabase } from "./src/supabaseClient.js?v=8";
 
 const headerPointsEl = document.querySelector("#headerPoints");
 const accountLink = document.querySelector("#accountLink");

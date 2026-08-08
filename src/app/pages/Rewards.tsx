@@ -422,7 +422,14 @@ export function Rewards() {
       setIsStakingAction(true);
       const row = await stakeRialo(value);
       applyStakingMutationRow(row);
-      setStakingMessage(`Staked ${value.toLocaleString()} $RIALO. Earning rate is now ${((stakedRialo + value) * earningRatePerRialoPerDay).toLocaleString()} pts/day.`);
+      setStakingNow(Date.now());
+      const settled = Number(row?.points_awarded ?? 0);
+      const nextStaked = Number(row?.staked_rialo ?? stakedRialo + value);
+      setStakingMessage(
+        settled > 0
+          ? `Settled ${settled.toLocaleString()} pts, then staked ${value.toLocaleString()} $RIALO. Now earning ${(nextStaked * earningRatePerRialoPerDay).toLocaleString()} pts/day.`
+          : `Staked ${value.toLocaleString()} $RIALO. Accrual restarted at 0. Now earning ${(nextStaked * earningRatePerRialoPerDay).toLocaleString()} pts/day.`
+      );
     } catch (error) {
       console.error("Stake $RIALO failed", error);
       setStakingMessage(`Could not stake $RIALO: ${getErrorMessage(error, "Unknown staking error.")}`);
@@ -475,7 +482,13 @@ export function Rewards() {
       setIsStakingAction(true);
       const row = await unstakeRialo(value);
       applyStakingMutationRow(row);
-      setStakingMessage(`Unstaked ${value.toLocaleString()} $RIALO.`);
+      setStakingNow(Date.now());
+      const settled = Number(row?.points_awarded ?? 0);
+      setStakingMessage(
+        settled > 0
+          ? `Settled ${settled.toLocaleString()} pts, then unstaked ${value.toLocaleString()} $RIALO. Accrual restarted at 0.`
+          : `Unstaked ${value.toLocaleString()} $RIALO. Accrual restarted at 0.`
+      );
     } catch (error) {
       console.error("Unstake $RIALO failed", error);
       setStakingMessage(`Could not unstake $RIALO: ${getErrorMessage(error, "Unknown unstaking error.")}`);

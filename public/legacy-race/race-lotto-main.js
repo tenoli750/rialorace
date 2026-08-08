@@ -1,4 +1,4 @@
-import { getLoginSession } from "./src/supabaseClient.js?v=5";
+import { getLoginSession } from "./src/supabaseClient.js?v=8";
 import { createRaceLottoTicket, fetchRaceLottoDashboard, settleRaceLottoRound } from "./src/raceLottoStore.js?v=1";
 import { TOKEN_LEGEND, expandMarketTokens, getMarketById, formatMarketTitle, formatMarketSymbols } from "./src/markets.js";
 

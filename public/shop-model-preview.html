@@ -45,6 +45,7 @@
       import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.174.0/examples/jsm/controls/OrbitControls.js";
 
       const src = new URLSearchParams(window.location.search).get("src") || "/legacy-race/assets/sloth.glb";
+      const isAnimeGirl = src.includes("doge-anime-girl.glb");
       const fallback = document.querySelector("#fallback");
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x171310);
@@ -100,7 +101,8 @@
           size = box.getSize(new THREE.Vector3());
         }
 
-        const scale = 2.15 / Math.max(size.x, size.y, size.z, 0.001);
+        const modelScaleMultiplier = isAnimeGirl ? 0.8 : 1;
+        const scale = (2.15 / Math.max(size.x, size.y, size.z, 0.001)) * modelScaleMultiplier;
         model.scale.setScalar(scale);
         box = new THREE.Box3().setFromObject(model);
         const center = box.getCenter(new THREE.Vector3());

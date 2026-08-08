@@ -1,76 +1,86 @@
 import { Link, useLocation } from "react-router";
+import { CircleUserRound, Crosshair } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+
+const NAV_ITEMS: Array<[string, string]> = [
+  ["HOME", "/home"],
+  ["LIVE MARKETS", "/live-markets.html"],
+  ["REPLAY", "/replay-menu.html"],
+  ["LOTTO", "/race-lotto"],
+  ["SLOT", "/slot"],
+  ["SHOP", "/shop"],
+  ["RANKINGS", "/community.html"],
+  ["REWARDS", "/rewards.html"],
+  ["HISTORY", "/my-bets.html"],
+];
 
 export function Header() {
   const location = useLocation();
   const { user, points } = useAuth();
 
   const isActive = (path: string) => {
-    if (path === "/" && location.pathname === "/") return true;
-    if (path !== "/" && location.pathname.startsWith(path)) return true;
-    return false;
+    if (path === "/home") {
+      return location.pathname === "/home" || location.pathname === "/home.html";
+    }
+    if (path === "/slot") {
+      return (
+        location.pathname.startsWith("/slot") ||
+        location.pathname.startsWith("/rwa-slot") ||
+        location.pathname.startsWith("/paxg-slot")
+      );
+    }
+    if (path === "/race-lotto") {
+      return location.pathname.startsWith("/race-lotto") || location.pathname.startsWith("/lotto");
+    }
+    if (path === "/live-markets.html") {
+      return location.pathname.startsWith("/live-markets");
+    }
+    if (path === "/replay-menu.html") {
+      return location.pathname.startsWith("/replay-menu") || location.pathname.startsWith("/replay");
+    }
+    if (path === "/community.html") {
+      return location.pathname.startsWith("/community") || location.pathname.startsWith("/rankings");
+    }
+    if (path === "/rewards.html") {
+      return location.pathname.startsWith("/rewards");
+    }
+    if (path === "/my-bets.html") {
+      return location.pathname.startsWith("/my-bets") || location.pathname.startsWith("/history");
+    }
+    if (path === "/shop") {
+      return location.pathname.startsWith("/shop");
+    }
+    return location.pathname === path || location.pathname === `${path}.html`;
   };
 
-  const navItems = [
-    { path: "/main-menu.html", label: "Live Markets" },
-    { path: "/replay-menu.html", label: "Replay" },
-    { path: "/race-lotto", label: "Lotto" },
-    { path: "/shop", label: "Shop" },
-    { path: "/community.html", label: "Rankings" },
-    { path: "/rewards.html", label: "Rewards" },
-    { path: "/my-bets.html", label: "History" },
-  ];
-
   return (
-    <header className="bg-white border-b border-[#fed7aa]">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
-        <Link to="/main-menu.html" className="inline-flex items-center mb-4" aria-label="Rialo Race">
-          <img
-            src="/assets/create_a_logo_in_this_exact_layout_style_use_the_u_019d8db9-c7d9-75dc-ad2e-f5463423c3be-removebg-preview.png"
-            alt="Rialo Race"
-            className="h-16 w-auto"
-          />
-        </Link>
+    <header className="landing-header">
+      <Link to="/home" className="brand" aria-label="Rialo Race home">
+        <strong>RIALO RACE</strong>
+      </Link>
 
-        <nav className="flex flex-wrap items-center gap-2">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`px-4 py-2 rounded-md text-sm transition-colors ${
-                isActive(item.path)
-                  ? "bg-[#9a3412] text-white"
-                  : "text-[#9a3412] hover:bg-[#ffedd5]"
-              }`}
-            >
-              {item.label}
+      <nav aria-label="Primary navigation">
+        <Link className={`nav-home${isActive("/home") ? " active" : ""}`} to="/home">
+          HOME
+        </Link>
+        <div className="nav-scroll">
+          {NAV_ITEMS.filter(([, path]) => path !== "/home").map(([label, path]) => (
+            <Link key={path} to={path} className={isActive(path) ? "active" : undefined}>
+              {label}
             </Link>
           ))}
+        </div>
+      </nav>
 
-          <div className="flex-1" />
-
-          <Link
-            to="/points.html"
-            className={`px-3 py-2 rounded-md text-sm transition-colors ${
-              isActive("/points")
-                ? "bg-[#9a3412] text-white"
-                : "text-[#9a3412] hover:bg-[#ffedd5]"
-            }`}
-          >
-            {user ? `Points: ${points.toLocaleString()}` : "Points --"}
-          </Link>
-
-          <Link
-            to={user ? "/profile.html" : "/login.html"}
-            className={`px-4 py-2 rounded-md text-sm transition-colors ${
-              isActive(user ? "/profile.html" : "/login.html")
-                ? "bg-[#9a3412] text-white"
-                : "text-[#9a3412] hover:bg-[#ffedd5]"
-            }`}
-          >
-            {user ? "Profile" : "Login"}
-          </Link>
-        </nav>
+      <div className="account-actions">
+        <Link className="points" to="/points.html">
+          POINTS: <b>{user ? points.toLocaleString() : "--"}</b>
+          <Crosshair size={16} />
+        </Link>
+        <Link className="profile" to={user ? "/profile.html" : "/login.html"}>
+          <CircleUserRound size={18} />
+          {user ? "PROFILE" : "LOGIN"}
+        </Link>
       </div>
     </header>
   );

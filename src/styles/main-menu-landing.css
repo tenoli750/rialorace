@@ -1,0 +1,205 @@
+.rialo-landing {
+  --page-bg: #060708; --panel-bg: #0d0f11; --panel-bg-soft: #111315;
+  --border: rgba(255,255,255,.10); --border-hover: rgba(255,122,0,.55);
+  --orange: #ff7a00; --orange-soft: rgba(255,122,0,.16); --text-main: #f2f3f4;
+  --text-muted: #8f949b; --positive: #83c552; --negative: #e65a46;
+  min-height: 100vh; overflow-x: hidden; background: var(--page-bg); color: var(--text-main);
+  font-family: 'Barlow Condensed', sans-serif; padding: 0 clamp(16px, 2.8vw, 48px) 14px;
+}
+.rialo-landing * { box-sizing: border-box; }
+.rialo-landing a { color: inherit; text-decoration: none; }
+.rialo-landing .landing-header { height: clamp(72px, 9vh, 96px); display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 26px; max-width: 1800px; margin: auto; }
+.rialo-landing .brand { display: inline-flex; align-items: center; font-family: 'Black Ops One', sans-serif; font-size: 22px; line-height: 1; letter-spacing: .06em; white-space: nowrap; color: var(--text-main); }
+.rialo-landing .brand strong { display: block; font-weight: inherit; letter-spacing: inherit; }
+.rialo-landing .brand-mark { display: none; }
+.rialo-landing nav { display: flex; align-items: center; justify-content: center; gap: clamp(14px, 1.8vw, 28px); min-width: 0; }
+.rialo-landing nav .nav-home { position: relative; flex: 0 0 auto; padding: 29px 0 24px; color: #f2f3f4; font-size: 15px; letter-spacing: .045em; }
+.rialo-landing nav .nav-scroll { display: flex; align-items: center; gap: clamp(14px, 1.8vw, 28px); min-width: 0; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+.rialo-landing nav .nav-scroll::-webkit-scrollbar { display: none; }
+.rialo-landing nav a { position: relative; flex: 0 0 auto; padding: 29px 0 24px; color: #f2f3f4; font-size: 15px; letter-spacing: .045em; }
+.rialo-landing nav a:hover, .rialo-landing nav a.active { color: var(--orange); }
+.rialo-landing nav a.active::after { content: ''; position: absolute; left: 0; right: 0; bottom: 13px; height: 1px; background: var(--orange); box-shadow: 0 0 9px rgba(255,122,0,.35); }
+.rialo-landing .account-actions { display: flex; gap: 12px; }
+.rialo-landing .account-actions a { height: 48px; padding: 0 18px; border: 1px solid var(--border); border-radius: 11px; display: flex; align-items: center; gap: 10px; color: #aeb1b5; white-space: nowrap; font-size: 14px; }
+.rialo-landing .account-actions b { color: var(--orange); font-family: 'Share Tech Mono', monospace; }
+.rialo-landing main, .rialo-landing .market-feed { max-width: 1800px; margin-inline: auto; }
+.rialo-landing .landing-hero { --hero-art-height: clamp(400px,29vw,430px); --hero-bottom-space: 36px; position: relative; height: calc(var(--hero-art-height) + var(--hero-bottom-space)); min-height: calc(var(--hero-art-height) + var(--hero-bottom-space)); overflow: hidden; isolation: isolate; border: 1px solid rgba(255,255,255,.09); border-radius: 14px; background: #020202; }
+.rialo-landing .landing-hero__ambient { position: absolute; z-index: 0; top: 50%; right: 0; width: auto; height: 120%; max-width: none; display: block; transform: translateY(-50%) scale(1.04); transform-origin: right center; opacity: .24; filter: blur(18px) brightness(.72); -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.28) 10%, #000 30%, #000 100%); mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.28) 10%, #000 30%, #000 100%); -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; pointer-events: none; user-select: none; }
+.rialo-landing .landing-hero__art { position: absolute; z-index: 1; top: 0; right: 0; width: auto; height: calc(var(--hero-art-height) + 52px); max-width: none; display: block; transform: none; transform-origin: right center; opacity: 1; visibility: visible; object-fit: unset; object-position: unset; filter: none; -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.15) 5%, rgba(0,0,0,.45) 10%, rgba(0,0,0,.75) 15%, #000 22%, #000 100%); mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.15) 5%, rgba(0,0,0,.45) 10%, rgba(0,0,0,.75) 15%, #000 22%, #000 100%); -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; clip-path: none; mix-blend-mode: normal; pointer-events: none; user-select: none; }
+.rialo-landing .landing-hero__content { position: relative; z-index: 2; width: min(39%,590px); height: var(--hero-art-height); min-height: var(--hero-art-height); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: clamp(38px,3.5vw,58px) clamp(42px,4vw,70px); background: transparent; }
+.rialo-landing .landing-hero__content h1 { margin: 0; font-family: "Michroma", "Arial", sans-serif; font-size: clamp(36px,3vw,58px); font-weight: 400; line-height: 1.18; letter-spacing: -.045em; text-transform: uppercase; color: #f2f2f2; }
+.rialo-landing .landing-hero__content h1 span { display: block; white-space: nowrap; }
+.rialo-landing .landing-hero__content p { margin: 20px 0 0; max-width: 440px; font-family: "Rajdhani", "Arial", sans-serif; font-size: clamp(15px,1vw,17px); font-weight: 500; line-height: 1.5; letter-spacing: .01em; color: rgba(235,238,241,.72); }
+.rialo-landing .primary-cta { display: inline-flex; align-items: center; gap: 16px; margin-top: 22px; padding: 12px 18px; border: 1px solid var(--orange); border-radius: 10px; color: var(--orange); font-size: 14px; box-shadow: 0 0 14px rgba(255,122,0,.12); }
+.rialo-landing .landing-hero__button { font-family: "Rajdhani", "Arial", sans-serif; font-size: 15px; font-weight: 500; line-height: 1; letter-spacing: .02em; text-transform: uppercase; }
+.rialo-landing .landing-hero__button span { font-family: inherit; }
+.rialo-landing .primary-cta:hover { background: var(--orange-soft); }
+.rialo-landing .landing-panel { border: 1px solid var(--border); border-radius: 14px; padding: 13px 18px 17px; margin-top: 18px; background: linear-gradient(160deg, rgba(17,19,21,.72), rgba(8,9,10,.8)); }
+.rialo-landing .section-head { display: flex; align-items: center; justify-content: space-between; min-height: 34px; margin-bottom: 10px; gap: 12px; flex-wrap: wrap; }
+.rialo-landing .section-head h2 { margin: 0; font-size: 15px; font-weight: 500; letter-spacing: .05em; display: flex; align-items: center; gap: 10px; }
+.rialo-landing .section-head h2 span, .rialo-landing .market-feed strong span { width: 7px; height: 7px; border-radius: 50%; background: var(--orange); }
+.rialo-landing .section-head__note { margin-left: 4px; color: var(--text-muted); font-style: normal; font-size: 11px; letter-spacing: .08em; }
+.rialo-landing .section-head__actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rialo-landing .section-head__actions > a, .rialo-landing .section-head > a { border: 1px solid var(--border); border-radius: 8px; padding: 7px 13px; display: flex; align-items: center; gap: 12px; color: #aeb1b5; font-size: 12px; }
+.rialo-landing .section-head__actions > a:hover, .rialo-landing .section-head > a:hover { border-color: var(--border-hover); color: var(--text-main); }
+.rialo-landing .category-toggle { display: inline-flex; gap: 6px; }
+.rialo-landing .category-toggle button { border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; background: var(--panel-bg); color: #aeb1b5; font-family: inherit; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+.rialo-landing .category-toggle button:hover { border-color: var(--border-hover); color: var(--text-main); }
+.rialo-landing .category-toggle button.active { border-color: var(--orange); background: var(--orange); color: #060708; }
+.rialo-landing .top-racers__status { padding: 28px 8px; text-align: center; color: var(--text-muted); font-size: 13px; letter-spacing: .04em; }
+.rialo-landing .racer-grid { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 12px; }
+.rialo-landing .racer-card { position: relative; display: flex; align-items: center; gap: 15px; min-width: 0; height: 94px; border: 1px solid var(--border); border-radius: 11px; padding: 10px 14px; background: var(--panel-bg-soft); }
+.rialo-landing .racer-card:hover { border-color: var(--border-hover); }
+.rialo-landing .racer-rank {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  color: var(--orange);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .06em;
+}
+.rialo-landing .portrait { width: 62px; height: 62px; flex: 0 0 62px; border: 1px solid #5c6166; border-bottom-color: var(--orange); border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: #090a0b; }
+.rialo-landing .portrait img { width: 88%; height: 88%; object-fit: contain; }
+.rialo-landing .racer-copy { flex: 1; min-width: 0; }
+.rialo-landing .racer-copy strong, .rialo-landing .racer-copy small { display: block; text-transform: uppercase; }
+.rialo-landing .racer-copy strong { font-size: 17px; }
+.rialo-landing .racer-copy small { margin-top: 3px; color: #a2a6aa; font-size: 12px; }
+.rialo-landing .racer-copy i { display: block; height: 5px; margin-top: 10px; border: 1px solid var(--border); border-radius: 99px; overflow: hidden; }
+.rialo-landing .racer-copy i b { display: block; height: 100%; background: var(--orange); border-radius: inherit; transition: filter .2s; }
+.rialo-landing .racer-card:hover i b { filter: brightness(1.25); }
+.rialo-landing .track-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
+.rialo-landing .track-card { position: relative; min-width: 0; border: 1px solid var(--border); border-radius: 11px; padding: 15px; background: var(--panel-bg-soft); overflow: hidden; }
+.rialo-landing .track-card:hover { border-color: var(--border-hover); }
+.rialo-landing .track-title { color: var(--orange); font-family: 'Share Tech Mono', monospace; }
+.rialo-landing .track-card h3 { margin: 7px 100px 12px 0; font-size: 17px; font-weight: 500; }
+.rialo-landing .featured-track__badge { position: absolute; z-index: 1; top: 16px; right: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none; }
+.rialo-landing .featured-track__badge-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid rgba(255,149,0,.22); border-radius: 999px; background: rgba(255,149,0,.06); box-shadow: 0 0 0 1px rgba(255,149,0,.04) inset, 0 0 12px rgba(255,149,0,.08); }
+.rialo-landing .featured-track__badge-label { color: rgba(255,170,40,.92); font-size: 10px; font-weight: 600; line-height: 1; letter-spacing: .12em; text-transform: uppercase; }
+.rialo-landing .featured-track__badge-sub { color: rgba(230,235,240,.6); font-size: 10px; font-weight: 500; line-height: 1; letter-spacing: .08em; text-transform: uppercase; }
+.rialo-landing .featured-track__badge-bars { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.rialo-landing .featured-track__badge-bars span { display: block; height: 2px; border-radius: 999px; background: linear-gradient(90deg,rgba(255,149,0,.14),rgba(255,149,0,.88)); box-shadow: 0 0 8px rgba(255,149,0,.18); }
+.rialo-landing .featured-track__badge-bars span:nth-child(1) { width: 44px; }
+.rialo-landing .featured-track__badge-bars span:nth-child(2) { width: 30px; opacity: .82; }
+.rialo-landing .featured-track__badge-bars span:nth-child(3) { width: 18px; opacity: .68; }
+.rialo-landing .featured-track-card::after { content: ''; position: absolute; top: 0; right: 0; width: 88px; height: 88px; border-top-right-radius: inherit; background: radial-gradient(circle at top right,rgba(255,149,0,.10) 0%,rgba(255,149,0,.04) 28%,transparent 68%); pointer-events: none; }
+.rialo-landing .entrants { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 5px; }
+.rialo-landing .entrants span { display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; padding: 5px 3px; border: 1px solid var(--border); border-radius: 7px; font-size: 12px; }
+.rialo-landing .entrants img { width: 22px; height: 22px; object-fit: contain; border-radius: 50%; }
+.rialo-landing .market-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 54px;
+  margin-top: 12px;
+  padding: 10px 16px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: #9fa3a8;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  overflow: hidden;
+}
+.rialo-landing .market-feed__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.rialo-landing .market-feed strong {
+  color: var(--orange);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.rialo-landing .market-feed__lanes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.rialo-landing .market-feed__lane {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.rialo-landing .market-feed__lane-label {
+  color: var(--orange);
+  font-size: 11px;
+  letter-spacing: .08em;
+  font-weight: 700;
+}
+.rialo-landing .market-feed__viewport {
+  min-width: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent 0%, #000 4%, #000 96%, transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 4%, #000 96%, transparent 100%);
+}
+.rialo-landing .market-feed__track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+.rialo-landing .market-feed__group {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+}
+.rialo-landing .market-feed__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 22px;
+  border-right: 1px solid rgba(255,255,255,.08);
+  white-space: nowrap;
+}
+.rialo-landing .market-feed__item b {
+  color: #f2f3f4;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+.rialo-landing .market-feed__item em {
+  color: #c5c9ce;
+  font-style: normal;
+}
+.rialo-landing .market-feed__item em.is-flash-up {
+  animation: market-feed-price-flash-up .55s ease;
+}
+.rialo-landing .market-feed__item em.is-flash-down {
+  animation: market-feed-price-flash-down .55s ease;
+}
+.rialo-landing .market-feed__item i {
+  font-style: normal;
+  color: #8f949b;
+}
+.rialo-landing .market-feed__item.is-up i { color: var(--positive); }
+.rialo-landing .market-feed__item.is-down i { color: var(--negative); }
+.rialo-landing .market-feed__sys {
+  flex-shrink: 0;
+  color: #9fa3a8;
+}
+.rialo-landing .market-feed__sys b { color: var(--orange); }
+@keyframes market-feed-price-flash-up {
+  0% { color: var(--positive); text-shadow: 0 0 10px rgba(131,197,82,.55); }
+  100% { color: #c5c9ce; text-shadow: none; }
+}
+@keyframes market-feed-price-flash-down {
+  0% { color: var(--negative); text-shadow: 0 0 10px rgba(230,90,70,.55); }
+  100% { color: #c5c9ce; text-shadow: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rialo-landing .market-feed__track { transform: none !important; }
+  .rialo-landing .market-feed__item em.is-flash-up,
+  .rialo-landing .market-feed__item em.is-flash-down { animation: none; }
+}
+.rialo-landing .market-feed .up { color: var(--positive); }
+.rialo-landing .market-feed .down { color: var(--negative); }
+@media (max-width: 1250px) { .rialo-landing .landing-header { grid-template-columns: 155px 1fr auto; gap: 12px; }.rialo-landing nav { justify-content: flex-start; gap: 20px; }.rialo-landing .account-actions .profile { padding-inline: 13px; }.rialo-landing .landing-hero { height: 400px; }.rialo-landing .landing-hero__content { width: min(42%,610px); padding-left: clamp(28px,3.6vw,52px); padding-right: 0; }.rialo-landing .landing-hero h1 { font-size: clamp(40px,4.2vw,52px); }.rialo-landing .portrait { width: 50px; height: 50px; flex-basis: 50px; }.rialo-landing .racer-card { padding-inline: 10px; gap: 9px; } }
+@media (max-width: 767px) { .rialo-landing .landing-header { height: auto; padding: 15px 0; grid-template-columns: 1fr auto; }.rialo-landing nav { grid-column: 1/-1; grid-row: 2; order: 3; }.rialo-landing nav a { padding: 8px 0 12px; }.rialo-landing nav a.active::after { bottom: 3px; }.rialo-landing .landing-hero { height: 610px; }.rialo-landing .landing-hero__content { width: 100%; min-height: auto; justify-content: flex-start; padding: 38px clamp(24px,6vw,44px); }.rialo-landing .landing-hero h1 { font-size: clamp(38px,8.5vw,54px); }.rialo-landing .landing-hero h1 span { white-space: normal; }.rialo-landing .racer-grid { grid-template-columns: repeat(3,1fr); }.rialo-landing .track-grid { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 620px) { .rialo-landing { padding-inline: 12px; }.rialo-landing .brand { font-size: 17px; }.rialo-landing .account-actions .points { display: none; }.rialo-landing .landing-hero { height: 570px; }.rialo-landing .landing-hero__content { padding: 34px 22px; }.rialo-landing .landing-hero h1 { font-size: clamp(36px,11vw,48px); }.rialo-landing .landing-hero p br { display: none; }.rialo-landing .racer-grid, .rialo-landing .track-grid { grid-template-columns: 1fr; }.rialo-landing .racer-card { height: 86px; }.rialo-landing .section-head > a { padding-inline: 9px; }.rialo-landing .entrants span { font-size: 11px; } }

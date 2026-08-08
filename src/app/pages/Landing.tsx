@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Info, Play, Trophy } from "lucide-react";
+import { Dices, Info, Play, Trophy } from "lucide-react";
 import { Link } from "react-router";
 
 const aboutSections = [
@@ -72,6 +72,7 @@ function IntroVideo({ onDone }: { onDone: () => void }) {
         muted
         playsInline
         onEnded={onDone}
+        onError={onDone}
       />
       <button
         type="button"
@@ -147,7 +148,8 @@ function TitleScreen({ onAbout }: { onAbout: () => void }) {
       </div>
 
       <nav className="relative z-10 mx-auto grid w-full max-w-[520px] gap-2 sm:gap-4">
-        <MenuLink label="Enter APP" href="/main-menu.html" icon={Play} />
+        <MenuLink label="Enter APP" href="/home" icon={Play} />
+        <MenuLink label="Slot" href="/slot" icon={Dices} />
         <button
           type="button"
           onClick={onAbout}
@@ -246,7 +248,7 @@ function AboutScreen({ onBack }: { onBack: () => void }) {
 
           <section className="border border-[#5a2400] bg-black/70 p-5 text-center sm:p-7">
             <Link
-              to="/main-menu.html"
+              to="/home"
               className="mx-auto grid h-12 max-w-[360px] grid-cols-[40px_1fr_40px] items-center border border-[#ff7a00] bg-[#ff7a00]/10 px-4 text-xl uppercase text-[#ff9d00] shadow-[0_0_18px_rgba(255,122,0,0.35)] transition-colors hover:bg-[#ff7a00]/20 hover:text-[#ffd28a] sm:h-14 sm:text-3xl"
             >
               <Play className="h-5 w-5" />

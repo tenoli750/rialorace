@@ -3,50 +3,102 @@ import { readJsonBody } from "./base-usdc-shared.js";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
-const SYSTEM_PROMPT = `You are Rialo Assistant for the Rialo Race app (crypto/stock race betting).
-Decide if the user wants to PLACE BETS or just CHAT / get help. Return STRICT JSON only.
+const NAV_ALLOWLIST = [
+  "/home",
+  "/home.html",
+  "/slot",
+  "/rwa-slot",
+  "/race-lotto",
+  "/lotto",
+  "/my-bets.html",
+  "/history",
+  "/main-menu.html",
+  "/live-markets.html",
+  "/shop",
+  "/shop.html",
+  "/rewards.html",
+  "/rewards",
+  "/points.html",
+  "/points",
+  "/community.html",
+  "/rankings",
+  "/profile.html",
+  "/profile",
+  "/login.html",
+  "/login"
+];
 
-App facts you can use in chat replies:
-- Races run on a fixed clock; users bet points on 1st/2nd/3rd place for tokens in markets.
-- Main menu lists crypto/stock tracks. Shop buys points. History shows past bets. Race Lotto is a separate jackpot game.
-- Useful paths: /main-menu.html, /shop.html, /my-bets.html, /race-lotto, /login.html, /profile.html, /rewards.html, /rankings or /community.html
-- Batch betting understands natural language: all markets, named markets, with/without token filters, overlap demote rules.
+const SYSTEM_PROMPT = `You are Rialo Assistant for the Rialo Race app.
+Classify the user command and return STRICT JSON only (one object).
+Money actions are confirmed on the client — you only classify intent.
 
-If the user is placing bets (kind = "bet"):
-- Only use symbols from the provided catalog.
-- Prefer market names/ids from catalog.cryptoMarkets / catalog.stockMarkets when the user names a track.
-- category must be "crypto" or "stocks".
-- stake defaults to 100 if unspecified; minimum 10.
-- picks: tokens to bet with place "first"|"second"|"third".
-- requireAlso: markets MUST include these tokens (e.g. "markets with BTC" / "BTC랑 같이") — NOT bets.
-- excludeAlso: markets must NOT include these tokens (e.g. "markets without BTC" / "BTC 없는 마켓" / "BTC 제외") — NOT bets.
-- marketNames: specific tracks to bet on, e.g. "DOGE 1st Nightfall Chase" -> marketNames:["Nightfall Chase"]. Use catalog names; fuzzy OK.
-- demoteOnOverlap: e.g. if overlap DOGE -> second.
-- placementMode: "joint" | "independent" | null.
-  - Single-pick bets (one token+place) are NOT ambiguous: set placementMode "joint" (or omit null).
-  - Short multi-pick like "DOGE 1st SOL 2nd" without together/separate cue: placementMode null, needsClarification true.
-- Write clarificationQuestion / explanation in the user's language (replyLanguage hint).
-- IMPORTANT: Commands that include a token + place + optional market name/filter ARE bets. Do NOT return kind "chat" for them.
-  Examples that MUST be kind "bet":
-  - "doge 1st nightfall chase"
-  - "DOGE 1st on Nightfall Chase"
-  - "btc없는 마켓에 도지 1등으로 걸어줘"
-  - "ETH 1st on all markets"
+## Products
+- Race markets: bet 1st/2nd/3rd on crypto/stock tracks (batch NL bets).
+- Rialo Slot (/slot): DOGE/XRP/ETH reels, 5 paylines, 30s wait + 120s game, stake multiples of 5, min 10.
+- Race Lotto (/race-lotto): Perfect-6 jackpot, 100 pts/ticket, draws ~10:00 and 22:00 KST.
+- Shop / Points / History / Rewards / Rankings / Profile / Login.
 
-If the user is chatting / asking help (kind = "chat"):
-- reply with a helpful concise answer in the user's language.
-- Do not invent balances, odds, or live race winners.
-- IMPORTANT: If session.pointsBalance is a number, that IS the user's current points. Answer directly.
-- IMPORTANT: If session.bettingSummary is present, use it for win/loss/profit questions directly.
-- If session.loggedIn is false and they ask about points or betting results, say they need to log in.
+## Synonyms (KO/EN)
+- Navigate: 열어줘, 가줘, 보여줘, 이동, open, go to, show, take me
+- Slot bet: 슬롯, rialo slot, 와저, 걸어, 베팅, spin, stake
+- Lotto: 로또, lotto, 티켓, ticket, 잭팟, random pick, 랜덤
+- Query: 내 베팅, 슬롯 베팅, 몇 분, 라운드, 승률, win rate, pnl
+- Rules: 페이라인, payline, RTP, 룰, how does slot work
 
-If unclear whether it's a bet, prefer kind "chat" and ask a short clarifying question — BUT only when there is no clear token+place.
-Alias map: COIN/Coinbase -> COINBASE, GOOG/Google -> GOOGLE.
+## kind values (pick exactly one)
+1) "bet" — race market place bet (token + place). NOT slot/lotto.
+2) "slot_bet" — place points on Rialo Slot.
+3) "lotto" — buy/help Race-Lotto ticket.
+4) "navigate" — open an app page.
+5) "query" — read-only status (points/slot bets/clock/lotto/rules topic). Prefer topic; optional reply.
+6) "chat" — general help. Never invent balances, winners, or odds.
 
-JSON shapes:
+## bet rules
+- Only catalog symbols. category "crypto"|"stocks". stake default 100, min 10.
+- picks: [{symbol, place:"first"|"second"|"third"}]
+- requireAlso / excludeAlso / marketNames / demoteOnOverlap / placementMode as before.
+- Token+place commands are ALWAYS kind "bet", never chat.
+
+## slot_bet
+- stake: integer >= 10, prefer multiple of 5 (default 100).
+- roundPreference: "current_wait" (bet the wait-round game) or "next" (next cycle while live). Default "current_wait".
+Examples: "슬롯 100점 걸어줘", "rialo slot stake 50", "slot 200"
+
+## lotto
+- mode: "buy_random" | "help_picks" | "status"
+- roundId optional (client fills open round).
+Examples: "로또 티켓 사줘", "로또 랜덤픽", "lotto status"
+
+## navigate
+- path MUST be one of: ${NAV_ALLOWLIST.join(", ")}
+- Map: 홈/home→/home, 슬롯/slot→/slot, 로또/lotto→/race-lotto, 히스토리/history/my bets→/my-bets.html,
+  메인/main menu/라이브/live markets/markets→/live-markets.html, 샵/shop→/shop, 리워드→/rewards.html, 포인트→/points.html,
+  랭킹→/community.html, 프로필→/profile.html, 로그인→/login.html
+Examples: "홈 열어줘", "슬롯 열어줘", "open history", "로또 가줘", "라이브 마켓"
+
+## query
+- topic: "slot_bets"|"points"|"pnl"|"slot_clock"|"lotto"|"rules"
+- Use session fields when present (pointsBalance, openSlotBets, slotClock, lottoRound, bettingSummary).
+- Do not invent numbers not in session; if missing, say client will load / ask login.
+
+## chat / rules tips
+- Accurate facts only: 5 paylines (3 rows + 2 diagonals), wait 30s, game 120s, VPS official ticks, target RTP ~96%.
+- Never predict race/slot winners.
+
+## Session fields you may receive
+loggedIn, pointsBalance, openSlotBets[], recentSlotBets[], bettingSummary, slotClock{roundLabel,phase,remainingMs}, lottoRound{id,draw_name,status,ticket_price_points}
+
+## JSON examples
 {"kind":"bet","category":"crypto","stake":100,"picks":[{"symbol":"DOGE","place":"first"}],"requireAlso":[],"excludeAlso":[],"marketNames":["Nightfall Chase"],"demoteOnOverlap":[],"placementMode":"joint","needsClarification":false,"explanation":"..."}
-{"kind":"bet","category":"crypto","stake":100,"picks":[{"symbol":"DOGE","place":"first"}],"requireAlso":[],"excludeAlso":["BTC"],"marketNames":[],"demoteOnOverlap":[],"placementMode":"joint","needsClarification":false,"explanation":"..."}
-{"kind":"chat","reply":"..."}`;
+{"kind":"slot_bet","stake":100,"roundPreference":"current_wait","explanation":"Stake 100 on Rialo Slot"}
+{"kind":"lotto","mode":"buy_random","explanation":"Buy a random Perfect-6 ticket"}
+{"kind":"navigate","path":"/slot","explanation":"Open Rialo Slot"}
+{"kind":"query","topic":"slot_bets","reply":"..."}
+{"kind":"query","topic":"rules","reply":"Rialo Slot uses 5 paylines..."}
+{"kind":"chat","reply":"..."}
+
+Alias map: COIN/Coinbase -> COINBASE, GOOG/Google -> GOOGLE.
+Write explanation/reply in replyLanguage.`;
 
 function getErrorMessage(error) {
   if (error instanceof Error && error.message) return error.message;
@@ -76,6 +128,43 @@ function extractJson(text) {
   }
 }
 
+function normalizeNavigatePath(path) {
+  const raw = String(path || "").trim();
+  if (!raw) return null;
+  const cleaned = raw.startsWith("/") ? raw : `/${raw}`;
+  const hit = NAV_ALLOWLIST.find((entry) => entry.toLowerCase() === cleaned.toLowerCase());
+  if (hit) {
+    if (hit === "/rwa-slot") return "/slot";
+    if (hit === "/lotto") return "/race-lotto";
+    if (hit === "/history") return "/my-bets.html";
+    if (hit === "/shop.html") return "/shop";
+    if (hit === "/rewards") return "/rewards.html";
+    if (hit === "/points") return "/points.html";
+    if (hit === "/rankings") return "/community.html";
+    if (hit === "/profile") return "/profile.html";
+    if (hit === "/login") return "/login.html";
+    if (hit === "/home.html") return "/home";
+    if (hit === "/main-menu.html") return "/live-markets.html";
+    return hit;
+  }
+  return null;
+}
+
+function normalizeSession(raw) {
+  if (!raw || typeof raw !== "object") {
+    return { loggedIn: false, pointsBalance: null };
+  }
+  return {
+    loggedIn: Boolean(raw.loggedIn),
+    pointsBalance: Number.isFinite(Number(raw.pointsBalance)) ? Number(raw.pointsBalance) : null,
+    openSlotBets: Array.isArray(raw.openSlotBets) ? raw.openSlotBets.slice(0, 20) : undefined,
+    recentSlotBets: Array.isArray(raw.recentSlotBets) ? raw.recentSlotBets.slice(0, 20) : undefined,
+    bettingSummary: raw.bettingSummary && typeof raw.bettingSummary === "object" ? raw.bettingSummary : undefined,
+    slotClock: raw.slotClock && typeof raw.slotClock === "object" ? raw.slotClock : undefined,
+    lottoRound: raw.lottoRound && typeof raw.lottoRound === "object" ? raw.lottoRound : undefined
+  };
+}
+
 export default async function handler(req, res) {
   if (req.method === "OPTIONS") {
     res.setHeader("Allow", "POST, OPTIONS");
@@ -97,15 +186,7 @@ export default async function handler(req, res) {
     const catalog = body.catalog && typeof body.catalog === "object" ? body.catalog : {};
     const replyLanguage = String(body.replyLanguage || "en").trim().toLowerCase() || "en";
     const pagePath = String(body.pagePath || "").trim();
-    const session =
-      body.session && typeof body.session === "object"
-        ? {
-            loggedIn: Boolean(body.session.loggedIn),
-            pointsBalance: Number.isFinite(Number(body.session.pointsBalance))
-              ? Number(body.session.pointsBalance)
-              : null
-          }
-        : { loggedIn: false, pointsBalance: null };
+    const session = normalizeSession(body.session);
 
     if (!command) {
       return res.status(400).json({ error: "command is required." });
@@ -119,7 +200,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: GROQ_MODEL,
-        temperature: 0.2,
+        temperature: 0.15,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
@@ -152,21 +233,71 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: "Groq returned invalid JSON." });
     }
 
-    // Backward compatible: older clients expected { intent }
-    if (parsed.kind === "bet" || (!parsed.kind && Array.isArray(parsed.picks))) {
-      const intent = { ...parsed, kind: undefined };
+    const kind = String(parsed.kind || "").toLowerCase();
+
+    if (kind === "navigate") {
+      const path = normalizeNavigatePath(parsed.path);
+      if (!path) {
+        return res.status(200).json({
+          kind: "chat",
+          reply: String(parsed.explanation || parsed.reply || "Which page should I open?")
+        });
+      }
+      return res.status(200).json({
+        kind: "navigate",
+        path,
+        explanation: String(parsed.explanation || "").trim() || null
+      });
+    }
+
+    if (kind === "slot_bet") {
+      const stake = Math.floor(Number(parsed.stake ?? 100));
+      const roundPreference =
+        parsed.roundPreference === "next" ? "next" : "current_wait";
+      return res.status(200).json({
+        kind: "slot_bet",
+        stake: Number.isFinite(stake) && stake >= 10 ? stake : 100,
+        roundPreference,
+        explanation: String(parsed.explanation || "").trim() || null
+      });
+    }
+
+    if (kind === "lotto") {
+      const modeRaw = String(parsed.mode || "buy_random").toLowerCase();
+      const mode =
+        modeRaw === "help_picks" || modeRaw === "status" ? modeRaw : "buy_random";
+      return res.status(200).json({
+        kind: "lotto",
+        mode,
+        roundId: parsed.roundId ? String(parsed.roundId) : null,
+        explanation: String(parsed.explanation || "").trim() || null
+      });
+    }
+
+    if (kind === "query") {
+      const topicRaw = String(parsed.topic || "rules").toLowerCase();
+      const allowed = new Set(["slot_bets", "points", "pnl", "slot_clock", "lotto", "rules"]);
+      const topic = allowed.has(topicRaw) ? topicRaw : "rules";
+      return res.status(200).json({
+        kind: "query",
+        topic,
+        reply: typeof parsed.reply === "string" ? parsed.reply.trim() : null
+      });
+    }
+
+    if (kind === "bet" || (!parsed.kind && Array.isArray(parsed.picks))) {
+      const intent = { ...parsed };
       delete intent.kind;
       return res.status(200).json({ kind: "bet", intent: { ...intent, kind: "bet" } });
     }
 
-    if (parsed.kind === "chat" || typeof parsed.reply === "string") {
+    if (kind === "chat" || typeof parsed.reply === "string") {
       return res.status(200).json({
         kind: "chat",
         reply: String(parsed.reply || "").trim() || "How can I help?"
       });
     }
 
-    // Legacy not_a_bet → chat
     if (parsed.error === "not_a_bet") {
       return res.status(200).json({
         kind: "chat",

@@ -11,6 +11,7 @@ import { listRewardHistory } from "../lib/rewardHistory";
 import type { RewardHistoryRow } from "../lib/rewardHistory";
 import { getPointReconciliation } from "../lib/pointReconciliation";
 import type { PointReconciliation } from "../lib/pointReconciliation";
+import { listSlotBets, type SlotBetRecord } from "../lib/slotBets";
 
 interface Bet {
   id: string;
@@ -24,6 +25,7 @@ interface Bet {
   pnl: number;
   result: string;
   settlementNote: string;
+  kind?: "race" | "slot";
 }
 
 type HistoryFilter = "all" | "recharge" | "rewards";
@@ -70,10 +72,16 @@ export function History() {
       }
 
       try {
-        const rows = await listBetsWithSession();
-        const rowsWithDisplayResults = await attachDisplayResults(rows);
+        const [raceRows, slotRows] = await Promise.all([
+          listBetsWithSession(),
+          listSlotBets(80).catch(() => [] as SlotBetRecord[])
+        ]);
+        const rowsWithDisplayResults = await attachDisplayResults(raceRows);
         if (cancelled) return;
-        const nextBets = rowsWithDisplayResults.map(mapBetRow);
+        const nextBets = [
+          ...rowsWithDisplayResults.map(mapBetRow),
+          ...slotRows.map(mapSlotBetRow)
+        ].sort((a, b) => getSortTime(b.createdAt) - getSortTime(a.createdAt));
         setBets(nextBets);
         setStatus(nextBets.length ? "" : "No bets placed yet");
       } catch (error) {
@@ -212,146 +220,151 @@ export function History() {
     rewardHistoryStatus
   });
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
-      <section className="bg-white rounded-lg border border-[#fed7aa] p-6 mb-6">
-        <div className="mb-6">
-          <span className="text-xs text-[#8a5a44] uppercase tracking-wide">History</span>
-          <h1 className="text-2xl text-[#9a3412] mt-1 mb-2">My History</h1>
-          <p className="text-sm text-[#8a5a44]">
-            All placed bets, match targets, results, charges, rewards, and payout records.
-          </p>
-        </div>
+    <div className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6">
+      <div className="mb-6">
+        <span className="text-xs uppercase tracking-[0.08em] text-[#8f949b]">History</span>
+        <h1 className="mt-1 text-2xl font-semibold tracking-[0.04em] text-[#f2f3f4]">My History</h1>
+        <p className="mt-1 text-sm text-[#8f949b]">
+          Race bets, slot bets, charges, rewards, and payout records.
+        </p>
+      </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="p-4 bg-[#fff7ed] rounded-lg border border-[#fed7aa]">
-            <div className="text-xs text-[#8a5a44] mb-2">Total Bets</div>
-            <div className="text-2xl text-[#9a3412]">{totalBets}</div>
+      <section className="mb-6 rounded-[14px] border border-white/10 bg-[linear-gradient(160deg,rgba(17,19,21,.72),rgba(8,9,10,.8))] p-6">
+        <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="rounded-[11px] border border-white/10 bg-[#111315] p-4">
+            <div className="mb-2 text-xs uppercase tracking-[0.06em] text-[#8f949b]">Total Bets</div>
+            <div className="text-2xl text-[#f2f3f4]">{totalBets}</div>
           </div>
-
-          <div className="p-4 bg-[#fff7ed] rounded-lg border border-[#fed7aa]">
-            <div className="text-xs text-[#8a5a44] mb-2">Won</div>
-            <div className="text-2xl text-[#9a3412]">{won}</div>
+          <div className="rounded-[11px] border border-white/10 bg-[#111315] p-4">
+            <div className="mb-2 text-xs uppercase tracking-[0.06em] text-[#8f949b]">Won</div>
+            <div className="text-2xl text-[#83c552]">{won}</div>
           </div>
-
-          <div className="p-4 bg-[#fff7ed] rounded-lg border border-[#fed7aa]">
-            <div className="text-xs text-[#8a5a44] mb-2">Lost</div>
-            <div className="text-2xl text-[#9a3412]">{lost}</div>
+          <div className="rounded-[11px] border border-white/10 bg-[#111315] p-4">
+            <div className="mb-2 text-xs uppercase tracking-[0.06em] text-[#8f949b]">Lost</div>
+            <div className="text-2xl text-[#e65a46]">{lost}</div>
           </div>
-
-          <div className="p-4 bg-[#fff7ed] rounded-lg border border-[#fed7aa]">
-            <div className="text-xs text-[#8a5a44] mb-2">PnL</div>
-            <div className={`text-2xl flex items-center gap-1 ${totalPnL >= 0 ? "text-[#9a3412]" : "text-[#c62828]"}`}>
-              {totalPnL >= 0 ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
-              {totalPnL >= 0 ? "+" : ""}{totalPnL} pts
+          <div className="rounded-[11px] border border-white/10 bg-[#111315] p-4">
+            <div className="mb-2 text-xs uppercase tracking-[0.06em] text-[#8f949b]">PnL</div>
+            <div className={`flex items-center gap-1 text-2xl ${totalPnL >= 0 ? "text-[#83c552]" : "text-[#e65a46]"}`}>
+              {totalPnL >= 0 ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
+              {totalPnL >= 0 ? "+" : ""}
+              {totalPnL} pts
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
           <button
             type="button"
             aria-pressed={activeFilter === "recharge"}
             onClick={() => setActiveFilter(activeFilter === "recharge" ? "all" : "recharge")}
-            className={`p-4 text-left rounded-lg border transition-colors ${
+            className={`rounded-[11px] border p-4 text-left transition-colors ${
               activeFilter === "recharge"
-                ? "bg-[#ffedd5] border-[#9a3412]"
-                : "bg-white border-[#fed7aa] hover:border-[#9a3412]"
+                ? "border-[#ff7a00] bg-[rgba(255,122,0,.16)]"
+                : "border-white/10 bg-[#111315] hover:border-[rgba(255,122,0,.55)]"
             }`}
           >
-            <div className="text-xs text-[#8a5a44] mb-2">Recharge</div>
-            <div className="text-2xl text-[#9a3412]">{rechargePoints.toLocaleString()} pts</div>
+            <div className="mb-2 text-xs uppercase tracking-[0.06em] text-[#8f949b]">Recharge</div>
+            <div className="text-2xl text-[#ff7a00]">{rechargePoints.toLocaleString()} pts</div>
           </button>
 
           <button
             type="button"
             aria-pressed={activeFilter === "rewards"}
             onClick={() => setActiveFilter(activeFilter === "rewards" ? "all" : "rewards")}
-            className={`p-4 text-left rounded-lg border transition-colors ${
+            className={`rounded-[11px] border p-4 text-left transition-colors ${
               activeFilter === "rewards"
-                ? "bg-[#ffedd5] border-[#9a3412]"
-                : "bg-white border-[#fed7aa] hover:border-[#9a3412]"
+                ? "border-[#ff7a00] bg-[rgba(255,122,0,.16)]"
+                : "border-white/10 bg-[#111315] hover:border-[rgba(255,122,0,.55)]"
             }`}
           >
-            <div className="text-xs text-[#8a5a44] mb-2">Rewards</div>
-            <div className="text-2xl text-[#9a3412]">{rewardPoints.toLocaleString()} pts</div>
+            <div className="mb-2 text-xs uppercase tracking-[0.06em] text-[#8f949b]">Rewards</div>
+            <div className="text-2xl text-[#ff7a00]">{rewardPoints.toLocaleString()} pts</div>
           </button>
 
-          <div className="p-4 bg-white rounded-lg border border-[#fed7aa]">
-            <div className="text-xs text-[#8a5a44] mb-2">Used</div>
-            <div className="text-2xl text-[#c62828]">-{usedPoints.toLocaleString()} pts</div>
+          <div className="rounded-[11px] border border-white/10 bg-[#111315] p-4">
+            <div className="mb-2 text-xs uppercase tracking-[0.06em] text-[#8f949b]">Used</div>
+            <div className="text-2xl text-[#e65a46]">-{usedPoints.toLocaleString()} pts</div>
           </div>
 
-          <div className="p-4 bg-white rounded-lg border border-[#fed7aa]">
-            <div className="text-xs text-[#8a5a44] mb-2">Total Balance</div>
-            <div className="text-2xl text-[#9a3412]">{user ? totalBalance.toLocaleString() : "--"} pts</div>
+          <div className="rounded-[11px] border border-white/10 bg-[#111315] p-4">
+            <div className="mb-2 text-xs uppercase tracking-[0.06em] text-[#8f949b]">Total Balance</div>
+            <div className="text-2xl text-[#f2f3f4]">{user ? totalBalance.toLocaleString() : "--"} pts</div>
           </div>
         </div>
 
         {pointAudit ? (
-          <div className="mb-6 rounded-lg border border-[#fed7aa] bg-[#fff7ed] p-4">
+          <div className="mb-6 rounded-[11px] border border-white/10 bg-[#0d0f11] p-4">
             <div className="mb-4">
-              <span className="text-xs text-[#8a5a44] uppercase tracking-wide">Balance Audit</span>
-              <h2 className="text-lg text-[#9a3412] mt-1">Point Reconciliation</h2>
+              <span className="text-xs uppercase tracking-[0.08em] text-[#8f949b]">Balance Audit</span>
+              <h2 className="mt-1 flex items-center gap-2 text-lg tracking-[0.04em] text-[#f2f3f4]">
+                <span className="inline-block h-[7px] w-[7px] rounded-full bg-[#ff7a00]" />
+                Point Reconciliation
+              </h2>
             </div>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <div>
-                <div className="text-xs text-[#8a5a44] mb-1">Current Balance</div>
-                <div className="text-sm text-[#9a3412]">{pointAudit.summary.currentBalance.toLocaleString()} pts</div>
+                <div className="mb-1 text-xs text-[#8f949b]">Current Balance</div>
+                <div className="text-sm text-[#f2f3f4]">{pointAudit.summary.currentBalance.toLocaleString()} pts</div>
               </div>
               <div>
-                <div className="text-xs text-[#8a5a44] mb-1">Known Activity Net</div>
-                <div className="text-sm text-[#9a3412]">{formatSignedPoints(pointAudit.summary.knownActivityNet)}</div>
+                <div className="mb-1 text-xs text-[#8f949b]">Known Activity Net</div>
+                <div className="text-sm text-[#f2f3f4]">{formatSignedPoints(pointAudit.summary.knownActivityNet)}</div>
               </div>
               <div>
-                <div className="text-xs text-[#8a5a44] mb-1">Bet Net</div>
-                <div className={`text-sm ${pointAudit.summary.betNet >= 0 ? "text-[#15803d]" : "text-[#c62828]"}`}>
+                <div className="mb-1 text-xs text-[#8f949b]">Bet Net</div>
+                <div className={`text-sm ${pointAudit.summary.betNet >= 0 ? "text-[#83c552]" : "text-[#e65a46]"}`}>
                   {formatSignedPoints(pointAudit.summary.betNet)}
                 </div>
               </div>
               <div>
-                <div className="text-xs text-[#8a5a44] mb-1">Bet Stake</div>
-                <div className="text-sm text-[#c62828]">-{pointAudit.summary.betStake.toLocaleString()} pts</div>
+                <div className="mb-1 text-xs text-[#8f949b]">Bet Stake</div>
+                <div className="text-sm text-[#e65a46]">-{pointAudit.summary.betStake.toLocaleString()} pts</div>
               </div>
               <div>
-                <div className="text-xs text-[#8a5a44] mb-1">Bet Payout</div>
-                <div className="text-sm text-[#15803d]">+{pointAudit.summary.betPayout.toLocaleString()} pts</div>
+                <div className="mb-1 text-xs text-[#8f949b]">Bet Payout</div>
+                <div className="text-sm text-[#83c552]">+{pointAudit.summary.betPayout.toLocaleString()} pts</div>
               </div>
               <div>
-                <div className="text-xs text-[#8a5a44] mb-1">Recharge + Rewards</div>
-                <div className="text-sm text-[#9a3412]">
+                <div className="mb-1 text-xs text-[#8f949b]">Recharge + Rewards</div>
+                <div className="text-sm text-[#ff7a00]">
                   +{(pointAudit.summary.rechargePoints + pointAudit.summary.rewardPoints).toLocaleString()} pts
                 </div>
               </div>
               <div>
-                <div className="text-xs text-[#8a5a44] mb-1">Lotto Net</div>
-                <div className={`text-sm ${pointAudit.summary.lottoNet >= 0 ? "text-[#15803d]" : "text-[#c62828]"}`}>
+                <div className="mb-1 text-xs text-[#8f949b]">Lotto Net</div>
+                <div className={`text-sm ${pointAudit.summary.lottoNet >= 0 ? "text-[#83c552]" : "text-[#e65a46]"}`}>
                   {formatSignedPoints(pointAudit.summary.lottoNet)}
                 </div>
               </div>
             </div>
-            <div className="mt-4 text-xs text-[#8a5a44]">
+            <div className="mt-4 text-xs text-[#8f949b]">
               Known Activity Net = Recharge + Rewards + Bet Payout - Bet Stake + Lotto Net.
             </div>
           </div>
         ) : pointAuditStatus && user ? (
-          <div className="mb-6 rounded-lg border border-[#fed7aa] bg-[#fff7ed] p-4 text-sm text-[#8a5a44]">
+          <div className="mb-6 rounded-[11px] border border-white/10 bg-[#0d0f11] p-4 text-sm text-[#8f949b]">
             {pointAuditStatus}
           </div>
         ) : null}
 
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <span className="text-xs text-[#8a5a44] uppercase tracking-wide">History Records</span>
-            <h2 className="text-xl text-[#9a3412] mt-1">
-              {activeFilter === "recharge" ? "Recharge History" : activeFilter === "rewards" ? "Rewards History" : "All History"}
+            <span className="text-xs uppercase tracking-[0.08em] text-[#8f949b]">History Records</span>
+            <h2 className="mt-1 flex items-center gap-2 text-xl tracking-[0.04em] text-[#f2f3f4]">
+              <span className="inline-block h-[7px] w-[7px] rounded-full bg-[#ff7a00]" />
+              {activeFilter === "recharge"
+                ? "Recharge History"
+                : activeFilter === "rewards"
+                  ? "Rewards History"
+                  : "All History"}
             </h2>
           </div>
           {activeFilter !== "all" && (
             <button
               type="button"
               onClick={() => setActiveFilter("all")}
-              className="h-9 rounded-md border border-[#fed7aa] px-3 text-sm text-[#9a3412] transition-colors hover:border-[#9a3412] hover:bg-[#fff7ed]"
+              className="h-9 rounded-[8px] border border-white/10 bg-[#111315] px-3 text-sm text-[#aeb1b5] transition-colors hover:border-[rgba(255,122,0,.55)] hover:text-[#f2f3f4]"
             >
               All History
             </button>
@@ -359,45 +372,45 @@ export function History() {
         </div>
 
         {historyMessage ? (
-          <div className="py-12 text-center text-[#8a5a44]">{historyMessage}</div>
+          <div className="py-12 text-center text-[#8f949b]">{historyMessage}</div>
         ) : (
           <div className="space-y-3">
             {visibleHistoryEntries.map((entry) => (
-              <div key={entry.id} className={`rounded-lg border p-4 ${entry.borderClass}`}>
+              <div key={entry.id} className={`rounded-[11px] border p-4 ${entry.borderClass}`}>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-12 md:items-start">
                   <div className="md:col-span-2">
-                    <div className="text-xs text-[#8a5a44] mb-1">Type</div>
-                    <div className="text-sm text-[#9a3412]">{entry.typeLabel}</div>
+                    <div className="mb-1 text-xs uppercase tracking-[0.06em] text-[#8f949b]">Type</div>
+                    <div className="text-sm text-[#f2f3f4]">{entry.typeLabel}</div>
                   </div>
 
                   <div className="md:col-span-3">
-                    <div className="text-xs text-[#8a5a44] mb-1">Details</div>
-                    <div className="text-sm text-[#9a3412]">{entry.title}</div>
-                    <div className="mt-1 text-xs text-[#8a5a44]">{entry.detail}</div>
+                    <div className="mb-1 text-xs uppercase tracking-[0.06em] text-[#8f949b]">Details</div>
+                    <div className="text-sm text-[#f2f3f4]">{entry.title}</div>
+                    <div className="mt-1 text-xs text-[#8f949b]">{entry.detail}</div>
                   </div>
 
                   <div className="md:col-span-2">
-                    <div className="text-xs text-[#8a5a44] mb-1">Date</div>
-                    <div className="text-sm text-[#9a3412]">{entry.dateLabel}</div>
+                    <div className="mb-1 text-xs uppercase tracking-[0.06em] text-[#8f949b]">Date</div>
+                    <div className="text-sm text-[#f2f3f4]">{entry.dateLabel}</div>
                   </div>
 
                   <div className="md:col-span-2">
-                    <div className="text-xs text-[#8a5a44] mb-1">Status</div>
+                    <div className="mb-1 text-xs uppercase tracking-[0.06em] text-[#8f949b]">Status</div>
                     <div className={`text-sm font-medium ${entry.statusClass}`}>{entry.statusLabel}</div>
                   </div>
 
                   <div className="md:col-span-1">
-                    <div className="text-xs text-[#8a5a44] mb-1">Amount</div>
-                    <div className="text-sm text-[#9a3412]">{entry.amountLabel}</div>
+                    <div className="mb-1 text-xs uppercase tracking-[0.06em] text-[#8f949b]">Amount</div>
+                    <div className="text-sm text-[#f2f3f4]">{entry.amountLabel}</div>
                   </div>
 
                   <div className="md:col-span-2">
-                    <div className="text-xs text-[#8a5a44] mb-1">Points</div>
+                    <div className="mb-1 text-xs uppercase tracking-[0.06em] text-[#8f949b]">Points</div>
                     <div className={`text-sm font-medium ${entry.pointsClass}`}>{entry.pointsLabel}</div>
                   </div>
                 </div>
                 {(entry.note || entry.reference) && (
-                  <div className="mt-3 truncate text-xs text-[#8a5a44]">
+                  <div className="mt-3 truncate text-xs text-[#8f949b]">
                     {entry.note || `Ref: ${entry.reference}`}
                   </div>
                 )}
@@ -499,28 +512,72 @@ function mapBetRow(row: BetRowWithDisplayResult): Bet {
     statusLabel: formatBetStatusLabel(row.status),
     pnl,
     result,
-    settlementNote: getSettlementNote(row, displayResult)
+    settlementNote: getSettlementNote(row, displayResult),
+    kind: "race"
+  };
+}
+
+function mapSlotBetRow(row: SlotBetRecord): Bet {
+  const status = row.status === "won" || row.status === "lost" ? row.status : "pending";
+  const payout = Number(row.payout ?? 0);
+  const stake = Number(row.stake ?? 0);
+  const pnl = payout - stake;
+  const roundLabel = formatSlotRoundLabel(row.roundId);
+
+  return {
+    id: `slot-${row.id || `${row.roundId}-${row.createdAt}`}`,
+    market: "Rialo Slot",
+    raceTime: roundLabel,
+    createdAt: row.createdAt ?? row.settledAt,
+    picks: "DOGE / XRP / ETH · 5 lines",
+    stake,
+    status,
+    statusLabel: status === "pending" ? "Open" : formatBetStatusLabel(status),
+    pnl,
+    result:
+      status === "won"
+        ? `Paid ${payout.toLocaleString()} pts`
+        : status === "lost"
+          ? "Paid 0 pts"
+          : "Waiting for VPS settle",
+    settlementNote:
+      status === "pending"
+        ? `Open wager on slot round ${roundLabel}`
+        : `Settled slot round ${roundLabel}`,
+    kind: "slot"
   };
 }
 
 function mapBetHistoryEntry(bet: Bet): HistoryEntry {
+  const isSlot = bet.kind === "slot";
   return {
-    id: `bet-${bet.id}`,
+    id: isSlot ? bet.id : `bet-${bet.id}`,
     type: "bet",
-    typeLabel: "Bet",
+    typeLabel: isSlot ? "Slot" : "Bet",
     title: bet.market,
-    detail: `Race: ${bet.raceTime} / Picks: ${bet.picks} / Result: ${bet.result}`,
+    detail: isSlot
+      ? `Round: ${bet.raceTime} / ${bet.picks} / ${bet.result}`
+      : `Race: ${bet.raceTime} / Picks: ${bet.picks} / Result: ${bet.result}`,
     dateLabel: formatKstDate(bet.createdAt),
     statusLabel: bet.statusLabel,
     statusClass: getBetStatusClass(bet.status),
     amountLabel: `${bet.stake.toLocaleString()} pts`,
-    pointsLabel: `${bet.pnl >= 0 ? "+" : ""}${bet.pnl.toLocaleString()} pts`,
-    pointsClass: bet.pnl >= 0 ? "text-[#9a3412]" : "text-[#c62828]",
-    borderClass: bet.status === "won"
-      ? "bg-[#ffedd5] border-[#9a3412]"
-      : bet.status === "lost"
-        ? "bg-[#ffebee] border-[#c62828]"
-        : "bg-[#fff7ed] border-[#fed7aa]",
+    pointsLabel:
+      bet.status === "pending"
+        ? "Pending"
+        : `${bet.pnl >= 0 ? "+" : ""}${bet.pnl.toLocaleString()} pts`,
+    pointsClass:
+      bet.status === "pending"
+        ? "text-[#ff7a00]"
+        : bet.pnl >= 0
+          ? "text-[#83c552]"
+          : "text-[#e65a46]",
+    borderClass:
+      bet.status === "won"
+        ? "border-[rgba(131,197,82,.45)] bg-[rgba(131,197,82,.10)]"
+        : bet.status === "lost"
+          ? "border-[rgba(230,90,70,.45)] bg-[rgba(230,90,70,.10)]"
+          : "border-white/10 bg-[#111315]",
     note: bet.settlementNote,
     sortTime: getSortTime(bet.createdAt)
   };
@@ -541,8 +598,10 @@ function mapChargeHistoryEntry(charge: PointChargeHistoryRow): HistoryEntry {
     statusClass: getChargeStatusClass(charge.status),
     amountLabel: charge.amount,
     pointsLabel: `${credited ? "+" : ""}${Number(charge.points ?? 0).toLocaleString()} pts`,
-    pointsClass: credited ? "text-[#15803d]" : "text-[#9a3412]",
-    borderClass: credited ? "bg-[#f0fdf4] border-[#86efac]" : "bg-[#fff7ed] border-[#fed7aa]",
+    pointsClass: credited ? "text-[#ff7a00]" : "text-[#8f949b]",
+    borderClass: credited
+      ? "border-[rgba(255,122,0,.55)] bg-[rgba(255,122,0,.12)]"
+      : "border-white/10 bg-[#111315]",
     reference: charge.reference,
     sortTime: getSortTime(charge.completedAt || charge.createdAt)
   };
@@ -557,11 +616,11 @@ function mapRewardHistoryEntry(reward: RewardHistoryRow): HistoryEntry {
     detail: "$RIALO staking claim",
     dateLabel: formatKstDate(reward.createdAt),
     statusLabel: formatRewardStatus(reward.status),
-    statusClass: "text-[#15803d]",
+    statusClass: "text-[#83c552]",
     amountLabel: reward.amountRialo > 0 ? `${reward.amountRialo.toLocaleString()} RIALO` : "-",
     pointsLabel: `+${Number(reward.points ?? 0).toLocaleString()} pts`,
-    pointsClass: "text-[#15803d]",
-    borderClass: "bg-[#f0fdf4] border-[#86efac]",
+    pointsClass: "text-[#83c552]",
+    borderClass: "border-[rgba(131,197,82,.45)] bg-[rgba(131,197,82,.10)]",
     reference: reward.reference,
     sortTime: getSortTime(reward.createdAt)
   };
@@ -619,9 +678,9 @@ function formatBetStatusLabel(status: string) {
 }
 
 function getBetStatusClass(status: Bet["status"]) {
-  if (status === "won") return "text-[#15803d]";
-  if (status === "lost") return "text-[#c62828]";
-  return "text-[#9a3412]";
+  if (status === "won") return "text-[#83c552]";
+  if (status === "lost") return "text-[#e65a46]";
+  return "text-[#ff7a00]";
 }
 
 function getSettlementNote(row: BetRowWithDisplayResult, displayResult: RaceResultRow | null | undefined) {
@@ -651,9 +710,9 @@ function formatRewardStatus(status: string) {
 
 function getChargeStatusClass(status: string) {
   const normalizedStatus = String(status || "").toLowerCase();
-  if (normalizedStatus === "paid") return "text-[#15803d]";
-  if (normalizedStatus === "pending") return "text-[#9a3412]";
-  return "text-[#c62828]";
+  if (normalizedStatus === "paid") return "text-[#ff7a00]";
+  if (normalizedStatus === "pending") return "text-[#8f949b]";
+  return "text-[#e65a46]";
 }
 
 function getSortTime(timestamp: string | null | undefined) {
@@ -676,4 +735,17 @@ function formatKstDate(timestamp: string | null | undefined) {
     hour12: false,
     timeZone: "Asia/Seoul"
   }).format(new Date(timestamp))} KST`;
+}
+
+function formatSlotRoundLabel(roundId: number) {
+  if (!Number.isFinite(roundId)) return "-";
+  return `${new Intl.DateTimeFormat("en-GB", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Seoul"
+  }).format(new Date(roundId))} KST`;
 }

@@ -62,11 +62,21 @@ type MsgKey =
   | "pnlLoadFailed"
   | "previewConfirmHint"
   | "previewPendingHint"
-  | "welcome";
+  | "welcome"
+  | "navigating"
+  | "slotPreviewHint"
+  | "slotPlacing"
+  | "slotPlaced"
+  | "lottoPreviewHint"
+  | "lottoPlacing"
+  | "lottoPlaced"
+  | "lottoNoRound"
+  | "confirmAction"
+  | "cancelAction";
 
 const MESSAGES: Record<ReplyLocale, Record<MsgKey, string>> = {
   en: {
-    help: 'Examples: "ETH 1st on all markets" / "DOGE 1st Nightfall Chase" / "DOGE 1st on markets without BTC"',
+    help: 'Examples: "ETH 1st on all markets" / "slot 100" / "open lotto" / "my slot bets" / "paylines?"',
     emptyCommand: "Enter a betting command.",
     notABet: "That doesn't look like a betting command.",
     unknownToken: "I couldn't tell which token to bet on.",
@@ -117,10 +127,20 @@ const MESSAGES: Record<ReplyLocale, Record<MsgKey, string>> = {
     previewConfirmHint: 'Reply "confirm" to place, or "cancel" to abort.',
     previewPendingHint: 'You have a pending preview. Reply "confirm" or "cancel".',
     welcome:
-      'Hi — I\'m Rialo Assistant. Ask about markets, points, lotto, or place batch bets. Example: "ETH 1st on all markets" / "DOGE 1st SOL 2nd"'
+      'Hi — I\'m Rialo Assistant. I can open pages, explain slot rules, place race/slot bets, or buy a lotto ticket. Try: "open slot" / "slot 100" / "ETH 1st on all markets"',
+    navigating: "Opening {path}…",
+    slotPreviewHint: "Rialo Slot · stake {stake} pts on round {round} (closes in {closes}). Reply confirm/cancel.",
+    slotPlacing: "Placing slot bet…",
+    slotPlaced: "Slot bet placed: {stake} pts on {round}. Balance {points} pts.",
+    lottoPreviewHint: "Race-Lotto random picks ({picks}) · {price} pts. Reply confirm/cancel.",
+    lottoPlacing: "Buying lotto ticket…",
+    lottoPlaced: "Lotto ticket placed. Balance {points} pts.",
+    lottoNoRound: "No open Race-Lotto round right now.",
+    confirmAction: "Confirm",
+    cancelAction: "Cancel"
   },
   ko: {
-    help: '예: "모든 시장에 ETH 1등" / "DOGE 1등 Nightfall Chase" / "BTC 없는 마켓에 DOGE 1등"',
+    help: '예: "모든 시장에 ETH 1등" / "슬롯 100점" / "로또 열어줘" / "내 슬롯 베팅"',
     emptyCommand: "명령을 입력해 주세요.",
     notABet: "베팅 명령으로 인식하지 못했어요.",
     unknownToken: "어떤 토큰에 걸지 모르겠어요.",
@@ -171,7 +191,17 @@ const MESSAGES: Record<ReplyLocale, Record<MsgKey, string>> = {
     previewConfirmHint: '진행하려면 "확인", 그만두려면 "취소"를 입력하세요.',
     previewPendingHint: '대기 중인 미리보기가 있어요. "확인" 또는 "취소"라고 답해 주세요.',
     welcome:
-      '안녕하세요 — Rialo Assistant예요. 시장/포인트/로또 질문이나 일괄 베팅을 도와드려요. 예: "모든 시장에 ETH 1등" / "도지 1등 솔라나 2등"'
+      '안녕하세요 — Rialo Assistant예요. 페이지 이동, 슬롯 룰, 레이스/슬롯 베팅, 로또 티켓을 도와드려요. 예: "슬롯 열어줘" / "슬롯 100점" / "모든 시장에 ETH 1등"',
+    navigating: "{path} 열게요…",
+    slotPreviewHint: "Rialo Slot · {round} 라운드에 {stake} pts (마감 {closes}). 확인/취소로 답해 주세요.",
+    slotPlacing: "슬롯 베팅 넣는 중…",
+    slotPlaced: "슬롯 베팅 완료: {round}에 {stake} pts. 잔액 {points} pts.",
+    lottoPreviewHint: "로또 랜덤픽 ({picks}) · {price} pts. 확인/취소로 답해 주세요.",
+    lottoPlacing: "로또 티켓 구매 중…",
+    lottoPlaced: "로또 티켓 구매 완료. 잔액 {points} pts.",
+    lottoNoRound: "지금은 열린 로또 회차가 없어요.",
+    confirmAction: "확인",
+    cancelAction: "취소"
   },
   ja: {
     help: '例: "全市場でETH 1位" / "SOL 1位とDOGE 1位、重なればDOGEは2位" / "BTCがある市場でSOL 1位"',
@@ -225,7 +255,17 @@ const MESSAGES: Record<ReplyLocale, Record<MsgKey, string>> = {
     previewConfirmHint: '実行は「確認」、中止は「キャンセル」。',
     previewPendingHint: 'プレビュー待ちです。「確認」または「キャンセル」と答えてください。',
     welcome:
-      'こんにちは — Rialo Assistantです。市場・ポイント・ロットや一括ベットを手伝います。例: "DOGE 1位 SOL 2位"'
+      'こんにちは — Rialo Assistantです。ページ移動・スロット説明・レース/スロットベット・ロットを手伝います。',
+    navigating: "{path} を開きます…",
+    slotPreviewHint: "Rialo Slot · {round} に {stake} pts（締切 {closes}）。confirm/cancel で応答。",
+    slotPlacing: "スロットベット中…",
+    slotPlaced: "スロット完了: {round} に {stake} pts。残高 {points} pts。",
+    lottoPreviewHint: "ロットランダム ({picks}) · {price} pts。confirm/cancel。",
+    lottoPlacing: "ロット購入中…",
+    lottoPlaced: "ロット購入完了。残高 {points} pts。",
+    lottoNoRound: "受付中のロット回がありません。",
+    confirmAction: "確認",
+    cancelAction: "キャンセル"
   },
   zh: {
     help: '例如: "所有市场 ETH 第1" / "SOL 第1 和 DOGE 第1，重叠则 DOGE 第2" / "有 BTC 的市场 SOL 第1"',
@@ -278,7 +318,17 @@ const MESSAGES: Record<ReplyLocale, Record<MsgKey, string>> = {
     pnlLoadFailed: "无法读取投注记录。",
     previewConfirmHint: '回复 "确认" 执行，或 "取消" 中止。',
     previewPendingHint: '有待确认的预览。请回复 "确认" 或 "取消"。',
-    welcome: '你好 — 我是 Rialo Assistant。可问市场/积分/彩票，或下批量注。试试: "DOGE 第1 SOL 第2"'
+    welcome: '你好 — 我是 Rialo Assistant。可打开页面、说明规则、下赛道/老虎机注或买乐透。',
+    navigating: "正在打开 {path}…",
+    slotPreviewHint: "Rialo Slot · {round} 下注 {stake} pts（截止 {closes}）。回复确认/取消。",
+    slotPlacing: "正在下老虎机注…",
+    slotPlaced: "老虎机下注完成：{round} {stake} pts。余额 {points} pts。",
+    lottoPreviewHint: "乐透随机 ({picks}) · {price} pts。回复确认/取消。",
+    lottoPlacing: "正在购买乐透…",
+    lottoPlaced: "乐透购买完成。余额 {points} pts。",
+    lottoNoRound: "当前没有开放的乐透场次。",
+    confirmAction: "确认",
+    cancelAction: "取消"
   },
   es: {
     help: 'Ejemplos: "ETH 1.º en todos los mercados" / "SOL 1.º y DOGE 1.º; si solapan, DOGE 2.º"',
@@ -332,7 +382,17 @@ const MESSAGES: Record<ReplyLocale, Record<MsgKey, string>> = {
     previewConfirmHint: 'Responde "confirmar" para apostar, o "cancelar".',
     previewPendingHint: 'Hay una vista previa pendiente. Responde "confirmar" o "cancelar".',
     welcome:
-      'Hola — soy Rialo Assistant. Pregunta por mercados, puntos, lotto o apuestas por lotes. Ej: "DOGE 1st SOL 2nd"'
+      'Hola — soy Rialo Assistant. Puedo abrir páginas, explicar slot, apostar carrera/slot o comprar lotto.',
+    navigating: "Abriendo {path}…",
+    slotPreviewHint: "Rialo Slot · {stake} pts en ronda {round} (cierra {closes}). Responde confirm/cancel.",
+    slotPlacing: "Colocando apuesta de slot…",
+    slotPlaced: "Slot listo: {stake} pts en {round}. Saldo {points} pts.",
+    lottoPreviewHint: "Lotto aleatorio ({picks}) · {price} pts. Responde confirm/cancel.",
+    lottoPlacing: "Comprando lotto…",
+    lottoPlaced: "Ticket lotto comprado. Saldo {points} pts.",
+    lottoNoRound: "No hay ronda de lotto abierta ahora.",
+    confirmAction: "Confirmar",
+    cancelAction: "Cancelar"
   }
 };
 

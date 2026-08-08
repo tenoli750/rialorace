@@ -558,6 +558,23 @@ export async function listRaceResults(marketId: string, limit = 10) {
   return (data ?? []) as RaceResultRow[];
 }
 
+/** Recent finished races with a first-place symbol (for Home top-racer stats). */
+export async function listRecentFirstPlaceResults(sinceIso: string, limit = 4000) {
+  const { data, error } = await supabase
+    .from("market_results_v2")
+    .select("market_id, first_place, race_started_at")
+    .gte("race_started_at", sinceIso)
+    .not("first_place", "is", null)
+    .order("race_started_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as Array<{
+    market_id: string;
+    first_place: string;
+    race_started_at: string;
+  }>;
+}
+
 export async function createChatMessage(marketId: string, message: string) {
   const sessionToken = getLoginSessionToken();
   if (!sessionToken) throw new Error("Login required to chat.");

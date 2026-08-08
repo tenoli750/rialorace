@@ -1,13 +1,12 @@
 import { Outlet } from "react-router";
-import { AuthProvider } from "../contexts/AuthContext";
 import { GlobalAssistant } from "./GlobalAssistant";
 
-/** Wraps every route: auth + floating assistant. */
+/** Root route shell: page outlet + floating assistant (must stay under RouterProvider). */
 export function AppLayout() {
   return (
-    <AuthProvider>
+    <>
       <Outlet />
       <GlobalAssistant />
-    </AuthProvider>
+    </>
   );
 }

@@ -3,7 +3,8 @@ import { AppLayout } from "./components/AppLayout";
 import { Root } from "./components/Root";
 import { Landing } from "./pages/Landing";
 import { PrecisionLanding } from "./pages/PrecisionLanding";
-import { MainMenu } from "./pages/MainMenu";
+import { Home } from "./pages/Home";
+import { LiveMarkets, MainMenuRedirect } from "./pages/LiveMarkets";
 import { LiveMarket } from "./pages/LiveMarket";
 import { ReplayMenu } from "./pages/ReplayMenu";
 import { ReplayMarket } from "./pages/ReplayMarket";
@@ -15,20 +16,25 @@ import { RaceLotto } from "./pages/RaceLotto";
 import { Login } from "./pages/Login";
 import { Profile } from "./pages/Profile";
 import { Shop } from "./pages/Shop";
+import { RwaSlot } from "./pages/RwaSlot";
 
 export const router = createBrowserRouter([
   {
+    path: "/",
     Component: AppLayout,
     children: [
-      { path: "/", Component: Landing },
-      { path: "/landing", Component: Landing },
-      { path: "/landing.html", Component: Landing },
-      { path: "/precision-landing", Component: PrecisionLanding },
-      { path: "/precision-landing.html", Component: PrecisionLanding },
+      { index: true, Component: Landing },
+      { path: "landing", Component: Landing },
+      { path: "landing.html", Component: Landing },
+      { path: "precision-landing", Component: PrecisionLanding },
+      { path: "precision-landing.html", Component: PrecisionLanding },
       {
         Component: Root,
         children: [
-          { path: "main-menu.html", Component: MainMenu },
+          { path: "home", Component: Home },
+          { path: "home.html", Component: Home },
+          { path: "main-menu.html", Component: MainMenuRedirect },
+          { path: "live-markets.html", Component: LiveMarkets },
           { path: "market", Component: LiveMarket },
           { path: "market/:marketId", Component: LiveMarket },
           { path: "markets/:marketId", Component: LiveMarket },
@@ -46,6 +52,9 @@ export const router = createBrowserRouter([
           { path: "market-replay.html", Component: ReplayMarket },
           { path: "race-lotto", Component: RaceLotto },
           { path: "lotto", Component: RaceLotto },
+          { path: "rwa-slot", Component: RwaSlot },
+          { path: "slot", Component: RwaSlot },
+          { path: "paxg-slot", Component: RwaSlot },
           { path: "shop", Component: Shop },
           { path: "shop.html", Component: Shop },
           { path: "rankings", Component: Rankings },

@@ -1,3 +1,924 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Black+Ops+One&family=Michroma&family=Rajdhani:wght@400;500&family=Share+Tech+Mono&display=swap');
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+@import './rialo-app-theme.css';
+@import './main-menu-landing.css';
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes win-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.5), inset 0 0 8px rgba(251, 191, 36, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 28px rgba(251, 191, 36, 0.9), inset 0 0 16px rgba(251, 191, 36, 0.25);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slot-reel-nudge-up {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, calc(-1 * var(--reel-step)), 0);
+  }
+}
+
+@keyframes slot-reel-nudge-down {
+  0% {
+    transform: translate3d(0, calc(-1 * var(--reel-step)), 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.slot-reel-track {
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.slot-page {
+  height: calc(100dvh - 4rem);
+  max-height: calc(100dvh - 4rem);
+  overflow: hidden;
+  background: radial-gradient(ellipse 110% 70% at 50% 10%, #1e1206 0%, #0d0d18 55%, #080810 100%);
+  padding: 8px 0 10px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.slot-page-inner {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 640px) {
+  .slot-page-inner {
+    padding: 0 1.5rem;
+  }
+}
+
+.slot-layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  align-items: stretch;
+}
+
+@media (min-width: 1024px) {
+  .slot-layout {
+    grid-template-columns: minmax(0, 3fr) minmax(220px, 1fr);
+  }
+}
+
+.slot-machine-col {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.slot-machine {
+  position: relative;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px 14px 8px 8px;
+  background: linear-gradient(170deg, #28283e 0%, #1c1c2c 35%, #141420 100%);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.slot-history-panel {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(165deg, #1a1a2a 0%, #12121c 100%);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.slot-history-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(180deg, #252536 0%, #1c1c30 100%);
+}
+
+.slot-history-head h2 {
+  margin: 0;
+  font-family: 'Black Ops One', cursive;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  color: #e5e7eb;
+}
+
+.slot-history-head span {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.slot-history-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: #3d4556 transparent;
+}
+
+.slot-history-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.slot-history-scroll::-webkit-scrollbar-thumb {
+  background: #3d4556;
+  border-radius: 999px;
+}
+
+.slot-history-empty {
+  padding: 16px 8px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.slot-history-card {
+  flex-shrink: 0;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(8, 10, 16, 0.72);
+}
+
+.slot-history-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.slot-history-meta .is-win {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+.slot-history-meta .is-zero {
+  color: #cbd5e1;
+}
+
+.slot-history-board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.slot-history-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: #e8e4d8;
+  font-size: 14px;
+  line-height: 1;
+  /* BAR / 7 / ◆ are text glyphs — must stay dark on cream tiles (page text is light). */
+  color: #0a0a0a;
+}
+
+.slot-history-cell.is-bar,
+.slot-history-cell.is-seven {
+  font-family: "Black Ops One", cursive;
+  font-weight: 900;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.slot-history-foot {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+
+.chrome-rail-top {
+  height: 6px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #e0e0e0 0%, #f8f8f8 30%, #d4d4d4 65%, #b4b4b4 100%);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+}
+
+.chrome-rail-bottom {
+  height: 8px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #b0b0b0 0%, #d8d8d8 25%, #c4c4c4 65%, #989898 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.machine-banner {
+  background: linear-gradient(180deg, #0e0e1c 0%, #121222 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.machine-banner .banner-title {
+  font-family: 'Black Ops One', cursive;
+  font-size: clamp(16px, 2.2vw, 22px);
+  letter-spacing: 0.03em;
+  line-height: 1;
+  color: #ff6a00;
+  text-shadow:
+    0 0 24px rgba(255, 106, 0, 0.5),
+    0 0 8px rgba(255, 106, 0, 0.3),
+    0 2px 0 rgba(0, 0, 0, 0.7);
+}
+
+.machine-banner .banner-sub {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: #4b5563;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.slot-main-stage {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 0;
+  padding: 8px 12px 0;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.slot-console {
+  margin-top: 8px;
+  background: linear-gradient(180deg, #202030 0%, #181826 50%, #111118 100%);
+  border-top: 2px solid #2a2a42;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+
+.paytable-col {
+  margin-right: 10px;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.paytable-panel {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: linear-gradient(160deg, #1a1a2c 0%, #141426 100%);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 4px 24px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+}
+
+.paytable-panel .pay-row {
+  padding: 3px 10px !important;
+}
+
+.paytable-panel .pay-row span:first-of-type {
+  font-size: 14px !important;
+}
+
+.reels-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  min-width: 0;
+}
+
+.reels-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(160deg, #36364e 0%, #282838 100%);
+  border-radius: 10px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 8px 36px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.reel-board {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  container-type: size;
+}
+
+.reel-board-frame {
+  display: flex;
+  flex-direction: column;
+  width: min(100cqw, calc(100cqh - 46px));
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+}
+
+.reels-stage .reel-chrome-wrap {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+}
+
+.slot-payout-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 10px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(251, 191, 36, 0.06);
+}
+
+.slot-payout-row.is-zero {
+  background: rgba(148, 163, 184, 0.06);
+}
+
+.slot-payout-row.is-idle {
+  background: transparent;
+}
+
+.slot-payout-glyph {
+  width: 26px;
+  text-align: center;
+  font-family: 'Black Ops One', cursive;
+  font-size: 14px;
+  line-height: 1;
+  color: #fbbf24;
+}
+
+.slot-payout-row.is-zero .slot-payout-glyph,
+.slot-payout-row.is-idle .slot-payout-glyph {
+  color: #64748b;
+}
+
+.slot-payout-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  color: #fbbf24;
+}
+
+.slot-payout-row.is-zero .slot-payout-name,
+.slot-payout-row.is-idle .slot-payout-name {
+  color: #8a96a4;
+}
+
+.slot-payout-mult {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fbbf24;
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.45);
+}
+
+.slot-payout-row.is-zero .slot-payout-mult {
+  color: #cbd5e1;
+  text-shadow: none;
+}
+
+.slot-payout-row.is-idle .slot-payout-mult {
+  color: #475569;
+  text-shadow: none;
+}
+
+.slot-wager-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 10px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(96, 165, 250, 0.08);
+}
+
+.slot-wager-glyph {
+  width: 26px;
+  text-align: center;
+  font-family: 'Black Ops One', cursive;
+  font-size: 13px;
+  line-height: 1;
+  color: #60a5fa;
+}
+
+.slot-wager-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #93c5fd;
+}
+
+.slot-wager-mult {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: #bfdbfe;
+}
+
+.slot-bet-slot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 10px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(251, 191, 36, 0.07);
+}
+
+.slot-bet-slot-glyph {
+  width: 26px;
+  text-align: center;
+  font-family: 'Black Ops One', cursive;
+  font-size: 12px;
+  line-height: 1;
+  color: #fbbf24;
+}
+
+.slot-bet-slot-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #fcd34d;
+}
+
+.slot-bet-slot-value {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #fde68a;
+  text-align: right;
+  line-height: 1.25;
+  max-width: 58%;
+  word-break: break-word;
+}
+
+.reel-chrome-outer {
+  background: linear-gradient(
+    145deg,
+    #c0c0c0 0%,
+    #e8e8e8 12%,
+    #f4f4f4 24%,
+    #d8d8d8 40%,
+    #b8b8b8 60%,
+    #e0e0e0 78%,
+    #f0f0f0 90%,
+    #c8c8c8 100%
+  );
+  border-radius: 8px;
+  padding: 6px;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.7),
+    inset 0 2px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.3),
+    inset 2px 0 0 rgba(255, 255, 255, 0.4),
+    inset -2px 0 0 rgba(0, 0, 0, 0.2);
+}
+
+.reel-inner-shadow {
+  background: #12121e;
+  border-radius: 5px;
+  padding: 4px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  box-shadow:
+    inset 0 3px 12px rgba(0, 0, 0, 0.9),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+
+.reel-face {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  background: #e8e4d8;
+  border-radius: 3px;
+  padding: 6px;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  align-content: center;
+  align-items: center;
+}
+
+.reel-face > * {
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: auto;
+  align-self: center;
+}
+
+.reel-column {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reel-viewport {
+  position: relative;
+  width: 100%;
+  /* 3 stacked squares */
+  aspect-ratio: 1 / 3;
+  overflow: hidden;
+}
+
+.reel-track {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.reel-track.is-three {
+  height: 100%;
+}
+
+.reel-track.is-four {
+  /* 4 cells; viewport shows 3 → one cell = 25% of this track */
+  height: calc(100% * 4 / 3);
+}
+
+.reel-cell {
+  flex: 1 0 0;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+.static-reel-col {
+  width: 100%;
+  aspect-ratio: 1 / 3;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.static-reel-col .symbol-tile {
+  flex: 1 1 0;
+  width: 100%;
+  aspect-ratio: auto;
+  min-height: 0;
+}
+
+.static-reel-col .symbol-tile > span {
+  font-size: clamp(22px, 9cqmin, 48px) !important;
+}
+
+.reel-coin-headers {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.reel-coin-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 4px 2px 5px;
+  border-radius: 5px;
+  background: #080a10;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.reel-coin-header .coin-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+}
+
+.reel-coin-header .coin-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.reel-coin-header .coin-price {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: #c8f040;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.reel-coin-header .coin-move {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.reel-coin-header .coin-move.is-up {
+  color: #22c55e;
+  text-shadow: 0 0 8px rgba(34, 197, 94, 0.55);
+}
+
+.reel-coin-header .coin-move.is-down {
+  color: #ef4444;
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.55);
+}
+
+.reel-coin-header .coin-move.is-flat {
+  color: #3b82f6;
+  text-shadow: 0 0 8px rgba(59, 130, 246, 0.45);
+}
+
+.reel-coin-header .coin-move.is-idle {
+  color: #475569;
+}
+
+.symbol-tile {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  background: linear-gradient(180deg, #f8f6f0 0%, #ece8de 60%, #ddd9cc 100%);
+  border-radius: 5px;
+  border: 1.5px solid #c8c0ae;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+    0 1px 3px rgba(0, 0, 0, 0.15);
+  position: relative;
+  overflow: hidden;
+  /* Override .rialo-landing / .rialo-app light page text for BAR / 7 / ◆ */
+  color: #0a0a0a;
+}
+
+.symbol-tile > span.is-bar,
+.symbol-tile > span.is-seven {
+  color: #0a0a0a !important;
+  font-family: "Black Ops One", cursive;
+  font-weight: 900;
+}
+
+.symbol-tile.is-win {
+  border-color: rgba(251, 191, 36, 0.8);
+  background: linear-gradient(180deg, #fffae0 0%, #fff3b8 50%, #ffeba0 100%);
+  animation: win-glow 0.65s ease-in-out infinite;
+}
+
+.slot-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-height: 0;
+}
+
+.slot-meta .progress-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.slot-meta .status-pill {
+  flex-shrink: 0;
+  background: #080a10;
+  border-radius: 6px;
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 55%;
+}
+
+.slot-message {
+  margin: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  color: #64748b;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.lcd-panel {
+  background: #050608;
+  border-radius: 8px;
+  border: 2px solid #0d0d16;
+  box-shadow:
+    inset 0 3px 10px rgba(0, 0, 0, 0.85),
+    0 0 14px rgba(212, 245, 66, 0.04);
+}
+
+.console-btn-secondary {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  transition: all 0.08s ease;
+  white-space: nowrap;
+}
+
+.console-btn-secondary:active:not(:disabled) {
+  transform: translateY(2px);
+}
+
+.console-btn-secondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.spin-button {
+  width: 84px;
+  height: 58px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-family: 'Black Ops One', cursive;
+  font-size: 18px;
+  letter-spacing: 0.05em;
+  transition: all 0.08s ease;
+  flex-shrink: 0;
+}
+
+.spin-button:not(:disabled):active {
+  transform: translateY(4px);
+}
+
+@media (max-width: 720px) {
+  .slot-page {
+    height: auto;
+    max-height: none;
+    overflow: auto;
+    padding: 8px 0 16px;
+  }
+
+  .slot-page-inner {
+    padding: 0 0.75rem;
+  }
+
+  .slot-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .slot-machine-col,
+  .slot-history-panel {
+    height: auto;
+  }
+
+  .slot-machine {
+    border-radius: 12px 12px 6px 6px;
+    flex: none;
+    min-height: 70vh;
+  }
+
+  .slot-history-panel {
+    max-height: 420px;
+  }
+
+  .machine-banner {
+    padding: 10px 12px;
+  }
+
+  .slot-main-stage {
+    grid-template-columns: 1fr;
+    padding: 8px 8px 0;
+    flex: none;
+    overflow: visible;
+  }
+
+  .paytable-col {
+    margin-right: 0 !important;
+    order: 2;
+    overflow: visible;
+  }
+
+  .reels-col {
+    order: 1;
+  }
+
+  .reel-chrome-outer {
+    width: 100%;
+  }
+
+  .slot-console {
+    padding: 10px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .spin-button {
+    width: 80px;
+    height: 56px;
+    font-size: 16px;
+  }
+}

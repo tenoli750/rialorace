@@ -3,7 +3,7 @@ import { RaceEngine } from "./src/raceEngine.js?v=9";
 import { ThreeRaceRenderer } from "./src/renderer.js?v=24";
 import { BettingUI } from "./src/bettingUi.js?v=29";
 import { buildPlaceholderBallTuning } from "./src/marketSlots.js";
-import { supabase } from "./src/supabaseClient.js";
+import { supabase } from "./src/supabaseClient.js?v=8";
 import { SupabasePriceFeed } from "./src/supabasePriceFeed.js";
 import { createBetRecord, fetchRaceResults, initializeBettingProfile, resolveOfficialRaceResult } from "./src/supabaseBettingStore.js?v=14";
 import { RaceAudioController } from "./src/raceAudio.js";

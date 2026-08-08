@@ -54,6 +54,29 @@ const CRYPTO_MARKET_NAMES = [
   "Final Furlong",
 ];
 
+const STOCK_MARKET_NAMES = [
+  "Ticker Derby",
+  "Bull Run Sprint",
+  "Exchange Stakes",
+  "Blue Chip Circuit",
+  "Opening Bell Run",
+  "Wall Street Cup",
+  "Capital Dash",
+  "Volatility Track",
+  "After Hours Chase",
+  "Equity Loop",
+  "Ledger Mile",
+  "Harbor Floor Heat",
+  "Margin Classic",
+  "Skyline Board Rally",
+  "Copper Tape Lane",
+  "Dividend Finish",
+  "Momentum Ring",
+  "Frontier Float Rush",
+  "Victory Bid Bend",
+  "Final Bell Furlong",
+];
+
 export const cryptoMarkets: Market[] = MARKET_COMBINATIONS.map((tokenLetters, index) => ({
   id: `market-${String(index + 1).padStart(2, "0")}`,
   number: index + 1,
@@ -65,7 +88,7 @@ export const cryptoMarkets: Market[] = MARKET_COMBINATIONS.map((tokenLetters, in
 export const stockMarkets: Market[] = MARKET_COMBINATIONS.map((tokenLetters, index) => ({
   id: `stock-market-${String(index + 1).padStart(2, "0")}`,
   number: index + 1,
-  name: `Stock Market ${String(index + 1).padStart(2, "0")}`,
+  name: STOCK_MARKET_NAMES[index],
   tokenLetters,
   category: "stocks",
 }));

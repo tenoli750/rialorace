@@ -66,8 +66,11 @@ export function PrecisionLanding() {
           </Link>
 
           <nav className="flex flex-wrap items-center gap-6 text-[13px] uppercase leading-[1.78] text-[#8f8f8f] md:justify-end">
-            <Link className="border-b border-transparent pb-[5px] text-[#ffffff] hover:border-[#FF0000]" to="/main-menu.html">
+            <Link className="border-b border-transparent pb-[5px] text-[#ffffff] hover:border-[#FF0000]" to="/home">
               Launch App
+            </Link>
+            <Link className="border-b border-transparent pb-[5px] hover:border-[#FF0000] hover:text-[#ffffff]" to="/slot">
+              Slot
             </Link>
             <Link className="border-b border-transparent pb-[5px] hover:border-[#FF0000] hover:text-[#ffffff]" to="/replay-menu.html">
               Replay
@@ -107,7 +110,7 @@ export function PrecisionLanding() {
 
           <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
             <Link
-              to="/main-menu.html"
+              to="/home"
               className="group inline-flex min-h-[44px] items-center justify-center gap-3 border border-[#ffffff] bg-transparent px-5 text-[12px] uppercase leading-[1.5] text-[#ffffff] hover:border-[#FF0000]"
             >
               Enter live markets
@@ -266,7 +269,7 @@ export function PrecisionLanding() {
                 <ArrowRight className="h-4 w-4 text-[#FF0000] transition-transform group-hover:translate-x-1" />
               </Link>
               <Link
-                to="/main-menu.html"
+                to="/home"
                 className="group inline-flex min-h-[44px] items-center justify-center gap-3 border border-[#303030] bg-[#ffffff] px-5 text-[12px] uppercase leading-[1.5] text-[#181818] hover:border-[#FF0000]"
               >
                 All markets
@@ -286,7 +289,7 @@ export function PrecisionLanding() {
             </h2>
           </div>
           <Link
-            to="/main-menu.html"
+            to="/home"
             className="group inline-flex min-h-[54px] items-center justify-center gap-3 border border-[#ffffff] px-6 text-[12px] uppercase leading-[1.5] text-[#ffffff] hover:border-[#FF0000]"
           >
             Start racing

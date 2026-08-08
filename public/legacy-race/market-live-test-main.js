@@ -5,7 +5,7 @@ import { getMarketById, getMarketSymbolIds, formatMarketSymbols, formatMarketTit
 import { RaceEngine } from "./src/raceEngine.js?v=9";
 import { RaceAudioController } from "./src/raceAudio.js";
 import { ThreeRaceRenderer } from "./src/renderer.js?v=24";
-import { supabase } from "./src/supabaseClient.js?v=3";
+import { supabase } from "./src/supabaseClient.js?v=8";
 import { SupabasePriceFeed } from "./src/supabasePriceFeed.js";
 import { recordRealtimeTestResult } from "./src/supabaseBettingStore.js";
 import { RaceUI } from "./src/ui.js?v=18";

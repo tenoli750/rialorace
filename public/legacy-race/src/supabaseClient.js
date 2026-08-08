@@ -1,16 +1,66 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { PUBLIC_SUPABASE_CONFIG } from "./env.js";
 
 const LOGIN_SESSION_STORAGE_KEY = "binance-ring-rally-login-session-v1";
+const SUPABASE_VENDOR_URL = new URL("../vendor/supabase.js?v=1", import.meta.url).href;
+const searchParams = new URLSearchParams(globalThis.location?.search ?? "");
+const IS_VPS_RECORDING_MODE = searchParams.get("vps") === "1";
+const VPS_SUPABASE_STORAGE_KEY = `sb-rialorace-vps-${searchParams.get("id") || "market"}-${Math.random()
+  .toString(36)
+  .slice(2)}`;
+
+async function loadSupabaseCreateClient() {
+  if (globalThis.supabase?.createClient) {
+    return globalThis.supabase.createClient;
+  }
+
+  await new Promise((resolve, reject) => {
+    if (typeof document === "undefined") {
+      reject(new Error("Supabase browser vendor requires document."));
+      return;
+    }
+
+    const existingScript = document.querySelector(`script[data-rialo-supabase-vendor="${SUPABASE_VENDOR_URL}"]`);
+    if (existingScript) {
+      if (existingScript.dataset.loaded === "1") {
+        resolve();
+        return;
+      }
+      existingScript.addEventListener("load", resolve, { once: true });
+      existingScript.addEventListener("error", () => reject(new Error(`Failed to load local Supabase vendor: ${SUPABASE_VENDOR_URL}`)), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = SUPABASE_VENDOR_URL;
+    script.async = true;
+    script.dataset.rialoSupabaseVendor = SUPABASE_VENDOR_URL;
+    script.onload = () => {
+      script.dataset.loaded = "1";
+      resolve();
+    };
+    script.onerror = () => reject(new Error(`Failed to load local Supabase vendor: ${SUPABASE_VENDOR_URL}`));
+    document.head.appendChild(script);
+  });
+
+  if (!globalThis.supabase?.createClient) {
+    throw new Error("Local Supabase vendor did not expose createClient.");
+  }
+
+  return globalThis.supabase.createClient;
+}
 
 if (!PUBLIC_SUPABASE_CONFIG.url || !PUBLIC_SUPABASE_CONFIG.publishableKey) {
   throw new Error("Missing public Supabase config. Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY before building.");
 }
 
+const createClient = await loadSupabaseCreateClient();
+
 export const supabase = createClient(PUBLIC_SUPABASE_CONFIG.url, PUBLIC_SUPABASE_CONFIG.publishableKey, {
   auth: {
-    persistSession: true,
-    autoRefreshToken: true
+    storageKey: IS_VPS_RECORDING_MODE ? VPS_SUPABASE_STORAGE_KEY : "sb-rialorace-auth-token",
+    persistSession: !IS_VPS_RECORDING_MODE,
+    autoRefreshToken: !IS_VPS_RECORDING_MODE,
+    detectSessionInUrl: !IS_VPS_RECORDING_MODE
   }
 });
 
